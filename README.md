@@ -1,6 +1,8 @@
-# Turborepo starter
+# Turgorepo template
 
-This Turborepo starter is maintained by the Turborepo core team.
+A Turgorepo template (tur + go + repo) with Next.js apps, shared packages, and a Go/Gin backend. Use it as a starting point for your own monorepo.
+
+**Author:** [Suprim Khatri](https://github.com/suprimkhatri77)
 
 ## Using this example
 
@@ -18,7 +20,10 @@ This Turborepo includes the following packages/apps:
 
 - `docs`: a [Next.js](https://nextjs.org/) app
 - `web`: another [Next.js](https://nextjs.org/) app
+- `backend`: a [Go/Gin](https://gin-gonic.com/) API with PostgreSQL, OpenAPI, and Scalar docs
 - `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
+- `@repo/types`: shared Zod schemas and TypeScript types
+- `@repo/openapi`: OpenAPI spec generation from Zod (outputs to `apps/backend/openapi.json`)
 - `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
 - `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
 
