@@ -1,0 +1,23 @@
+import { z } from "zod";
+
+export const ErrorCodeSchema = z.enum([
+  "INTERNAL_SERVER_ERROR",
+  "VALIDATION_FAILED",
+  "UNAUTHORIZED",
+  "INVALID_PAGE_PARAMETER",
+  "INVALID_ID_FORMAT",
+  "INVALID_QUERY_PARAM",
+  "PAGE_NOT_FOUND",
+  "INVALID_CREDENTIALS",
+  "INVALID_EMAIL",
+  "INVALID_PASSWORD",
+  "INVALID_TOKEN",
+  "TOKEN_EXPIRED",
+  "TOKEN_NOT_PROVIDED",
+  "TOKEN_INVALID",
+  "FORBIDDEN",
+  "USER_NOT_FOUND",
+  "USER_ALREADY_EXISTS",
+]);
+
+export type ErrorCode = z.infer<typeof ErrorCodeSchema>;
