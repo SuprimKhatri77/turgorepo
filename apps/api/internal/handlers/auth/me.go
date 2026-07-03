@@ -2,13 +2,13 @@ package auth
 
 import (
 	"errors"
-	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
+	"github.com/suprimkhatri77/turgorepo/api/internal/packages/handlerlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
@@ -22,12 +22,7 @@ func Me(queries repository.AuthRepository) gin.HandlerFunc {
 
 		userID, err := utils.ConvertToUUID(userIDFromContext)
 		if err != nil {
-			slog.Error("invalid user_id in context",
-				"user_id", userIDFromContext,
-				"path", c.FullPath(),
-				"ip", c.ClientIP(),
-				"error", err,
-			)
+			handlerlog.Error(c, "invalid user_id in context", err, "user_id", userIDFromContext)
 
 			c.JSON(http.StatusBadRequest, types.APIResponse{
 				Success: false,
@@ -40,11 +35,7 @@ func Me(queries repository.AuthRepository) gin.HandlerFunc {
 		user, err := queries.GetUserByID(ctx, userID)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				slog.Warn("user not found",
-					"user_id", userID,
-					"path", c.FullPath(),
-					"ip", c.ClientIP(),
-				)
+				handlerlog.Warn(c, "user not found", "user_id", userID)
 
 				c.JSON(http.StatusNotFound, types.APIResponse{
 					Success: false,
@@ -54,12 +45,7 @@ func Me(queries repository.AuthRepository) gin.HandlerFunc {
 				return
 			}
 
-			slog.Error("failed to fetch user",
-				"user_id", userID,
-				"error", err,
-				"path", c.FullPath(),
-				"ip", c.ClientIP(),
-			)
+			handlerlog.Error(c, "failed to fetch user", err, "user_id", userID)
 
 			c.JSON(http.StatusInternalServerError, types.APIResponse{
 				Success: false,
@@ -69,12 +55,7 @@ func Me(queries repository.AuthRepository) gin.HandlerFunc {
 			return
 		}
 
-		slog.Info("fetched current user",
-			"user_id", userID,
-			"role", user.Role,
-			"path", c.FullPath(),
-			"ip", c.ClientIP(),
-		)
+		handlerlog.Info(c, "fetched current user", "user_id", userID, "role", user.Role)
 
 		c.JSON(http.StatusOK, types.APIResponse{
 			Success: true,
