@@ -11,13 +11,14 @@ type APIResponse struct {
 	Message string     `json:"message,omitempty"`
 	Code    string     `json:"code,omitempty"`
 	Errors  []AppError `json:"errors,omitempty"`
-	Data    any        `json:"data"`
+	Data    any        `json:"data,omitempty"`
 	Meta    any        `json:"meta,omitempty"`
 }
 
 type PaginationMeta struct {
 	Total      int `json:"total"`
-	TotalPages int `json:"totalPages"`
-	Page       int `json:"page,omitempty"`
+	TotalPages int `json:"total_pages"`
+	Page       int `json:"page"`
 	Limit      int `json:"limit"`
+	Offset     int `json:"offset"`
 }

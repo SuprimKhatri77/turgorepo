@@ -22,3 +22,9 @@ func SetPublicCookie(c *gin.Context, name, value string, maxAge int, cfg *config
 	}
 	c.SetCookie(name, value, maxAge, "/", domain, secure, false)
 }
+
+func ClearAuthCookies(c *gin.Context, cfg *config.Config) {
+	SetAuthCookie(c, "access_token", "", -1, cfg)
+	SetAuthCookie(c, "refresh_token", "", -1, cfg)
+	SetPublicCookie(c, "is_logged_in", "", -1, cfg)
+}

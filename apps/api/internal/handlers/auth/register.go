@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
+	"github.com/suprimkhatri77/turgorepo/api/internal/packages/handlerlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
@@ -35,6 +35,8 @@ func Register(queries repository.AuthRepository, cfg *config.Config) gin.Handler
 
 		var req RegisterRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
+			handlerlog.Warn(c, "invalid request payload", "error", err)
+
 			c.JSON(http.StatusBadRequest, types.APIResponse{
 				Success: false,
 				Message: "Invalid request body",
@@ -48,6 +50,8 @@ func Register(queries repository.AuthRepository, cfg *config.Config) gin.Handler
 
 		passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
+			handlerlog.Error(c, "failed to hash password", err)
+
 			c.JSON(http.StatusInternalServerError, types.APIResponse{
 				Success: false,
 				Message: "Failed to process request",
@@ -66,6 +70,8 @@ func Register(queries repository.AuthRepository, cfg *config.Config) gin.Handler
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+				handlerlog.Warn(c, "user already exists", "email", req.Email)
+
 				c.JSON(http.StatusConflict, types.APIResponse{
 					Success: false,
 					Message: "User already exists",
@@ -73,6 +79,9 @@ func Register(queries repository.AuthRepository, cfg *config.Config) gin.Handler
 				})
 				return
 			}
+
+			handlerlog.Error(c, "failed to create user", err)
+
 			c.JSON(http.StatusInternalServerError, types.APIResponse{
 				Success: false,
 				Message: "Failed to process request",
@@ -93,6 +102,8 @@ func Register(queries repository.AuthRepository, cfg *config.Config) gin.Handler
 		accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
 		accessTokenString, err := accessToken.SignedString([]byte(cfg.JWTAccessSecret))
 		if err != nil {
+			handlerlog.Error(c, "failed to sign access token", err, "user_id", user.ID)
+
 			c.JSON(http.StatusInternalServerError, types.APIResponse{
 				Success: false,
 				Message: "Failed to process request",
@@ -112,7 +123,7 @@ func Register(queries repository.AuthRepository, cfg *config.Config) gin.Handler
 		refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
 		refreshTokenString, err := refreshToken.SignedString([]byte(cfg.JWTRefreshSecret))
 		if err != nil {
-			slog.Error("failed to sign refresh token", "error", err, "user_id", user.ID)
+			handlerlog.Error(c, "failed to sign refresh token", err, "user_id", user.ID)
 
 			c.JSON(http.StatusInternalServerError, types.APIResponse{
 				Success: false,
@@ -137,7 +148,7 @@ func Register(queries repository.AuthRepository, cfg *config.Config) gin.Handler
 			SessionID: pgtype.UUID{Bytes: sessionID, Valid: true},
 		})
 		if err != nil {
-			slog.Error("failed to store refresh token", "error", err, "user_id", user.ID)
+			handlerlog.Error(c, "failed to store refresh token", err, "user_id", user.ID)
 
 			c.JSON(http.StatusInternalServerError, types.APIResponse{
 				Success: false,
@@ -147,11 +158,13 @@ func Register(queries repository.AuthRepository, cfg *config.Config) gin.Handler
 			return
 		}
 
-		slog.Info("tokens issued", "user_id", user.ID)
+		handlerlog.Info(c, "tokens issued", "user_id", user.ID)
 
 		utils.SetAuthCookie(c, "access_token", accessTokenString, 15*60, cfg)
 		utils.SetAuthCookie(c, "refresh_token", refreshTokenString, 30*24*60*60, cfg)
 		utils.SetPublicCookie(c, "is_logged_in", "true", 30*24*60*60, cfg)
+
+		handlerlog.Info(c, "registration successful", "user_id", user.ID)
 
 		c.JSON(http.StatusCreated, types.APIResponse{
 			Success: true,

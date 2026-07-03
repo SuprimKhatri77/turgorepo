@@ -1,164 +1,259 @@
-# Turgorepo template
+# Turgorepo
 
-A Turgorepo template (tur + go + repo) with Next.js apps, shared packages, and a Go/Gin backend. Use it as a starting point for your own monorepo.
+A full-stack monorepo template — **Tur**bo + **Go** + repo — with a Next.js frontend, Go/Gin API, PostgreSQL, and shared TypeScript packages for types and API docs.
 
 **Author:** [Suprim Khatri](https://github.com/suprimkhatri77)
 
-## Using this example
+## Stack
 
-Run the following command:
+| Layer | Tech |
+| --- | --- |
+| Monorepo | [Turborepo](https://turborepo.dev) + [Bun](https://bun.sh) workspaces |
+| Frontend | [Next.js 16](https://nextjs.org), React 19, TanStack Query, Zustand, Tailwind CSS 4 |
+| Backend | [Go](https://go.dev) + [Gin](https://gin-gonic.com), [sqlc](https://sqlc.dev), [golang-migrate](https://github.com/golang-migrate/migrate) |
+| Database | PostgreSQL 17 |
+| Auth | JWT in HTTP-only cookies (access + refresh), session tokens in DB |
+| API docs | Zod schemas → OpenAPI 3 → [Scalar](https://scalar.com) UI |
 
-```sh
-npx create-turbo@latest
+## Project structure
+
+```text
+turgorepo/
+├── apps/
+│   ├── api/          # Go/Gin REST API
+│   └── web/          # Next.js frontend
+├── packages/
+│   ├── types/        # Shared Zod schemas + TypeScript types
+│   ├── openapi/      # OpenAPI spec generation (outputs to apps/api/openapi.json)
+│   ├── ui/           # Shared React components
+│   ├── eslint-config/
+│   └── typescript-config/
+├── docker-compose.dev.yml
+└── .env.example
 ```
 
-## What's inside?
+## Prerequisites
 
-This Turborepo includes the following packages/apps:
+- [Bun](https://bun.sh) >= 1.3
+- [Go](https://go.dev) >= 1.23
+- [Docker](https://www.docker.com) & Docker Compose (for containerized dev)
+- [golang-migrate](https://github.com/golang-migrate/migrate) CLI (for local migrations)
 
-### Apps and Packages
+## Getting started
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `backend`: a [Go/Gin](https://gin-gonic.com/) API with PostgreSQL, OpenAPI, and Scalar docs
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/types`: shared Zod schemas and TypeScript types
-- `@repo/openapi`: OpenAPI spec generation from Zod (outputs to `apps/backend/openapi.json`)
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+### 1. Clone and install
 
 ```sh
-cd my-turborepo
-turbo build
+git clone <your-repo-url> turgorepo
+cd turgorepo
+bun install
 ```
 
-Without global `turbo`, use your package manager:
+### 2. Environment
+
+Copy the example env and adjust as needed:
 
 ```sh
-cd my-turborepo
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
+cp .env.example .env.local
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+Key variables:
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+| Variable | Description |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | JWT signing secrets |
+| `FRONTEND_URL` | Allowed CORS origin (e.g. `http://localhost:3000`) |
+| `COOKIE_DOMAIN` | Cookie domain (e.g. `localhost`) |
+| `NEXT_PUBLIC_API_URL` | API URL for the browser (e.g. `http://localhost:5000`) |
+| `INTERNAL_API_URL` | API URL inside Docker network (e.g. `http://api:5000`) |
+
+### 3. Run with Docker (recommended)
 
 ```sh
-turbo build --filter=docs
+docker compose -f docker-compose.dev.yml up --build
 ```
 
-Without global `turbo`:
+| Service | URL |
+| --- | --- |
+| Web | <http://localhost:3000> |
+| API | <http://localhost:5000> |
+| API docs (Scalar) | <http://localhost:5000/api/v1/docs/> |
+| Health check | <http://localhost:5000/api/v1/health> |
+| PostgreSQL | localhost:5432 |
+
+Run migrations inside the API container or locally:
 
 ```sh
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
+cd apps/api
+make migrate-up
 ```
 
-### Develop
+### 4. Run locally (without Docker)
 
-To develop all apps and packages, run the following command:
+**Database** — start Postgres and set `DATABASE_URL` in `.env.local`.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+**API:**
 
 ```sh
-cd my-turborepo
-turbo dev
+cd apps/api
+make migrate-up   # first time
+make run          # or: go run ./cmd/server
 ```
 
-Without global `turbo`, use your package manager:
+**Web:**
 
 ```sh
-cd my-turborepo
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
+bun run dev --filter=web
 ```
 
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+**Everything via Turbo:**
 
 ```sh
-turbo dev --filter=web
+bun run dev
 ```
 
-Without global `turbo`:
+## API
+
+Base path: `/api/v1`
+
+### Auth routes
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/health` | Health check |
+| `POST` | `/auth/register` | Create account, set cookies |
+| `POST` | `/auth/login` | Sign in, set cookies |
+| `POST` | `/auth/logout` | Revoke session, clear cookies |
+| `POST` | `/auth/refresh` | Refresh access token (rotates refresh token after 5 min) |
+| `GET` | `/auth/me` | Current user (requires auth) |
+
+Auth uses HTTP-only cookies:
+
+- `access_token` — 15-minute JWT
+- `refresh_token` — 30-day JWT, hashed and stored in DB
+- `is_logged_in` — public flag for the frontend
+
+User roles: `superadmin`, `admin`, `staff`, `member`
+
+### API docs
+
+Generate the OpenAPI spec from shared Zod schemas:
 
 ```sh
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
+bun run generate
 ```
 
-### Remote Caching
+This writes `apps/api/openapi.json`. Scalar docs are served at `/api/v1/docs/`.
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+### Database workflow
 
 ```sh
-cd my-turborepo
-turbo login
+cd apps/api
+
+# Run migrations
+make migrate-up
+make migrate-down N=1   # rollback last N migrations
+
+# Regenerate sqlc types after changing queries/schema
+sqlc generate
 ```
 
-Without global `turbo`, use your package manager:
+Source layout:
+
+- `migrations/` — SQL migrations
+- `internal/database/schema/` — table definitions for sqlc
+- `internal/database/queries/` — SQL queries
+- `internal/database/generated/` — sqlc output (do not edit)
+
+## Frontend (`apps/web`)
+
+Next.js app with cookie-based auth, axios interceptors for token refresh, and route protection via Next.js proxy middleware.
+
+### Proxy middleware (`_proxy.ts`)
+
+The file is intentionally named `_proxy.ts` (underscore prefix disables it). When you need route middleware, rename it to `proxy.ts` and it works as-is.
+
+It handles:
+
+- `/auth/*` — redirect authenticated users away from login/register
+- `/admin/*` — require `admin` or `superadmin` role
+
+Route rules live in `apps/web/lib/middleware/config.ts`.
+
+### Shared types
+
+Import API types from the monorepo package:
+
+```ts
+import { LoginBodySchema, type User } from "@repo/types";
+```
+
+## Shared packages
+
+### `@repo/types`
+
+Zod schemas and inferred TypeScript types, organized by domain:
+
+```text
+src/
+├── api/       # response wrappers, error codes
+├── auth/      # login, register, auth responses
+└── user/      # user model
+```
+
+### `@repo/openapi`
+
+OpenAPI spec built from `@repo/types`. Each route lives in its own file:
+
+```text
+src/
+├── schema.ts          # entry point
+├── schemas/           # OpenAPI component schemas
+└── paths/
+    ├── health.ts
+    └── auth/          # login.ts, register.ts, logout.ts, ...
+```
+
+## Scripts
+
+| Command | Description |
+| --- | --- |
+| `bun run dev` | Start all apps in dev mode |
+| `bun run build` | Build all apps and packages |
+| `bun run lint` | Lint across the monorepo |
+| `bun run check-types` | TypeScript type checking |
+| `bun run generate` | Generate OpenAPI spec |
+| `bun run format` | Format with Prettier |
+
+Filter to a single app:
 
 ```sh
-cd my-turborepo
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
+bun run dev --filter=web
+bun run dev --filter=api
 ```
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+## Backend conventions
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+### Handler logging
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+Auth handlers use `internal/packages/handlerlog` for structured logging. It automatically attaches `path`, `method`, `ip`, and `actor_id` (when available) to every log line:
+
+```go
+handlerlog.Info(c, "login successful", "user_id", user.ID)
+handlerlog.Warn(c, "invalid credentials (user not found)")
+handlerlog.Error(c, "failed to fetch user", err)
+```
+
+### Hot reload
+
+The API uses [Air](https://github.com/air-verse/air) in Docker (`apps/api/.air.toml`). Local dev:
 
 ```sh
-turbo link
+cd apps/api
+go run github.com/air-verse/air@latest
 ```
 
-Without global `turbo`:
+## License
 
-```sh
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+This project is licensed under the [MIT License](LICENSE).

@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
+	"github.com/suprimkhatri77/turgorepo/api/internal/packages/handlerlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
@@ -26,10 +26,9 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 
 		refreshTokenString, err := c.Cookie("refresh_token")
 		if err != nil {
-			slog.Warn("missing refresh token cookie",
-				"path", c.FullPath(),
-				"ip", c.ClientIP(),
-			)
+			handlerlog.Warn(c, "missing refresh token cookie")
+
+			utils.ClearAuthCookies(c, cfg)
 
 			c.JSON(http.StatusBadRequest, types.APIResponse{
 				Success: false,
@@ -41,19 +40,16 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 
 		token, err := jwt.Parse(refreshTokenString, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				slog.Error("unexpected signing method",
-					"alg", token.Header["alg"],
-				)
+				handlerlog.Error(c, "unexpected signing method", fmt.Errorf("unexpected signing method: %v", token.Header["alg"]), "alg", token.Header["alg"])
 				return nil, fmt.Errorf("unexpected signing method")
 			}
 			return []byte(cfg.JWTRefreshSecret), nil
 		})
 
 		if err != nil || !token.Valid {
-			slog.Warn("invalid refresh token",
-				"error", err,
-				"ip", c.ClientIP(),
-			)
+			handlerlog.Warn(c, "invalid refresh token", "error", err)
+
+			utils.ClearAuthCookies(c, cfg)
 
 			c.JSON(http.StatusUnauthorized, types.APIResponse{
 				Success: false,
@@ -65,9 +61,7 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			slog.Warn("invalid token claims",
-				"ip", c.ClientIP(),
-			)
+			handlerlog.Warn(c, "invalid token claims")
 
 			c.JSON(http.StatusUnauthorized, types.APIResponse{
 				Success: false,
@@ -78,8 +72,9 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 		}
 
 		sessionIDFromClaims, ok := claims["session_id"].(string)
-		slog.Info("session from claims", "", sessionIDFromClaims)
 		if !ok {
+			utils.ClearAuthCookies(c, cfg)
+
 			c.JSON(http.StatusUnauthorized, types.APIResponse{
 				Success: false,
 				Message: "Invalid token claims",
@@ -88,8 +83,12 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 			return
 		}
 
+		handlerlog.Info(c, "session from claims", "session_id", sessionIDFromClaims)
+
 		sessionID, err := utils.ConvertToUUID(sessionIDFromClaims)
 		if err != nil {
+			utils.ClearAuthCookies(c, cfg)
+
 			c.JSON(http.StatusUnauthorized, types.APIResponse{
 				Success: false,
 				Message: "Invalid token claims",
@@ -107,10 +106,8 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 		})
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				// utils.SetAuthCookie(c, "access_token", "", -1, cfg)
-				// utils.SetAuthCookie(c, "refresh_token", "", -1, cfg)
-				// utils.SetPublicCookie(c, "is_logged_in", "", -1, cfg)
 
+				utils.ClearAuthCookies(c, cfg)
 				c.JSON(http.StatusUnauthorized, types.APIResponse{
 					Success: false,
 					Message: "Invalid refresh token",
@@ -119,7 +116,7 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 				return
 			}
 
-			slog.Error("failed to fetch refresh token", "error", err, "ip", c.ClientIP())
+			handlerlog.Error(c, "failed to fetch refresh token", err)
 
 			c.JSON(http.StatusInternalServerError, types.APIResponse{
 				Success: false,
@@ -131,10 +128,7 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 
 		user, err := queries.GetUserByID(ctx, refreshToken.UserID)
 		if err != nil {
-			slog.Error("failed to fetch user",
-				"error", err,
-				"user_id", refreshToken.UserID,
-			)
+			handlerlog.Error(c, "failed to fetch user", err, "user_id", refreshToken.UserID)
 
 			c.JSON(http.StatusInternalServerError, types.APIResponse{
 				Success: false,
@@ -156,10 +150,7 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 		accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
 		accessTokenString, err := accessToken.SignedString([]byte(cfg.JWTAccessSecret))
 		if err != nil {
-			slog.Error("failed to sign access token",
-				"error", err,
-				"user_id", user.ID,
-			)
+			handlerlog.Error(c, "failed to sign access token", err, "user_id", user.ID)
 
 			c.JSON(http.StatusInternalServerError, types.APIResponse{
 				Success: false,
@@ -182,10 +173,7 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 			Token:     refreshTokenHashString,
 		})
 		if err != nil {
-			slog.Error("failed to revoke refresh token",
-				"error", err,
-				"user_id", refreshToken.UserID,
-			)
+			handlerlog.Error(c, "failed to revoke refresh token", err, "user_id", refreshToken.UserID)
 
 			c.JSON(http.StatusInternalServerError, types.APIResponse{
 				Success: false,
@@ -204,10 +192,7 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 		newRefreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
 		newRefreshTokenString, err := newRefreshToken.SignedString([]byte(cfg.JWTRefreshSecret))
 		if err != nil {
-			slog.Error("failed to sign refresh token",
-				"error", err,
-				"user_id", user.ID,
-			)
+			handlerlog.Error(c, "failed to sign refresh token", err, "user_id", user.ID)
 
 			c.JSON(http.StatusInternalServerError, types.APIResponse{
 				Success: false,
@@ -230,10 +215,7 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 			SessionID: sessionID,
 		})
 		if err != nil {
-			slog.Error("failed to persist new refresh token",
-				"error", err,
-				"user_id", user.ID,
-			)
+			handlerlog.Error(c, "failed to persist new refresh token", err, "user_id", user.ID)
 
 			c.JSON(http.StatusInternalServerError, types.APIResponse{
 				Success: false,
@@ -247,13 +229,11 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 		utils.SetAuthCookie(c, "refresh_token", newRefreshTokenString, 30*24*60*60, cfg)
 		utils.SetPublicCookie(c, "is_logged_in", "true", 30*24*60*60, cfg)
 
-		slog.Info("tokens rotated successfully",
-			"user_id", user.ID,
-			"ip", c.ClientIP(),
-		)
+		handlerlog.Info(c, "tokens rotated successfully", "user_id", user.ID)
 
 		c.JSON(http.StatusOK, types.APIResponse{
 			Success: true,
+			Message: "Tokens refreshed",
 		})
 	}
 }

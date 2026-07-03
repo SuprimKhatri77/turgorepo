@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
+	"github.com/suprimkhatri77/turgorepo/api/internal/packages/handlerlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
@@ -37,7 +37,7 @@ func Login(
 
 		var loginRequest LoginRequest
 		if err := c.ShouldBindJSON(&loginRequest); err != nil {
-			slog.Warn("invalid request payload", "error", err)
+			handlerlog.Warn(c, "invalid request payload", "error", err)
 
 			c.JSON(http.StatusBadRequest, types.APIResponse{
 				Success: false,
@@ -48,12 +48,12 @@ func Login(
 			return
 		}
 
-		slog.Info("login attempt")
+		handlerlog.Info(c, "login attempt")
 
 		user, err := queries.GetUserByEmail(ctx, loginRequest.Email)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				slog.Warn("invalid credentials (user not found)")
+				handlerlog.Warn(c, "invalid credentials (user not found)")
 
 				c.JSON(http.StatusUnauthorized, types.APIResponse{
 					Success: false,
@@ -63,7 +63,7 @@ func Login(
 				return
 			}
 
-			slog.Error("failed to fetch user", "error", err)
+			handlerlog.Error(c, "failed to fetch user", err)
 
 			c.JSON(http.StatusInternalServerError, types.APIResponse{
 				Success: false,
@@ -78,7 +78,7 @@ func Login(
 			[]byte(loginRequest.Password),
 		)
 		if err != nil {
-			slog.Warn("invalid credentials (password mismatch)", "user_id", user.ID)
+			handlerlog.Warn(c, "invalid credentials (password mismatch)", "user_id", user.ID)
 
 			c.JSON(http.StatusUnauthorized, types.APIResponse{
 				Success: false,
@@ -88,7 +88,7 @@ func Login(
 			return
 		}
 
-		slog.Info("password verified", "user_id", user.ID)
+		handlerlog.Info(c, "password verified", "user_id", user.ID)
 
 		accessClaims := jwt.MapClaims{
 			"userID":   user.ID,
@@ -102,7 +102,7 @@ func Login(
 		accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
 		accessTokenString, err := accessToken.SignedString([]byte(cfg.JWTAccessSecret))
 		if err != nil {
-			slog.Error("failed to sign access token", "error", err, "user_id", user.ID)
+			handlerlog.Error(c, "failed to sign access token", err, "user_id", user.ID)
 
 			c.JSON(http.StatusInternalServerError, types.APIResponse{
 				Success: false,
@@ -123,7 +123,7 @@ func Login(
 		refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
 		refreshTokenString, err := refreshToken.SignedString([]byte(cfg.JWTRefreshSecret))
 		if err != nil {
-			slog.Error("failed to sign refresh token", "error", err, "user_id", user.ID)
+			handlerlog.Error(c, "failed to sign refresh token", err, "user_id", user.ID)
 
 			c.JSON(http.StatusInternalServerError, types.APIResponse{
 				Success: false,
@@ -148,7 +148,7 @@ func Login(
 			ExpiresAt: expiresAt,
 		})
 		if err != nil {
-			slog.Error("failed to store refresh token", "error", err, "user_id", user.ID)
+			handlerlog.Error(c, "failed to store refresh token", err, "user_id", user.ID)
 
 			c.JSON(http.StatusInternalServerError, types.APIResponse{
 				Success: false,
@@ -158,13 +158,13 @@ func Login(
 			return
 		}
 
-		slog.Info("tokens issued", "user_id", user.ID)
+		handlerlog.Info(c, "tokens issued", "user_id", user.ID)
 
 		utils.SetAuthCookie(c, "access_token", accessTokenString, 15*60, cfg)
 		utils.SetAuthCookie(c, "refresh_token", refreshTokenString, 30*24*60*60, cfg)
 		utils.SetPublicCookie(c, "is_logged_in", "true", 30*24*60*60, cfg)
 
-		slog.Info("login successful", "user_id", user.ID)
+		handlerlog.Info(c, "login successful", "user_id", user.ID)
 
 		c.JSON(http.StatusOK, types.APIResponse{
 			Success: true,

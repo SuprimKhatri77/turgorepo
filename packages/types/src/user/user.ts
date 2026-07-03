@@ -10,11 +10,11 @@ export const UserRoleSchema = z.enum([
 export type UserRole = z.infer<typeof UserRoleSchema>;
 
 export const UserSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   name: z.string(),
-  email: z.string().email(),
+  email: z.email(),
   role: UserRoleSchema,
-  image_url: z.string().nullable().optional(),
+  image_url: z.url().optional(),
 });
 
 export type User = z.infer<typeof UserSchema>;
