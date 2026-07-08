@@ -14,7 +14,7 @@ func CronExample(queries *db.Queries) {
 		// TODO: Implement a job
 	})
 	if err != nil {
-		log.Fatalf("cron: failed to schedule expire subscriptions job: %v", err)
+		log.Fatalf("cron failed: %v", err)
 	}
 
 	c.Start()

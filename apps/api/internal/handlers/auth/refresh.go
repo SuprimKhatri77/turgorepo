@@ -139,12 +139,12 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 		}
 
 		accessClaims := jwt.MapClaims{
-			"userID":   user.ID,
-			"role":     user.Role,
-			"email":    user.Email,
-			"name":     user.Name,
-			"imageURL": user.ImageUrl,
-			"exp":      time.Now().Add(15 * time.Minute).Unix(),
+			"user_id":   user.ID,
+			"role":      user.Role,
+			"email":     user.Email,
+			"name":      user.Name,
+			"image_url": user.ImageUrl,
+			"exp":       time.Now().Add(15 * time.Minute).Unix(),
 		}
 
 		accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)

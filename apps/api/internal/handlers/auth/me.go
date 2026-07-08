@@ -18,7 +18,7 @@ func Me(queries repository.AuthRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		userIDFromContext := c.MustGet("userID").(string)
+		userIDFromContext := c.MustGet("user_id").(string)
 
 		userID, err := utils.ConvertToUUID(userIDFromContext)
 		if err != nil {
