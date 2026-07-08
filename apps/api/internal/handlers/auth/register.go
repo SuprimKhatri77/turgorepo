@@ -91,7 +91,7 @@ func Register(queries repository.AuthRepository, cfg *config.Config) gin.Handler
 		}
 
 		accessClaims := jwt.MapClaims{
-			"user_url":  user.ID,
+			"user_id":   user.ID,
 			"role":      user.Role,
 			"email":     user.Email,
 			"name":      user.Name,
