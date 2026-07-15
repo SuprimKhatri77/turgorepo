@@ -1,4 +1,4 @@
-package handlerlog
+package rlog
 
 import (
 	"log/slog"

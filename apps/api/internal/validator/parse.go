@@ -119,7 +119,7 @@ func buildMessage(fe validator.FieldError, jsonField string) string {
 		return fmt.Sprintf("%s contains an invalid item", jsonField)
 	case "required_if":
 		return fmt.Sprintf("%s is required", jsonField)
-	case "notblank":
+	case "not_blank":
 		return fmt.Sprintf("%s cannot be blank or whitespace only", jsonField)
 	default:
 		return fmt.Sprintf("%s is invalid", jsonField)

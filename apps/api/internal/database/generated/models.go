@@ -8,11 +8,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type Token struct {
+type RefreshToken struct {
 	ID        pgtype.UUID        `json:"id"`
 	UserID    pgtype.UUID        `json:"user_id"`
 	Token     string             `json:"token"`
-	SessionID pgtype.UUID        `json:"session_id"`
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`

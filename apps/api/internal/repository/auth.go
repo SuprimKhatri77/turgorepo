@@ -10,9 +10,9 @@ import (
 
 type AuthRepository interface {
 	GetUserByEmail(ctx context.Context, email string) (db.User, error)
-	CreateToken(ctx context.Context, params db.CreateTokenParams) (db.Token, error)
+	CreateRefreshToken(ctx context.Context, params db.CreateRefreshTokenParams) (db.RefreshToken, error)
 	CreateUser(ctx context.Context, params db.CreateUserParams) (db.User, error)
-	RevokeTokenBySessionIDAndToken(ctx context.Context, params db.RevokeTokenBySessionIDAndTokenParams) (pgconn.CommandTag, error)
-	GetRefreshTokenBySessionIDAndToken(ctx context.Context, params db.GetRefreshTokenBySessionIDAndTokenParams) (db.Token, error)
+	RevokeTokenByUserIDAndToken(ctx context.Context, params db.RevokeTokenByUserIDAndTokenParams) (pgconn.CommandTag, error)
+	GetRefreshTokenByUserIDAndToken(ctx context.Context, params db.GetRefreshTokenByUserIDAndTokenParams) (db.RefreshToken, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (db.User, error)
 }
