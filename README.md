@@ -235,14 +235,14 @@ bun run dev --filter=api
 
 ## Backend conventions
 
-### Handler logging
+### Request logging
 
-Auth handlers use `internal/packages/handlerlog` for structured logging. It automatically attaches `path`, `method`, `ip`, and `actor_id` (when available) to every log line:
+Auth handlers use `internal/packages/rlog` for structured logging. It automatically attaches `path`, `method`, `ip`, and `actor_id` (when available) to every log line:
 
 ```go
-handlerlog.Info(c, "login successful", "user_id", user.ID)
-handlerlog.Warn(c, "invalid credentials (user not found)")
-handlerlog.Error(c, "failed to fetch user", err)
+rlog.Info(c, "login successful", "user_id", user.ID)
+rlog.Warn(c, "invalid credentials (user not found)")
+rlog.Error(c, "failed to fetch user", err)
 ```
 
 ### Hot reload

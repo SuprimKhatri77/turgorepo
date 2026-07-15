@@ -3,7 +3,7 @@ CREATE TABLE users (
   name              TEXT NOT NULL,
   email             TEXT NOT NULL,
   password_hash     TEXT NOT NULL,
-  role              TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('superadmin', 'admin', 'staff', 'member')),
+  role              TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('superadmin', 'admin', 'member')),
   image_url         TEXT,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()

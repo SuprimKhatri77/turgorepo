@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
-	"github.com/suprimkhatri77/turgorepo/api/internal/packages/handlerlog"
+	"github.com/suprimkhatri77/turgorepo/api/internal/packages/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
@@ -22,7 +22,7 @@ func Me(queries repository.AuthRepository) gin.HandlerFunc {
 
 		userID, err := utils.ConvertToUUID(userIDFromContext)
 		if err != nil {
-			handlerlog.Error(c, "invalid user_id in context", err, "user_id", userIDFromContext)
+			rlog.Error(c, "invalid user_id in context", err, "user_id", userIDFromContext)
 
 			c.JSON(http.StatusBadRequest, types.APIResponse{
 				Success: false,
@@ -35,7 +35,7 @@ func Me(queries repository.AuthRepository) gin.HandlerFunc {
 		user, err := queries.GetUserByID(ctx, userID)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				handlerlog.Warn(c, "user not found", "user_id", userID)
+				rlog.Warn(c, "user not found", "user_id", userID)
 
 				c.JSON(http.StatusNotFound, types.APIResponse{
 					Success: false,
@@ -45,7 +45,7 @@ func Me(queries repository.AuthRepository) gin.HandlerFunc {
 				return
 			}
 
-			handlerlog.Error(c, "failed to fetch user", err, "user_id", userID)
+			rlog.Error(c, "failed to fetch user", err, "user_id", userID)
 
 			c.JSON(http.StatusInternalServerError, types.APIResponse{
 				Success: false,
@@ -55,7 +55,7 @@ func Me(queries repository.AuthRepository) gin.HandlerFunc {
 			return
 		}
 
-		handlerlog.Info(c, "fetched current user", "user_id", userID, "role", user.Role)
+		rlog.Info(c, "fetched current user", "user_id", userID, "role", user.Role)
 
 		c.JSON(http.StatusOK, types.APIResponse{
 			Success: true,

@@ -29,7 +29,7 @@ func Init() {
 			return err == nil
 		})
 
-		v.RegisterValidation("notblank", func(fl validator.FieldLevel) bool {
+		v.RegisterValidation("not_blank", func(fl validator.FieldLevel) bool {
 			return strings.TrimSpace(fl.Field().String()) != ""
 		})
 
