@@ -70,7 +70,7 @@ func mapTagToCode(tag string) string {
 		return "INVALID_ITEM"
 	case "required_if":
 		return "REQUIRED_FIELD"
-	case "notblank":
+	case "not_blank":
 		return "BLANK_FIELD"
 	default:
 		return "VALIDATION_ERROR"

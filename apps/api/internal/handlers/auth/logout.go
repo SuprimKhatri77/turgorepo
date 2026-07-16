@@ -63,7 +63,20 @@ func Logout(queries repository.AuthRepository, cfg *config.Config) gin.HandlerFu
 			return
 		}
 
-		userID, err := utils.ConvertToUUID(claims["user_id"].(string))
+		userIDFromClaims, ok := claims["user_id"].(string)
+		if !ok {
+			rlog.Warn(c, "missing or non-string user_id claim on logout")
+			utils.ClearAuthCookies(c, cfg)
+
+			c.JSON(http.StatusUnauthorized, types.APIResponse{
+				Success: false,
+				Message: "Invalid token claims",
+				Code:    constants.InvalidToken,
+			})
+			return
+		}
+
+		userID, err := utils.ConvertToUUID(userIDFromClaims)
 		if err != nil {
 			utils.ClearAuthCookies(c, cfg)
 
@@ -94,6 +107,8 @@ func Logout(queries repository.AuthRepository, cfg *config.Config) gin.HandlerFu
 		}
 		if result.RowsAffected() == 0 {
 			rlog.Warn(c, "refresh token not found on logout")
+
+			utils.ClearAuthCookies(c, cfg)
 
 			c.JSON(http.StatusUnauthorized, types.APIResponse{
 				Success: false,
