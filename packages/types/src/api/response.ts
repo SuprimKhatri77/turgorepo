@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ErrorCodeSchema } from "./error-codes.js";
+import { ErrorCodeSchema } from "./error-codes";
 
 export const ValidationErrorSchema = z.object({
   code: z.string(),
@@ -9,13 +9,33 @@ export const ValidationErrorSchema = z.object({
 
 export type ValidationError = z.infer<typeof ValidationErrorSchema>;
 
+export const createApiResponseSchema = <T extends z.ZodType>(
+  dataSchema?: T,
+) => {
+  const baseShape = {
+    success: z.boolean(),
+    message: z.string().optional(),
+    code: ErrorCodeSchema.optional(),
+    errors: z.array(ValidationErrorSchema).optional(),
+    meta: z.unknown().optional(),
+  };
+
+  if (dataSchema) {
+    return z.object({
+      ...baseShape,
+      data: dataSchema,
+    });
+  }
+
+  return z.object(baseShape);
+};
+
 export const apiErrorResponseSchema = z.object({
   success: z.literal(false),
   message: z.string(),
   code: z.string(),
   errors: z.array(ValidationErrorSchema).optional(),
 });
-export type ApiErrorResponseSchema = z.infer<typeof apiErrorResponseSchema>;
 export type ApiErrorResponse = z.infer<typeof apiErrorResponseSchema>;
 
 export type ApiResponse<T = unknown> = {

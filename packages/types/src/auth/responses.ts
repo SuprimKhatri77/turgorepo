@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { createApiResponseSchema } from "../api/response.js";
-import { UserSchema } from "../user/user.js";
+import { createApiResponseSchema } from "../api/response";
+import { UserSchema } from "../user/user";
 
 export const HealthResponseSchema = createApiResponseSchema().extend({
   success: z.literal(true),
@@ -9,7 +9,9 @@ export const HealthResponseSchema = createApiResponseSchema().extend({
 
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
 
-export const AuthUserResponseSchema = createApiResponseSchema(UserSchema).extend({
+export const AuthUserResponseSchema = createApiResponseSchema(
+  UserSchema,
+).extend({
   success: z.literal(true),
   message: z.string(),
   data: UserSchema,
