@@ -36,7 +36,10 @@
   "go.alternateTools": {
     "golangci-lint": "${env:HOME}/go/bin/golangci-lint"
   },
-  "go.lintFlags": ["--config=${workspaceFolder}/apps/api/.golangci.yml"],
+  "go.lintFlags": [
+    "--fast-only",
+    "--config=${workspaceFolder}/apps/api/.golangci.yml"
+  ],
   "gopls": {
     "ui.semanticTokens": true
   },

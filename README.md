@@ -245,8 +245,8 @@ bun run dev --filter=api
 
 **pre-commit** (lint-staged):
 
-- **JS/TS** — ESLint (`--fix`) + Prettier
-- **JSON / YAML / CSS** — Prettier
+- **JS/TS in `apps/web` and `packages/ui`** — ESLint (`--fix`) + Prettier
+- **Other JS/TS / JSON / YAML / CSS** — Prettier
 - **Go** — `gofmt`
 
 **commit-msg** — [Commitlint](https://commitlint.js.org/) enforces [Conventional Commits](https://www.conventionalcommits.org/):
