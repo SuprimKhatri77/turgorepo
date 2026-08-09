@@ -51,4 +51,5 @@ jobs:
         env:
           NODE_ENV: production
           NEXT_PUBLIC_API_URL: http://localhost:5000
+          INTERNAL_API_URL: http://localhost:5000
           COOKIE_DOMAIN: localhost
