@@ -13,7 +13,7 @@ type DB struct {
 	Pool *pgxpool.Pool
 }
 
-func new(ctx context.Context, connString string) (*DB, error) {
+func openPool(ctx context.Context, connString string) (*DB, error) {
 	config, err := pgxpool.ParseConfig(connString)
 	if err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func ConnectWithRetry(ctx context.Context, connString string, maxRetries int) (*
 		err      error
 	)
 	for i := range maxRetries {
-		database, err = new(ctx, connString)
+		database, err = openPool(ctx, connString)
 		if err == nil {
 			return database, nil
 		}

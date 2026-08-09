@@ -1,11 +1,25 @@
+import { get_api_url } from "@/utils/get-api-url";
+
 export default async function Home() {
-  const api = process.env.INTERNAL_API_URL;
+  const api = get_api_url();
+  let data: unknown = {
+    success: false,
+    message: "API unavailable",
+  };
 
-  console.log({ api });
+  if (api) {
+    try {
+      const response = await fetch(`${api}/api/v1/health`, {
+        cache: "no-store",
+      });
+      if (response.ok) {
+        data = await response.json();
+      }
+    } catch {
+      // API may be offline during local/CI builds
+    }
+  }
 
-  const response = await fetch(`${api}/api/v1/health`);
-
-  const data = await response.json();
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
       <h1 className="text-2xl font-bold text-gray-900 mb-4">Health Check</h1>

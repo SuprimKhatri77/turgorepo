@@ -10,8 +10,8 @@ func CORS(cfg *config.Config) gin.HandlerFunc {
 	config := cors.DefaultConfig()
 
 	allowOrigins := []string{"http://localhost:3000"}
-	if cfg.FrontendUrl != "" {
-		allowOrigins = append(allowOrigins, cfg.FrontendUrl)
+	if cfg.FrontendURL != "" {
+		allowOrigins = append(allowOrigins, cfg.FrontendURL)
 	}
 
 	config.AllowOrigins = allowOrigins

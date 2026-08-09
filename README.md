@@ -38,6 +38,7 @@ turgorepo/
 - [Go](https://go.dev) >= 1.23
 - [Docker](https://www.docker.com) & Docker Compose (for containerized dev)
 - [golang-migrate](https://github.com/golang-migrate/migrate) CLI (for local migrations)
+- [golangci-lint](https://golangci-lint.run/welcome/install/) (for Go linting)
 
 ## Getting started
 
@@ -221,10 +222,13 @@ src/
 | --- | --- |
 | `bun run dev` | Start all apps in dev mode |
 | `bun run build` | Build all apps and packages |
-| `bun run lint` | Lint across the monorepo |
+| `bun run lint` | Lint JS/TS across the monorepo |
+| `bun run lint:go` | Lint the Go API with golangci-lint |
 | `bun run check-types` | TypeScript type checking |
 | `bun run generate` | Generate OpenAPI spec |
 | `bun run format` | Format with Prettier |
+| `bun run prepush` | Typecheck + build (same as the pre-push hook) |
+| `bun run ci` | Full local CI: typecheck, lint, lint:go, build |
 
 Filter to a single app:
 
@@ -232,6 +236,68 @@ Filter to a single app:
 bun run dev --filter=web
 bun run dev --filter=api
 ```
+
+## Developer tooling
+
+### Git hooks (Husky + lint-staged)
+
+`bun install` installs [Husky](https://typicode.github.io/husky/) via the `prepare` script.
+
+**pre-commit** (lint-staged):
+
+- **JS/TS in `apps/web` and `packages/ui`** — ESLint (`--fix`) + Prettier
+- **Other JS/TS / JSON / YAML / CSS** — Prettier
+- **Go** — `gofmt`
+
+**commit-msg** — [Commitlint](https://commitlint.js.org/) enforces [Conventional Commits](https://www.conventionalcommits.org/):
+
+```text
+feat: add refresh token rotation
+fix: validate user_id claim on logout
+chore: bump golangci-lint config
+```
+
+**pre-push** — runs `bun run prepush` (`check-types` + `lint:go` + `build`) so the same quality gates as CI run before push. Skip hooks with `git push --no-verify` when you need to (use sparingly).
+
+### GitHub Actions CI
+
+PRs and pushes to `main` run `.github/workflows/ci.yml`:
+
+- `check-types`
+- `lint` (JS/TS)
+- `lint:go` (golangci-lint)
+- `build`
+
+### Dependabot
+
+Weekly update PRs are configured in `.github/dependabot.yml` for:
+
+- Bun workspace deps (root)
+- Go modules (`apps/api`)
+- GitHub Actions
+
+### golangci-lint
+
+Config lives at `apps/api/.golangci.yml` (sqlc generated code is excluded).
+
+```sh
+# install (v2 — note the /v2/ path; the Go extension's older suggestion is v1)
+go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+# or: brew install golangci-lint
+
+# ensure the binary is on PATH (usually ~/go/bin)
+export PATH="$(go env GOPATH)/bin:$PATH"
+
+bun run lint:go
+# or from apps/api:
+make lint
+```
+
+If Cursor/VS Code still says the command is missing, reload the window after install. Workspace settings already point the Go extension at `${env:HOME}/go/bin/golangci-lint`.
+
+### VS Code
+
+Open the repo root in VS Code/Cursor. Recommended extensions are in `.vscode/extensions.json` (ESLint, Prettier, Go, Tailwind, Docker). Workspace settings enable format-on-save and golangci-lint on save for Go files.
 
 ## Backend conventions
 
