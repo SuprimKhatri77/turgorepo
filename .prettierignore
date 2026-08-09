@@ -1,0 +1,10 @@
+node_modules
+.turbo
+.next
+dist
+build
+coverage
+bun.lock
+apps/api/internal/database/generated
+apps/api/openapi.json
+*.md
