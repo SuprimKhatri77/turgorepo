@@ -9,7 +9,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,mjs,cjs,json,yml,yaml,css}\"",
     "check-types": "turbo run check-types",
     "generate": "turbo run generate",
-    "prepush": "bun run check-types && bun run build",
+    "prepush": "bun run check-types && bun run lint:go && bun run build",
     "ci": "bun run check-types && bun run lint && bun run lint:go && bun run build",
     "prepare": "husky"
   },

@@ -257,7 +257,7 @@ fix: validate user_id claim on logout
 chore: bump golangci-lint config
 ```
 
-**pre-push** — runs `bun run prepush` (`check-types` + `build`) so broken typechecks or builds don't get pushed. Skip hooks with `git push --no-verify` when you need to (use sparingly).
+**pre-push** — runs `bun run prepush` (`check-types` + `lint:go` + `build`) so the same quality gates as CI run before push. Skip hooks with `git push --no-verify` when you need to (use sparingly).
 
 ### GitHub Actions CI
 

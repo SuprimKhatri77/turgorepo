@@ -42,8 +42,8 @@ func New(ctx context.Context) (*App, error) {
 	queries := dbgen.New(db.Pool)
 	validator.Init()
 
-	// Initialize cron jobs
-	// initCron(queries)
+	// Initialize cron jobs when needed:
+	// cron.CronExample(queries)
 
 	r := buildRouter(cfg, queries, cldClient, db)
 

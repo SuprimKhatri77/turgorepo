@@ -15,6 +15,9 @@ linters:
     - unconvert
     - unused
   settings:
+    govet:
+      disable:
+        - inline
     revive:
       rules:
         - name: blank-imports
