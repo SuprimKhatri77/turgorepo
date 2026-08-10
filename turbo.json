@@ -8,7 +8,9 @@
       "outputs": [".next/**", "!.next/cache/**", "server"],
       "env": ["NODE_ENV", "NEXT_PUBLIC_API_URL", "COOKIE_DOMAIN"]
     },
-    "generate": {},
+    "generate": {
+      "dependsOn": ["^generate"]
+    },
     "lint": {
       "dependsOn": ["^lint"]
     },
