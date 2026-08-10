@@ -14,7 +14,7 @@ export const createApiResponseSchema = <T extends z.ZodType>(
 ) => {
   const baseShape = {
     success: z.boolean(),
-    message: z.string().optional(),
+    message: z.string(),
     code: ErrorCodeSchema.optional(),
     errors: z.array(ValidationErrorSchema).optional(),
     meta: z.unknown().optional(),
@@ -40,7 +40,7 @@ export type ApiErrorResponse = z.infer<typeof apiErrorResponseSchema>;
 
 export type ApiResponse<T = unknown> = {
   success: boolean;
-  message?: string;
+  message: string;
   code?: z.infer<typeof ErrorCodeSchema>;
   errors?: ValidationError[];
   data?: T;

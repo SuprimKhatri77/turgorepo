@@ -1,0 +1,26 @@
+{
+  "name": "@repo/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "openapi-ts",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hey-api/client-axios": "^0.9.1",
+    "axios": "1.15.2"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "0.90.10",
+    "@repo/openapi": "*",
+    "@repo/typescript-config": "*",
+    "@types/node": "^22.15.3",
+    "typescript": "5.9.2"
+  }
+}

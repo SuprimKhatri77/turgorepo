@@ -14,6 +14,7 @@ A full-stack monorepo template — **Tur**bo + **Go** + repo — with a Next.js 
 | Database | PostgreSQL 17 |
 | Auth | JWT in HTTP-only cookies (access + refresh), session tokens in DB |
 | API docs | Zod schemas → OpenAPI 3 → [Scalar](https://scalar.com) UI |
+| Typed API client | OpenAPI → `@repo/api-client` ([@hey-api/openapi-ts](https://heyapi.dev)) |
 
 ## Project structure
 
@@ -25,6 +26,7 @@ turgorepo/
 ├── packages/
 │   ├── types/        # Shared Zod schemas + TypeScript types
 │   ├── openapi/      # OpenAPI spec generation (outputs to apps/api/openapi.json)
+│   ├── api-client/   # Typed TS client generated from OpenAPI (tRPC-like DX for Go)
 │   ├── ui/           # Shared React components
 │   ├── eslint-config/
 │   └── typescript-config/
@@ -216,6 +218,35 @@ src/
     └── auth/          # login.ts, register.ts, logout.ts, ...
 ```
 
+### `@repo/api-client`
+
+Typed frontend SDK generated from `apps/api/openapi.json` with [@hey-api/openapi-ts](https://heyapi.dev). Same idea as tRPC (typed API calls) when the backend is Go, not TypeScript.
+
+```sh
+# Regenerates OpenAPI then the TS client (Turbo runs packages in dependency order)
+bun run generate
+```
+
+Use from the web app via the wired client (reuses axios + refresh interceptors):
+
+```ts
+import {
+  apiClient,
+  postApiV1AuthLogin,
+  getApiV1AuthMe,
+} from "@/lib/api/client";
+
+const { data } = await postApiV1AuthLogin({
+  client: apiClient,
+  body: { email, password },
+  throwOnError: true,
+});
+
+const me = await getApiV1AuthMe({ client: apiClient, throwOnError: true });
+```
+
+After changing Zod schemas or OpenAPI path definitions, run `bun run generate` and commit both `apps/api/openapi.json` and `packages/api-client/src/generated`.
+
 ## Scripts
 
 | Command | Description |
@@ -225,7 +256,7 @@ src/
 | `bun run lint` | Lint JS/TS across the monorepo |
 | `bun run lint:go` | Lint the Go API with golangci-lint |
 | `bun run check-types` | TypeScript type checking |
-| `bun run generate` | Generate OpenAPI spec |
+| `bun run generate` | Generate OpenAPI spec + typed `@repo/api-client` |
 | `bun run format` | Format with Prettier |
 | `bun run prepush` | Typecheck + build (same as the pre-push hook) |
 | `bun run ci` | Full local CI: typecheck, lint, lint:go, build |
@@ -267,6 +298,10 @@ PRs and pushes to `main` run `.github/workflows/ci.yml`:
 - `lint` (JS/TS)
 - `lint:go` (golangci-lint)
 - `build`
+
+### Branch protection
+
+`main` requires the CI check **Lint, typecheck, and build** before merge (configured via GitHub branch protection).
 
 ### Dependabot
 

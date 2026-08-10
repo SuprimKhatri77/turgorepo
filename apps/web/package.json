@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@repo/api-client": "*",
     "@base-ui/react": "^1.6.0",
     "@phosphor-icons/react": "^2.1.10",
     "@tanstack/react-devtools": "^0.10.8",
