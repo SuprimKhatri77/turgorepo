@@ -66,7 +66,7 @@
         "axios": "1.15.2",
       },
       "devDependencies": {
-        "@hey-api/openapi-ts": "^0.90.4",
+        "@hey-api/openapi-ts": "0.90.10",
         "@repo/openapi": "*",
         "@repo/typescript-config": "*",
         "@types/node": "^22.15.3",
