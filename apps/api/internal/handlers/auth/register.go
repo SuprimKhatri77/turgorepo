@@ -24,9 +24,9 @@ import (
 )
 
 type RegisterRequest struct {
-	Name     string `json:"name" binding:"required,not_blank,min=2,max=50,alphaspace"`
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,not_blank,min=8,max=50"`
+	Name     string `json:"name" label:"Name" binding:"required,not_blank,min=2,max=50,alphaspace" msg_required:"Name is required" msg_min:"Name must be at least 2 characters" msg_max:"Name cannot exceed 50 characters" msg_alphaspace:"Name can only contain letters and spaces" msg_not_blank:"Name cannot be blank"`
+	Email    string `json:"email" label:"Email" binding:"required,email" msg_required:"Email is required" msg_email:"Enter a valid email address"`
+	Password string `json:"password" label:"Password" binding:"required,not_blank,min=8,max=50" msg_required:"Password is required" msg_min:"Password must be at least 8 characters" msg_max:"Password cannot exceed 50 characters" msg_not_blank:"Password cannot be blank"`
 }
 
 func Register(queries repository.AuthRepository, cfg *config.Config) gin.HandlerFunc {

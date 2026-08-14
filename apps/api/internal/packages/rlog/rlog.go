@@ -12,6 +12,11 @@ func attrs(c *gin.Context, extra ...any) []any {
 		"method", c.Request.Method,
 		"ip", c.ClientIP(),
 	}
+	if v, ok := c.Get("requestID"); ok {
+		if s, ok := v.(string); ok && s != "" {
+			a = append(a, "request_id", s)
+		}
+	}
 	if v, ok := c.Get("userID"); ok {
 		if s, ok := v.(string); ok && s != "" {
 			a = append(a, "actor_id", s)

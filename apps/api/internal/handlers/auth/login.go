@@ -24,8 +24,8 @@ import (
 )
 
 type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=8,max=50"`
+	Email    string `json:"email" label:"Email" binding:"required,email" msg_required:"Email is required" msg_email:"Enter a valid email address"`
+	Password string `json:"password" label:"Password" binding:"required,min=8,max=50" msg_required:"Password is required" msg_min:"Password must be at least 8 characters" msg_max:"Password cannot exceed 50 characters"`
 }
 
 func Login(
