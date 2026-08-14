@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	dbgen "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
@@ -22,6 +24,7 @@ type seedUser struct {
 }
 
 // Seed inserts demo users (idempotent). Used by cmd/seed.
+// Passwords must be set via SEED_ADMIN_PASSWORD and SEED_MEMBER_PASSWORD.
 func Seed(ctx context.Context) error {
 	cfg, err := config.Load()
 	if err != nil {
@@ -38,19 +41,32 @@ func Seed(ctx context.Context) error {
 
 	queries := dbgen.New(db.Pool)
 
+	adminPassword, err := requireEnv("SEED_ADMIN_PASSWORD")
+	if err != nil {
+		return err
+	}
+	memberPassword, err := requireEnv("SEED_MEMBER_PASSWORD")
+	if err != nil {
+		return err
+	}
+
 	users := []seedUser{
 		{
 			Name:     envOr("SEED_ADMIN_NAME", "Admin User"),
 			Email:    envOr("SEED_ADMIN_EMAIL", "admin@example.com"),
-			Password: envOr("SEED_ADMIN_PASSWORD", "changeme"),
+			Password: adminPassword,
 			Role:     "admin",
 		},
 		{
 			Name:     envOr("SEED_MEMBER_NAME", "Member User"),
 			Email:    envOr("SEED_MEMBER_EMAIL", "member@example.com"),
-			Password: envOr("SEED_MEMBER_PASSWORD", "changeme"),
+			Password: memberPassword,
 			Role:     "member",
 		},
+	}
+
+	if strings.EqualFold(users[0].Email, users[1].Email) {
+		return fmt.Errorf("SEED_ADMIN_EMAIL and SEED_MEMBER_EMAIL must be different")
 	}
 
 	for _, u := range users {
@@ -89,11 +105,24 @@ func upsertSeedUser(ctx context.Context, queries *dbgen.Queries, u seedUser) err
 		ImageUrl:     pgtype.Text{Valid: false},
 	})
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			slog.Info("seed user already exists (concurrent), skipping", "email", u.Email)
+			return nil
+		}
 		return fmt.Errorf("create %s: %w", u.Email, err)
 	}
 
 	slog.Info("seeded user", "email", created.Email, "role", created.Role, "id", created.ID)
 	return nil
+}
+
+func requireEnv(key string) (string, error) {
+	v := strings.TrimSpace(os.Getenv(key))
+	if v == "" {
+		return "", fmt.Errorf("%s is required (set it in .env.local before running seed)", key)
+	}
+	return v, nil
 }
 
 func envOr(key, fallback string) string {

@@ -16,6 +16,25 @@ function run(command: string, args: string[], cwd?: string): number {
   return result.status ?? 1;
 }
 
+function hasGeneratedDrift(path: string): boolean {
+  const diff = spawnSync("git", ["diff", "--exit-code", "--", path], {
+    stdio: "inherit",
+    shell: false,
+  });
+  if ((diff.status ?? 1) !== 0) {
+    return true;
+  }
+
+  const status = spawnSync(
+    "git",
+    ["status", "--porcelain", "--untracked-files=all", "--", path],
+    { encoding: "utf8", shell: false },
+  );
+  return (status.stdout ?? "")
+    .split("\n")
+    .some((line) => line.startsWith("??"));
+}
+
 const generateStatus = run("sqlc", ["generate"], "apps/api");
 if (generateStatus !== 0) {
   console.error(`
@@ -25,8 +44,7 @@ sqlc generate failed. Install sqlc:
   process.exit(generateStatus);
 }
 
-const diffStatus = run("git", ["diff", "--exit-code", "--", generatedPath]);
-if (diffStatus !== 0) {
+if (hasGeneratedDrift(generatedPath)) {
   console.error(`
 sqlc generated code is out of date.
 

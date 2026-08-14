@@ -4,6 +4,7 @@ import (
 	"log/slog"
 
 	"github.com/gin-gonic/gin"
+	"github.com/suprimkhatri77/turgorepo/api/internal/middleware"
 )
 
 func attrs(c *gin.Context, extra ...any) []any {
@@ -12,7 +13,7 @@ func attrs(c *gin.Context, extra ...any) []any {
 		"method", c.Request.Method,
 		"ip", c.ClientIP(),
 	}
-	if v, ok := c.Get("requestID"); ok {
+	if v, ok := c.Get(middleware.RequestIDKey); ok {
 		if s, ok := v.(string); ok && s != "" {
 			a = append(a, "request_id", s)
 		}

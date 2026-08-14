@@ -245,7 +245,7 @@ const { data } = await postApiV1AuthLogin({
 const me = await getApiV1AuthMe({ client: apiClient, throwOnError: true });
 ```
 
-After changing Zod schemas or OpenAPI path definitions, run `bun run generate` and commit both `apps/api/openapi.json` and `packages/api-client/src/generated`.
+After changing Zod schemas or OpenAPI path definitions, run `bun run generate` and commit `packages/api-client/src/generated`. `apps/api/openapi.json` is local/CI build output (gitignored) used for Scalar docs and client generation.
 
 ## Scripts
 
@@ -362,20 +362,22 @@ Every response includes `X-Request-ID` (reuses the incoming header or mints a UU
 
 ### Database seed
 
-After migrations:
+After migrations, set seed passwords in `.env.local` (required — no defaults):
 
 ```sh
+SEED_ADMIN_PASSWORD=your-local-admin-password
+SEED_MEMBER_PASSWORD=your-local-member-password
 bun run db:seed
 ```
 
 Creates (if missing):
 
-| Email | Password | Role |
-| --- | --- | --- |
-| `admin@example.com` | `changeme` | admin |
-| `member@example.com` | `changeme` | member |
+| Email | Role |
+| --- | --- |
+| `admin@example.com` | admin |
+| `member@example.com` | member |
 
-Override via `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_MEMBER_EMAIL`, `SEED_MEMBER_PASSWORD` (see `.env.example`).
+Optional overrides: `SEED_ADMIN_EMAIL`, `SEED_MEMBER_EMAIL`, `SEED_ADMIN_NAME`, `SEED_MEMBER_NAME` (see `.env.example`).
 
 ### Hot reload
 

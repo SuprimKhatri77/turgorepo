@@ -5,10 +5,7 @@
  */
 import { spawnSync } from "node:child_process";
 
-const generatedPaths = [
-  "apps/api/openapi.json",
-  "packages/api-client/src/generated",
-];
+const generatedPaths = ["packages/api-client/src/generated"];
 
 function run(command: string, args: string[]): number {
   const result = spawnSync(command, args, {
@@ -18,22 +15,41 @@ function run(command: string, args: string[]): number {
   return result.status ?? 1;
 }
 
+function hasGeneratedDrift(paths: string[]): boolean {
+  const diff = spawnSync("git", ["diff", "--exit-code", "--", ...paths], {
+    stdio: "inherit",
+    shell: false,
+  });
+  if ((diff.status ?? 1) !== 0) {
+    return true;
+  }
+
+  // Catch brand-new generated files that git diff alone would miss.
+  const status = spawnSync(
+    "git",
+    ["status", "--porcelain", "--untracked-files=all", "--", ...paths],
+    { encoding: "utf8", shell: false },
+  );
+  return (status.stdout ?? "")
+    .split("\n")
+    .some((line) => line.startsWith("??"));
+}
+
 const generateStatus = run("bun", ["run", "generate"]);
 if (generateStatus !== 0) {
   process.exit(generateStatus);
 }
 
-const diffStatus = run("git", ["diff", "--exit-code", "--", ...generatedPaths]);
-if (diffStatus !== 0) {
+if (hasGeneratedDrift(generatedPaths)) {
   console.error(`
-Generated OpenAPI / API client is out of date.
+Generated OpenAPI client is out of date.
 
 Run:
   bun run generate
 
-Then commit apps/api/openapi.json and packages/api-client/src/generated.
+Then commit packages/api-client/src/generated.
 `);
   process.exit(1);
 }
 
-console.log("Generated OpenAPI and api-client are up to date.");
+console.log("Generated api-client is up to date.");
