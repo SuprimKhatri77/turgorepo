@@ -24,10 +24,10 @@ func CORS(cfg *config.Config) gin.HandlerFunc {
 
 	config.AllowHeaders = []string{
 		"Origin", "Content-Length", "Content-Type",
-		"Authorization", "Accept",
+		"Authorization", "Accept", "X-Request-ID",
 	}
 
-	config.ExposeHeaders = []string{"Content-Length"}
+	config.ExposeHeaders = []string{"Content-Length", "X-Request-ID"}
 
 	return cors.New(config)
 }

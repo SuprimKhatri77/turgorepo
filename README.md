@@ -245,7 +245,7 @@ const { data } = await postApiV1AuthLogin({
 const me = await getApiV1AuthMe({ client: apiClient, throwOnError: true });
 ```
 
-After changing Zod schemas or OpenAPI path definitions, run `bun run generate` and commit both `apps/api/openapi.json` and `packages/api-client/src/generated`.
+After changing Zod schemas or OpenAPI path definitions, run `bun run generate` and commit `packages/api-client/src/generated`. `apps/api/openapi.json` is local/CI build output (gitignored) used for Scalar docs and client generation.
 
 ## Scripts
 
@@ -255,11 +255,17 @@ After changing Zod schemas or OpenAPI path definitions, run `bun run generate` a
 | `bun run build` | Build all apps and packages |
 | `bun run lint` | Lint JS/TS across the monorepo |
 | `bun run lint:go` | Lint the Go API with golangci-lint |
-| `bun run check-types` | TypeScript type checking |
+| `bun run check-types` | TypeScript type checking (includes `web`) |
 | `bun run generate` | Generate OpenAPI spec + typed `@repo/api-client` |
+| `bun run generate:check` | Regenerate and fail if committed output is stale |
+| `bun run db:migrate` | Run DB migrations up (`apps/api`) |
+| `bun run db:migrate:down` | Roll back migrations (`N=1 bun run db:migrate:down`) |
+| `bun run db:sqlc` | Regenerate sqlc Go code from SQL queries |
+| `bun run db:sqlc:check` | Regenerate sqlc and fail if committed output is stale |
+| `bun run db:seed` | Insert demo admin + member users (idempotent) |
 | `bun run format` | Format with Prettier |
-| `bun run prepush` | Typecheck + build (same as the pre-push hook) |
-| `bun run ci` | Full local CI: typecheck, lint, lint:go, build |
+| `bun run prepush` | Typecheck + lint:go + build (same as the pre-push hook) |
+| `bun run ci` | Full local CI: generate:check, sqlc:check, typecheck, lint, lint:go, build |
 
 Filter to a single app:
 
@@ -277,6 +283,8 @@ bun run dev --filter=api
 **pre-commit** (lint-staged):
 
 - **JS/TS in `apps/web` and `packages/ui`** — ESLint (`--fix`) + Prettier
+- **`packages/types` or `packages/openapi`** — runs `bun run generate` and stages OpenAPI + api-client output
+- **API SQL / sqlc config / migrations** — runs `bun run db:sqlc` and stages generated Go
 - **Other JS/TS / JSON / YAML / CSS** — Prettier
 - **Go** — `gofmt`
 
@@ -294,6 +302,8 @@ chore: bump golangci-lint config
 
 PRs and pushes to `main` run `.github/workflows/ci.yml`:
 
+- `generate:check` (OpenAPI + api-client must be committed and current)
+- `db:sqlc:check` (sqlc generated Go must be committed and current)
 - `check-types`
 - `lint` (JS/TS)
 - `lint:go` (golangci-lint)
@@ -310,6 +320,8 @@ Weekly update PRs are configured in `.github/dependabot.yml` for:
 - Bun workspace deps (root)
 - Go modules (`apps/api`)
 - GitHub Actions
+
+TypeScript **major** bumps are ignored until typescript-eslint supports them (e.g. TS 7).
 
 ### golangci-lint
 
@@ -338,13 +350,34 @@ Open the repo root in VS Code/Cursor. Recommended extensions are in `.vscode/ext
 
 ### Request logging
 
-Auth handlers use `internal/packages/rlog` for structured logging. It automatically attaches `path`, `method`, `ip`, and `actor_id` (when available) to every log line:
+Auth handlers use `internal/packages/rlog` for structured logging. It automatically attaches `request_id`, `path`, `method`, `ip`, and `actor_id` (when available) to every log line:
 
 ```go
 rlog.Info(c, "login successful", "user_id", user.ID)
 rlog.Warn(c, "invalid credentials (user not found)")
 rlog.Error(c, "failed to fetch user", err)
 ```
+
+Every response includes `X-Request-ID` (reuses the incoming header or mints a UUID). Pass the same header from the client when debugging.
+
+### Database seed
+
+After migrations, set seed passwords in `.env.local` (required — no defaults):
+
+```sh
+SEED_ADMIN_PASSWORD=your-local-admin-password
+SEED_MEMBER_PASSWORD=your-local-member-password
+bun run db:seed
+```
+
+Creates (if missing):
+
+| Email | Role |
+| --- | --- |
+| `admin@example.com` | admin |
+| `member@example.com` | member |
+
+Optional overrides: `SEED_ADMIN_EMAIL`, `SEED_MEMBER_EMAIL`, `SEED_ADMIN_NAME`, `SEED_MEMBER_NAME` (see `.env.example`).
 
 ### Hot reload
 
