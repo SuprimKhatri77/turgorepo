@@ -42,13 +42,13 @@ func Seed(ctx context.Context) error {
 		{
 			Name:     envOr("SEED_ADMIN_NAME", "Admin User"),
 			Email:    envOr("SEED_ADMIN_EMAIL", "admin@example.com"),
-			Password: envOr("SEED_ADMIN_PASSWORD", "Admin123!"),
+			Password: envOr("SEED_ADMIN_PASSWORD", "changeme"),
 			Role:     "admin",
 		},
 		{
 			Name:     envOr("SEED_MEMBER_NAME", "Member User"),
 			Email:    envOr("SEED_MEMBER_EMAIL", "member@example.com"),
-			Password: envOr("SEED_MEMBER_PASSWORD", "Member123!"),
+			Password: envOr("SEED_MEMBER_PASSWORD", "changeme"),
 			Role:     "member",
 		},
 	}

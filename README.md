@@ -372,8 +372,8 @@ Creates (if missing):
 
 | Email | Password | Role |
 | --- | --- | --- |
-| `admin@example.com` | `Admin123!` | admin |
-| `member@example.com` | `Member123!` | member |
+| `admin@example.com` | `changeme` | admin |
+| `member@example.com` | `changeme` | member |
 
 Override via `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_MEMBER_EMAIL`, `SEED_MEMBER_PASSWORD` (see `.env.example`).
 
