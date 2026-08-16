@@ -10,7 +10,6 @@ import {
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  console.log("proxy:", pathname);
 
   if (isUnauthenticatedOnlyRoute(pathname)) {
     return handleAuthRoute(req);
@@ -18,7 +17,6 @@ export async function proxy(req: NextRequest) {
 
   const requiredRoles = getRequiredRoles(pathname);
   if (!requiredRoles) {
-    console.log("proxy: no role rules for path, passing through");
     return NextResponse.next();
   }
 

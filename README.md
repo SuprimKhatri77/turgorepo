@@ -74,7 +74,8 @@ Key variables:
 ### 3. Run with Docker (recommended)
 
 ```sh
-docker compose -f docker-compose.dev.yml up --build
+bun run docker:dev:up
+# stop: bun run docker:dev:down
 ```
 
 | Service | URL |
@@ -263,6 +264,8 @@ After changing Zod schemas or OpenAPI path definitions, run `bun run generate` a
 | `bun run db:sqlc` | Regenerate sqlc Go code from SQL queries |
 | `bun run db:sqlc:check` | Regenerate sqlc and fail if committed output is stale |
 | `bun run db:seed` | Insert demo admin + member users (idempotent) |
+| `bun run docker:dev:up` | Start Docker Compose stack with `.env.local` |
+| `bun run docker:dev:down` | Stop Docker Compose stack |
 | `bun run format` | Format with Prettier |
 | `bun run prepush` | Typecheck + lint:go + build (same as the pre-push hook) |
 | `bun run ci` | Full local CI: generate:check, sqlc:check, typecheck, lint, lint:go, build |
