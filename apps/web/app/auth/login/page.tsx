@@ -1,0 +1,10 @@
+import type { Metadata } from "next";
+import { LoginForm } from "@/modules/auth/components/login-form";
+
+export const metadata: Metadata = {
+  title: "Sign in | Turgorepo",
+};
+
+export default function LoginPage() {
+  return <LoginForm />;
+}
