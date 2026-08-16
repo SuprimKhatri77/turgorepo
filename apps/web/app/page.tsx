@@ -13,6 +13,7 @@ async function checkHealth(): Promise<HealthStatus> {
   try {
     const response = await fetch(`${api}/api/v1/health`, {
       cache: "no-store",
+      signal: AbortSignal.timeout(5_000),
     });
     if (!response.ok) {
       return { online: false, message: `API responded ${response.status}` };
