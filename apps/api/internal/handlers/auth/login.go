@@ -37,22 +37,14 @@ func Login(
 
 		jti := uuid.New()
 
-		var loginRequest LoginRequest
-		if err := c.ShouldBindJSON(&loginRequest); err != nil {
-			rlog.Warn(c, "invalid request payload", "error", err)
-
-			c.JSON(http.StatusBadRequest, types.APIResponse{
-				Success: false,
-				Message: "Invalid request data",
-				Code:    constants.ValidationFailed,
-				Errors:  validator.Parse(err, loginRequest),
-			})
+		req, ok := validator.BindJSON[LoginRequest](c)
+		if !ok {
 			return
 		}
 
 		rlog.Info(c, "login attempt")
 
-		user, err := queries.GetUserByEmail(ctx, loginRequest.Email)
+		user, err := queries.GetUserByEmail(ctx, req.Email)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				rlog.Warn(c, "invalid credentials (user not found)")
@@ -77,7 +69,7 @@ func Login(
 
 		err = bcrypt.CompareHashAndPassword(
 			[]byte(user.PasswordHash),
-			[]byte(loginRequest.Password),
+			[]byte(req.Password),
 		)
 		if err != nil {
 			rlog.Warn(c, "invalid credentials (password mismatch)", "user_id", user.ID)
