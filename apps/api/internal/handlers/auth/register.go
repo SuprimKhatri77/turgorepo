@@ -35,20 +35,12 @@ func Register(queries repository.AuthRepository, cfg *config.Config) gin.Handler
 
 		jti := uuid.New()
 
-		var req RegisterRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			rlog.Warn(c, "invalid request payload", "error", err)
-
-			c.JSON(http.StatusBadRequest, types.APIResponse{
-				Success: false,
-				Message: "Invalid request body",
-				Code:    constants.ValidationFailed,
-				Errors:  validator.Parse(err, req),
-			})
+		req, ok := validator.BindJSON[RegisterRequest](c)
+		if !ok {
 			return
 		}
 
-		utils.TrimStruct(&req, "Password")
+		utils.TrimStruct(req, "Password")
 
 		passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
