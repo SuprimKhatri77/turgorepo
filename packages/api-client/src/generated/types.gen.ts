@@ -187,10 +187,6 @@ export type PostApiV1AuthLogoutData = {
 
 export type PostApiV1AuthLogoutErrors = {
     /**
-     * Missing or invalid refresh token
-     */
-    401: ApiErrorResponse;
-    /**
      * Internal server error
      */
     500: ApiErrorResponse;
@@ -216,11 +212,7 @@ export type PostApiV1AuthRefreshData = {
 
 export type PostApiV1AuthRefreshErrors = {
     /**
-     * Missing refresh token
-     */
-    400: ApiErrorResponse;
-    /**
-     * Invalid refresh token
+     * Missing or invalid refresh token
      */
     401: ApiErrorResponse;
     /**

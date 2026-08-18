@@ -8,7 +8,7 @@ export function registerLogoutPath() {
     path: "/api/v1/auth/logout",
     summary: "Log out",
     description:
-      "Revokes the current refresh token session and clears auth cookies",
+      "Revokes the current refresh token when present and always clears auth cookies",
     security: [{ refreshTokenCookie: [] }],
     responses: {
       200: {
@@ -17,7 +17,6 @@ export function registerLogoutPath() {
           "application/json": { schema: schemas.AuthSuccessResponse },
         },
       },
-      401: errorResponse("Missing or invalid refresh token"),
       500: errorResponse("Internal server error"),
     },
   });

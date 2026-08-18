@@ -3,10 +3,11 @@ package middleware
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 )
 
-const RequestIDHeader = "X-Request-ID"
-const RequestIDKey = "requestID"
+const RequestIDHeader = constants.RequestIDHeader
+const RequestIDKey = constants.RequestIDKey
 
 // RequestID ensures every request has an ID: reuse the incoming header or mint one.
 // The value is stored on the Gin context and echoed back on the response.

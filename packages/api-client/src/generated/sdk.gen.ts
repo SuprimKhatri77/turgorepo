@@ -62,7 +62,7 @@ export const postApiV1AuthLogin = <ThrowOnError extends boolean = false>(options
 /**
  * Log out
  *
- * Revokes the current refresh token session and clears auth cookies
+ * Revokes the current refresh token when present and always clears auth cookies
  */
 export const postApiV1AuthLogout = <ThrowOnError extends boolean = false>(options?: Options<PostApiV1AuthLogoutData, ThrowOnError>) => (options?.client ?? client).post<PostApiV1AuthLogoutResponses, PostApiV1AuthLogoutErrors, ThrowOnError>({
     responseType: 'json',

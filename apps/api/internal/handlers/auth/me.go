@@ -6,8 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	session "github.com/suprimkhatri77/turgorepo/api/internal/auth"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
-	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 	"github.com/suprimkhatri77/turgorepo/api/internal/packages/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
@@ -18,7 +18,7 @@ func Me(queries repository.AuthRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		userIDFromContext := c.MustGet("user_id").(string)
+		userIDFromContext := c.MustGet(constants.UserIDKey).(string)
 
 		userID, err := utils.ConvertToUUID(userIDFromContext)
 		if err != nil {
@@ -60,13 +60,7 @@ func Me(queries repository.AuthRepository) gin.HandlerFunc {
 		c.JSON(http.StatusOK, types.APIResponse{
 			Success: true,
 			Message: "Valid session",
-			Data: db.User{
-				ID:       user.ID,
-				Name:     user.Name,
-				Email:    user.Email,
-				Role:     user.Role,
-				ImageUrl: user.ImageUrl,
-			},
+			Data:    session.PublicUser(user),
 		})
 	}
 }

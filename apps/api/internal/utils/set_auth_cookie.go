@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 )
@@ -11,6 +13,7 @@ func SetAuthCookie(c *gin.Context, name, value string, maxAge int, cfg *config.C
 	if secure {
 		domain = cfg.CookieDomain
 	}
+	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie(name, value, maxAge, "/", domain, secure, true)
 }
 
@@ -20,6 +23,7 @@ func SetPublicCookie(c *gin.Context, name, value string, maxAge int, cfg *config
 	if secure {
 		domain = cfg.CookieDomain
 	}
+	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie(name, value, maxAge, "/", domain, secure, false)
 }
 

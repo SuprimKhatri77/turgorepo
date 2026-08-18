@@ -1,20 +1,14 @@
 package auth
 
 import (
-	"crypto/sha256"
 	"errors"
-	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
+	session "github.com/suprimkhatri77/turgorepo/api/internal/auth"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
-	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 	"github.com/suprimkhatri77/turgorepo/api/internal/packages/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
@@ -35,12 +29,12 @@ func Login(
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		jti := uuid.New()
-
 		req, ok := validator.BindJSON[LoginRequest](c)
 		if !ok {
 			return
 		}
+
+		utils.TrimStruct(req, "Password")
 
 		rlog.Info(c, "login attempt")
 
@@ -84,20 +78,8 @@ func Login(
 
 		rlog.Info(c, "password verified", "user_id", user.ID)
 
-		accessClaims := jwt.MapClaims{
-			"user_id":   user.ID,
-			"role":      user.Role,
-			"email":     user.Email,
-			"name":      user.Name,
-			"image_url": user.ImageUrl,
-			"jti":       jti,
-			"exp":       time.Now().Add(15 * time.Minute).Unix(),
-		}
-
-		accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
-		accessTokenString, err := accessToken.SignedString([]byte(cfg.JWTAccessSecret))
-		if err != nil {
-			rlog.Error(c, "failed to sign access token", err, "user_id", user.ID)
+		if err := session.IssueSession(c, queries, cfg, user); err != nil {
+			rlog.Error(c, "failed to issue session", err, "user_id", user.ID)
 
 			c.JSON(http.StatusInternalServerError, types.APIResponse{
 				Success: false,
@@ -106,68 +88,13 @@ func Login(
 			})
 			return
 		}
-
-		refreshClaims := jwt.MapClaims{
-			"user_id": user.ID,
-			"jti":     jti,
-			"exp":     time.Now().Add(30 * 24 * time.Hour).Unix(),
-		}
-
-		refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
-		refreshTokenString, err := refreshToken.SignedString([]byte(cfg.JWTRefreshSecret))
-		if err != nil {
-			rlog.Error(c, "failed to sign refresh token", err, "user_id", user.ID)
-
-			c.JSON(http.StatusInternalServerError, types.APIResponse{
-				Success: false,
-				Message: "Something went wrong",
-				Code:    constants.InternalServerError,
-			})
-			return
-		}
-
-		expiresAt := pgtype.Timestamptz{
-			Time:  time.Now().Add(30 * 24 * time.Hour),
-			Valid: true,
-		}
-
-		refreshTokenHash := sha256.Sum256([]byte(refreshTokenString))
-		refreshTokenHashString := fmt.Sprintf("%x", refreshTokenHash)
-
-		_, err = queries.CreateRefreshToken(ctx, db.CreateRefreshTokenParams{
-			UserID:    user.ID,
-			Token:     refreshTokenHashString,
-			ExpiresAt: expiresAt,
-		})
-		if err != nil {
-			rlog.Error(c, "failed to store refresh token", err, "user_id", user.ID)
-
-			c.JSON(http.StatusInternalServerError, types.APIResponse{
-				Success: false,
-				Message: "Something went wrong",
-				Code:    constants.InternalServerError,
-			})
-			return
-		}
-
-		rlog.Info(c, "tokens issued", "user_id", user.ID)
-
-		utils.SetAuthCookie(c, "access_token", accessTokenString, 15*60, cfg)
-		utils.SetAuthCookie(c, "refresh_token", refreshTokenString, 30*24*60*60, cfg)
-		utils.SetPublicCookie(c, "is_logged_in", "true", 30*24*60*60, cfg)
 
 		rlog.Info(c, "login successful", "user_id", user.ID)
 
 		c.JSON(http.StatusOK, types.APIResponse{
 			Success: true,
 			Message: "logged in successfully",
-			Data: db.User{
-				ID:       user.ID,
-				Name:     user.Name,
-				Email:    user.Email,
-				Role:     user.Role,
-				ImageUrl: user.ImageUrl,
-			},
+			Data:    session.PublicUser(user),
 		})
 	}
 }

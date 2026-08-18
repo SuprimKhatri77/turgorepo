@@ -155,3 +155,44 @@ type RevokeTokenByUserIDAndTokenParams struct {
 func (q *Queries) RevokeTokenByUserIDAndToken(ctx context.Context, arg RevokeTokenByUserIDAndTokenParams) (pgconn.CommandTag, error) {
 	return q.db.Exec(ctx, revokeTokenByUserIDAndToken, arg.UserID, arg.Token)
 }
+
+const rotateRefreshToken = `-- name: RotateRefreshToken :one
+WITH revoked AS (
+  UPDATE refresh_tokens
+  SET revoked_at = NOW()
+  WHERE refresh_tokens.user_id = $3
+    AND refresh_tokens.token = $4
+    AND refresh_tokens.revoked_at IS NULL
+    AND refresh_tokens.expires_at > NOW()
+  RETURNING refresh_tokens.user_id
+)
+INSERT INTO refresh_tokens (user_id, token, expires_at)
+SELECT revoked.user_id, $1, $2 FROM revoked
+RETURNING refresh_tokens.id, refresh_tokens.user_id, refresh_tokens.token, refresh_tokens.expires_at, refresh_tokens.revoked_at, refresh_tokens.created_at
+`
+
+type RotateRefreshTokenParams struct {
+	NewToken  string             `json:"new_token"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	OldToken  string             `json:"old_token"`
+}
+
+func (q *Queries) RotateRefreshToken(ctx context.Context, arg RotateRefreshTokenParams) (RefreshToken, error) {
+	row := q.db.QueryRow(ctx, rotateRefreshToken,
+		arg.NewToken,
+		arg.ExpiresAt,
+		arg.UserID,
+		arg.OldToken,
+	)
+	var i RefreshToken
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Token,
+		&i.ExpiresAt,
+		&i.RevokedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}

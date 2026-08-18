@@ -46,3 +46,17 @@ SELECT * FROM refresh_tokens
 WHERE user_id = $1 AND token = $2
 AND revoked_at IS NULL
 AND expires_at > NOW();
+
+-- name: RotateRefreshToken :one
+WITH revoked AS (
+  UPDATE refresh_tokens
+  SET revoked_at = NOW()
+  WHERE refresh_tokens.user_id = sqlc.arg(user_id)
+    AND refresh_tokens.token = sqlc.arg(old_token)
+    AND refresh_tokens.revoked_at IS NULL
+    AND refresh_tokens.expires_at > NOW()
+  RETURNING refresh_tokens.user_id
+)
+INSERT INTO refresh_tokens (user_id, token, expires_at)
+SELECT revoked.user_id, sqlc.arg(new_token), sqlc.arg(expires_at) FROM revoked
+RETURNING refresh_tokens.*;
