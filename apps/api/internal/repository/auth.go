@@ -14,5 +14,6 @@ type AuthRepository interface {
 	CreateUser(ctx context.Context, params db.CreateUserParams) (db.User, error)
 	RevokeTokenByUserIDAndToken(ctx context.Context, params db.RevokeTokenByUserIDAndTokenParams) (pgconn.CommandTag, error)
 	GetRefreshTokenByUserIDAndToken(ctx context.Context, params db.GetRefreshTokenByUserIDAndTokenParams) (db.RefreshToken, error)
+	RotateRefreshToken(ctx context.Context, params db.RotateRefreshTokenParams) (db.RefreshToken, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (db.User, error)
 }

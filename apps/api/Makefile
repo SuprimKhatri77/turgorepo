@@ -2,7 +2,7 @@ ENV_FILE ?= ../../.env.local
 include $(ENV_FILE)
 export
 
-.PHONY: migrate-up migrate-down sqlc seed run build lint deps
+.PHONY: migrate-up migrate-down sqlc seed run build lint test deps
 migrate-up:
 	migrate -path migrations -database "$${DATABASE_URL}" up
 migrate-down:
@@ -21,6 +21,9 @@ build:
 
 lint:
 	golangci-lint run ./...
+
+test:
+	go test ./...
 
 deps:
 	go mod tidy

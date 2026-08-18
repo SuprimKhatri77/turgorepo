@@ -4,7 +4,7 @@ import (
 	"log/slog"
 
 	"github.com/gin-gonic/gin"
-	"github.com/suprimkhatri77/turgorepo/api/internal/middleware"
+	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 )
 
 func attrs(c *gin.Context, extra ...any) []any {
@@ -13,12 +13,12 @@ func attrs(c *gin.Context, extra ...any) []any {
 		"method", c.Request.Method,
 		"ip", c.ClientIP(),
 	}
-	if v, ok := c.Get(middleware.RequestIDKey); ok {
+	if v, ok := c.Get(constants.RequestIDKey); ok {
 		if s, ok := v.(string); ok && s != "" {
 			a = append(a, "request_id", s)
 		}
 	}
-	if v, ok := c.Get("userID"); ok {
+	if v, ok := c.Get(constants.UserIDKey); ok {
 		if s, ok := v.(string); ok && s != "" {
 			a = append(a, "actor_id", s)
 		}

@@ -1,29 +1,26 @@
 package middleware
 
 import (
-	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
+	"github.com/suprimkhatri77/turgorepo/api/internal/packages/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 )
 
 func RequireRole(roles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		role := c.MustGet("role").(string)
-
-		slog.Info("role from context", " ", role)
+		role := c.MustGet(constants.RoleKey).(string)
 
 		for _, r := range roles {
 			if role == r {
-				slog.Info("valid role")
 				c.Next()
 				return
 			}
 		}
 
-		slog.Info("invalid role")
+		rlog.Warn(c, "insufficient permissions", "role", role)
 
 		c.JSON(http.StatusForbidden, types.APIResponse{
 			Success: false,

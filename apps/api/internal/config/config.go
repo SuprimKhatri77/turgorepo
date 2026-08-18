@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -21,6 +22,9 @@ type Config struct {
 	FrontendURL         string
 	CookieDomain        string
 	OpenAPIPath         string
+	AccessTokenTTL      time.Duration
+	RefreshTokenTTL     time.Duration
+	RefreshReuseWindow  time.Duration
 }
 
 // Load loads .env from the current directory (if present) then reads configuration from environment variables.
@@ -64,5 +68,16 @@ func Load() (*Config, error) {
 		FrontendURL:         frontendURL,
 		CookieDomain:        cookieDomain,
 		OpenAPIPath:         openapiPath,
+		AccessTokenTTL:      15 * time.Minute,
+		RefreshTokenTTL:     30 * 24 * time.Hour,
+		RefreshReuseWindow:  5 * time.Minute,
 	}, nil
+}
+
+func (c *Config) AccessCookieMaxAge() int {
+	return int(c.AccessTokenTTL.Seconds())
+}
+
+func (c *Config) RefreshCookieMaxAge() int {
+	return int(c.RefreshTokenTTL.Seconds())
 }

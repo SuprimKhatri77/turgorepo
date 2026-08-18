@@ -1,14 +1,13 @@
 package middleware
 
 import (
-	"fmt"
-	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
+	session "github.com/suprimkhatri77/turgorepo/api/internal/auth"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
+	"github.com/suprimkhatri77/turgorepo/api/internal/packages/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 )
 
@@ -16,10 +15,7 @@ func RequireAuth(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accessToken, err := c.Cookie("access_token")
 		if err != nil {
-			slog.Warn("missing access token",
-				"path", c.FullPath(),
-				"ip", c.ClientIP(),
-			)
+			rlog.Warn(c, "missing access token")
 
 			c.JSON(http.StatusUnauthorized, types.APIResponse{
 				Success: false,
@@ -30,22 +26,9 @@ func RequireAuth(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
-		token, err := jwt.Parse(accessToken, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				slog.Error("unexpected signing method",
-					"alg", token.Header["alg"],
-				)
-				return nil, fmt.Errorf("unexpected signing method")
-			}
-			return []byte(cfg.JWTAccessSecret), nil
-		})
-
-		if err != nil || !token.Valid {
-			slog.Warn("invalid access token",
-				"error", err,
-				"path", c.FullPath(),
-				"ip", c.ClientIP(),
-			)
+		claims, err := session.ParseAccess(accessToken, cfg.JWTAccessSecret)
+		if err != nil {
+			rlog.Warn(c, "invalid access token", "error", err)
 
 			c.JSON(http.StatusUnauthorized, types.APIResponse{
 				Success: false,
@@ -56,12 +39,8 @@ func RequireAuth(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			slog.Warn("invalid token claims structure",
-				"path", c.FullPath(),
-				"ip", c.ClientIP(),
-			)
+		if !constants.IsValidRole(claims.Role) {
+			rlog.Warn(c, "invalid role in claims", "user_id", claims.UserID, "role", claims.Role)
 
 			c.JSON(http.StatusUnauthorized, types.APIResponse{
 				Success: false,
@@ -72,49 +51,10 @@ func RequireAuth(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
-		userID, ok := claims["user_id"].(string)
-		if !ok {
-			slog.Warn("missing userID in claims",
-				"path", c.FullPath(),
-				"ip", c.ClientIP(),
-			)
+		rlog.Info(c, "authenticated request", "user_id", claims.UserID, "role", claims.Role)
 
-			c.JSON(http.StatusUnauthorized, types.APIResponse{
-				Success: false,
-				Message: "Invalid token claims",
-				Code:    constants.Unauthorized,
-			})
-			c.Abort()
-			return
-		}
-
-		role, ok := claims["role"].(string)
-		if !ok || (role != "admin" && role != "superadmin") {
-			slog.Warn("invalid role in claims",
-				"user_id", userID,
-				"role", role,
-				"path", c.FullPath(),
-				"ip", c.ClientIP(),
-			)
-
-			c.JSON(http.StatusUnauthorized, types.APIResponse{
-				Success: false,
-				Message: "Invalid token claims",
-				Code:    constants.Unauthorized,
-			})
-			c.Abort()
-			return
-		}
-
-		slog.Info("authenticated request",
-			"user_id", userID,
-			"role", role,
-			"path", c.FullPath(),
-			"ip", c.ClientIP(),
-		)
-
-		c.Set("user_id", userID)
-		c.Set("role", role)
+		c.Set(constants.UserIDKey, claims.UserID)
+		c.Set(constants.RoleKey, claims.Role)
 
 		c.Next()
 	}

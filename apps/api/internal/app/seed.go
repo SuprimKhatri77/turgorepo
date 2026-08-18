@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
+	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	dbgen "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -55,13 +56,13 @@ func Seed(ctx context.Context) error {
 			Name:     envOr("SEED_ADMIN_NAME", "Admin User"),
 			Email:    envOr("SEED_ADMIN_EMAIL", "admin@example.com"),
 			Password: adminPassword,
-			Role:     "admin",
+			Role:     constants.RoleAdmin,
 		},
 		{
 			Name:     envOr("SEED_MEMBER_NAME", "Member User"),
 			Email:    envOr("SEED_MEMBER_EMAIL", "member@example.com"),
 			Password: memberPassword,
-			Role:     "member",
+			Role:     constants.RoleMember,
 		},
 	}
 

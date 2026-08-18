@@ -1,12 +1,10 @@
 package auth
 
 import (
-	"crypto/sha256"
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
+	session "github.com/suprimkhatri77/turgorepo/api/internal/auth"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
@@ -19,85 +17,43 @@ import (
 func Logout(queries repository.AuthRepository, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
+		refreshTokenFromCookie, cookieErr := c.Cookie("refresh_token")
+		utils.ClearAuthCookies(c, cfg)
 
-		refreshTokenFromCookie, err := c.Cookie("refresh_token")
+		if cookieErr != nil || refreshTokenFromCookie == "" {
+			rlog.Info(c, "logout without refresh token")
+			c.JSON(http.StatusOK, types.APIResponse{
+				Success: true,
+				Message: "Logged out successfully",
+			})
+			return
+		}
+
+		claims, err := session.ParseRefresh(refreshTokenFromCookie, cfg.JWTRefreshSecret)
 		if err != nil {
-			rlog.Warn(c, "missing refresh token on logout")
-
-			c.JSON(http.StatusUnauthorized, types.APIResponse{
-				Success: false,
-				Message: "Missing refresh token",
-				Code:    constants.TokenNotProvided,
+			rlog.Info(c, "logout with invalid refresh token")
+			c.JSON(http.StatusOK, types.APIResponse{
+				Success: true,
+				Message: "Logged out successfully",
 			})
 			return
 		}
 
-		token, err := jwt.Parse(refreshTokenFromCookie, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				rlog.Error(c, "unexpected signing method during logout", fmt.Errorf("unexpected signing method: %v", token.Header["alg"]), "alg", token.Header["alg"])
-				return nil, fmt.Errorf("unexpected signing method")
-			}
-			return []byte(cfg.JWTRefreshSecret), nil
-		})
-
-		if err != nil || !token.Valid {
-			rlog.Warn(c, "invalid refresh token on logout", "error", err)
-
-			c.JSON(http.StatusUnauthorized, types.APIResponse{
-				Success: false,
-				Message: "Invalid refresh token",
-				Code:    constants.TokenInvalid,
-			})
-			return
-		}
-
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			rlog.Warn(c, "invalid token claims on logout")
-
-			c.JSON(http.StatusUnauthorized, types.APIResponse{
-				Success: false,
-				Message: "Invalid token claims",
-				Code:    constants.InvalidToken,
-			})
-			return
-		}
-
-		userIDFromClaims, ok := claims["user_id"].(string)
-		if !ok {
-			rlog.Warn(c, "missing or non-string user_id claim on logout")
-			utils.ClearAuthCookies(c, cfg)
-
-			c.JSON(http.StatusUnauthorized, types.APIResponse{
-				Success: false,
-				Message: "Invalid token claims",
-				Code:    constants.InvalidToken,
-			})
-			return
-		}
-
-		userID, err := utils.ConvertToUUID(userIDFromClaims)
+		userID, err := utils.ConvertToUUID(claims.UserID)
 		if err != nil {
-			utils.ClearAuthCookies(c, cfg)
-
-			c.JSON(http.StatusUnauthorized, types.APIResponse{
-				Success: false,
-				Message: "Invalid token claims",
-				Code:    constants.InvalidToken,
+			c.JSON(http.StatusOK, types.APIResponse{
+				Success: true,
+				Message: "Logged out successfully",
 			})
 			return
 		}
 
-		hash := sha256.Sum256([]byte(refreshTokenFromCookie))
-		tokenHash := fmt.Sprintf("%x", hash)
-
-		result, err := queries.RevokeTokenByUserIDAndToken(ctx, db.RevokeTokenByUserIDAndTokenParams{
-			Token:  tokenHash,
+		_, err = queries.RevokeTokenByUserIDAndToken(ctx, db.RevokeTokenByUserIDAndTokenParams{
+			Token:  session.HashRefreshToken(refreshTokenFromCookie),
 			UserID: userID,
 		})
 		if err != nil {
 			rlog.Error(c, "failed to revoke refresh token on logout", err)
-
 			c.JSON(http.StatusInternalServerError, types.APIResponse{
 				Success: false,
 				Message: "Failed to logout",
@@ -105,24 +61,8 @@ func Logout(queries repository.AuthRepository, cfg *config.Config) gin.HandlerFu
 			})
 			return
 		}
-		if result.RowsAffected() == 0 {
-			rlog.Warn(c, "refresh token not found on logout")
 
-			utils.ClearAuthCookies(c, cfg)
-
-			c.JSON(http.StatusUnauthorized, types.APIResponse{
-				Success: false,
-				Message: "Refresh token not found",
-				Code:    constants.TokenInvalid,
-			})
-			return
-		}
-
-		utils.SetAuthCookie(c, "access_token", "", -1, cfg)
-		utils.SetAuthCookie(c, "refresh_token", "", -1, cfg)
-		utils.SetPublicCookie(c, "is_logged_in", "", -1, cfg)
-
-		rlog.Info(c, "user logged out")
+		rlog.Info(c, "user logged out", "user_id", claims.UserID)
 
 		c.JSON(http.StatusOK, types.APIResponse{
 			Success: true,

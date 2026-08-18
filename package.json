@@ -6,6 +6,7 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "lint:go": "cd apps/api && golangci-lint run ./...",
+    "test:go": "cd apps/api && go test ./...",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,mjs,cjs,json,yml,yaml,css}\"",
     "check-types": "turbo run check-types",
     "generate": "turbo run generate",
@@ -17,8 +18,8 @@
     "db:seed": "cd apps/api && make seed",
     "docker:dev:up": "docker compose --env-file .env.local -f docker-compose.dev.yml up --build",
     "docker:dev:down": "docker compose --env-file .env.local -f docker-compose.dev.yml down",
-    "prepush": "bun run check-types && bun run lint:go && bun run build",
-    "ci": "bun run generate:check && bun run db:sqlc:check && bun run check-types && bun run lint && bun run lint:go && bun run build",
+    "prepush": "bun run check-types && bun run lint:go && bun run test:go && bun run build",
+    "ci": "bun run generate:check && bun run db:sqlc:check && bun run check-types && bun run lint && bun run lint:go && bun run test:go && bun run build",
     "prepare": "husky"
   },
   "devDependencies": {

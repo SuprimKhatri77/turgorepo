@@ -17,8 +17,7 @@ export function registerRefreshPath() {
           "application/json": { schema: schemas.AuthSuccessResponse },
         },
       },
-      400: errorResponse("Missing refresh token"),
-      401: errorResponse("Invalid refresh token"),
+      401: errorResponse("Missing or invalid refresh token"),
       500: errorResponse("Internal server error"),
     },
   });
