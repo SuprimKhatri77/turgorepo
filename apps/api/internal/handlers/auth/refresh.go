@@ -141,7 +141,9 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 
 		default:
 			rlog.Warn(c, "stale or reused token outside grace window", "user_id", user.ID)
-			queries.RevokeSession(ctx, sess.ID)
+			if err := queries.RevokeSession(ctx, sess.ID); err != nil {
+				rlog.Error(c, "failed to revoke session after stale token", err)
+			}
 			utils.ClearAuthCookies(c, cfg)
 			c.JSON(http.StatusUnauthorized, types.APIResponse{
 				Success: false,
