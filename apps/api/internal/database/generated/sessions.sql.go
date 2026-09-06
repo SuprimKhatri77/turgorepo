@@ -154,21 +154,30 @@ const rotateSessionToken = `-- name: RotateSessionToken :one
 UPDATE sessions SET
   previous_token_hash = current_token_hash,
   previous_rotated_at = now(),
-  current_token_hash = $2,
-  expires_at = $3,
+  current_token_hash = $1,
+  expires_at = $2,
   last_seen_at = now()
-WHERE id = $1
+WHERE id = $3
+  AND current_token_hash = $4
+  AND revoked_at IS NULL
+  AND expires_at > now()
 RETURNING id, user_id, current_token_hash, previous_token_hash, previous_rotated_at, user_agent, ip_address, created_at, last_seen_at, expires_at, revoked_at
 `
 
 type RotateSessionTokenParams struct {
-	ID               pgtype.UUID        `json:"id"`
-	CurrentTokenHash string             `json:"current_token_hash"`
-	ExpiresAt        pgtype.Timestamptz `json:"expires_at"`
+	NewTokenHash      string             `json:"new_token_hash"`
+	ExpiresAt         pgtype.Timestamptz `json:"expires_at"`
+	ID                pgtype.UUID        `json:"id"`
+	ExpectedTokenHash string             `json:"expected_token_hash"`
 }
 
 func (q *Queries) RotateSessionToken(ctx context.Context, arg RotateSessionTokenParams) (Session, error) {
-	row := q.db.QueryRow(ctx, rotateSessionToken, arg.ID, arg.CurrentTokenHash, arg.ExpiresAt)
+	row := q.db.QueryRow(ctx, rotateSessionToken,
+		arg.NewTokenHash,
+		arg.ExpiresAt,
+		arg.ID,
+		arg.ExpectedTokenHash,
+	)
 	var i Session
 	err := row.Scan(
 		&i.ID,

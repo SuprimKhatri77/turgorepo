@@ -13,10 +13,13 @@ WHERE id = $1
 UPDATE sessions SET
   previous_token_hash = current_token_hash,
   previous_rotated_at = now(),
-  current_token_hash = $2,
-  expires_at = $3,
+  current_token_hash = sqlc.arg(new_token_hash),
+  expires_at = sqlc.arg(expires_at),
   last_seen_at = now()
-WHERE id = $1
+WHERE id = sqlc.arg(id)
+  AND current_token_hash = sqlc.arg(expected_token_hash)
+  AND revoked_at IS NULL
+  AND expires_at > now()
 RETURNING *;
 
 -- name: TouchSessionLastSeen :exec
