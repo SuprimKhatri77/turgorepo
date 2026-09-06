@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
@@ -12,14 +13,20 @@ import (
 )
 
 func IssueSession(c *gin.Context, queries repository.AuthRepository, cfg *config.Config, user db.User) error {
-	tokens, err := NewTokens(cfg, user)
+	sessionID := uuid.New()
+	familyID := pgtype.UUID{Bytes: sessionID, Valid: true}
+
+	tokens, err := NewTokens(cfg, user, familyID)
 	if err != nil {
 		return err
 	}
 
-	_, err = queries.CreateRefreshToken(c.Request.Context(), db.CreateRefreshTokenParams{
-		UserID: user.ID,
-		Token:  HashRefreshToken(tokens.RefreshToken),
+	_, err = queries.CreateSession(c.Request.Context(), db.CreateSessionParams{
+		ID:               familyID,
+		UserID:           user.ID,
+		CurrentTokenHash: HashRefreshToken(tokens.RefreshToken),
+		UserAgent:        pgtype.Text{String: c.Request.UserAgent(), Valid: true},
+		IpAddress:        pgtype.Text{String: c.ClientIP(), Valid: true},
 		ExpiresAt: pgtype.Timestamptz{
 			Time:  time.Now().Add(cfg.RefreshTokenTTL),
 			Valid: true,

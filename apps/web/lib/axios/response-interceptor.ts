@@ -1,3 +1,4 @@
+import axios from "axios";
 import type { AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import { AUTH_ENDPOINTS, COOKIE_DOMAIN, isProtectedPath } from "./constants";
 import {
@@ -19,16 +20,13 @@ export function attachResponseInterceptor(api: AxiosInstance) {
       if (error.response?.data?.message) {
         error.message = error.response.data.message;
       }
+
+      // Auth endpoints skip refresh retry — including /auth/refresh itself
       if (
         AUTH_ENDPOINTS.some((endpoint) =>
           originalRequest.url?.includes(endpoint),
         )
       ) {
-        return Promise.reject(error);
-      }
-
-      // if the 401 came FROM /auth/refresh itself → don't retry, just reject
-      if (originalRequest.url?.includes("/auth/refresh")) {
         return Promise.reject(error);
       }
 
@@ -56,15 +54,13 @@ export function attachResponseInterceptor(api: AxiosInstance) {
         processQueue(null); // unblock queued requests
         return api(originalRequest); // retry the original call
       } catch (refreshError) {
-        // if (axios.isAxiosError(refreshError)) {
-        //   console.log(
-        //     "refresh failed:",
-        //     refreshError.response?.status,
-        //     refreshError.response?.data,
-        //   );
-        // }
+        const isDefinitive401 =
+          axios.isAxiosError(refreshError) &&
+          refreshError.response?.status === 401;
 
-        document.cookie = `is_logged_in=; max-age=0; path=/; domain=${COOKIE_DOMAIN}`;
+        if (isDefinitive401) {
+          document.cookie = `is_logged_in=; max-age=0; path=/; domain=${COOKIE_DOMAIN}`;
+        }
 
         processQueue(refreshError); // reject all queued requests
 

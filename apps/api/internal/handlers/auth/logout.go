@@ -6,8 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 	session "github.com/suprimkhatri77/turgorepo/api/internal/auth"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
-	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
-	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 	"github.com/suprimkhatri77/turgorepo/api/internal/packages/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
@@ -39,7 +37,7 @@ func Logout(queries repository.AuthRepository, cfg *config.Config) gin.HandlerFu
 			return
 		}
 
-		userID, err := utils.ConvertToUUID(claims.UserID)
+		familyID, err := utils.ConvertToUUID(claims.FamilyID)
 		if err != nil {
 			c.JSON(http.StatusOK, types.APIResponse{
 				Success: true,
@@ -48,22 +46,13 @@ func Logout(queries repository.AuthRepository, cfg *config.Config) gin.HandlerFu
 			return
 		}
 
-		_, err = queries.RevokeTokenByUserIDAndToken(ctx, db.RevokeTokenByUserIDAndTokenParams{
-			Token:  session.HashRefreshToken(refreshTokenFromCookie),
-			UserID: userID,
-		})
-		if err != nil {
-			rlog.Error(c, "failed to revoke refresh token on logout", err)
-			c.JSON(http.StatusInternalServerError, types.APIResponse{
-				Success: false,
-				Message: "Failed to logout",
-				Code:    constants.InternalServerError,
-			})
-			return
+		// Best-effort revoke: cookies are already cleared, so the client is logged out.
+		// Log and still return 200 — failing logout after clearing cookies would confuse the user.
+		if err := queries.RevokeSession(ctx, familyID); err != nil {
+			rlog.Error(c, "failed to revoke session on logout", err)
 		}
 
 		rlog.Info(c, "user logged out", "user_id", claims.UserID)
-
 		c.JSON(http.StatusOK, types.APIResponse{
 			Success: true,
 			Message: "Logged out successfully",

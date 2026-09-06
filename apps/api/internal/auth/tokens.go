@@ -24,7 +24,7 @@ func HashRefreshToken(token string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func NewTokens(cfg *config.Config, user db.User) (*Tokens, error) {
+func NewTokens(cfg *config.Config, user db.User, familyID pgtype.UUID) (*Tokens, error) {
 	jti := uuid.New()
 
 	accessToken, err := SignAccess(cfg, user, jti)
@@ -32,7 +32,7 @@ func NewTokens(cfg *config.Config, user db.User) (*Tokens, error) {
 		return nil, err
 	}
 
-	refreshToken, err := SignRefresh(cfg, user, jti)
+	refreshToken, err := SignRefresh(cfg, user, jti, familyID)
 	if err != nil {
 		return nil, err
 	}
@@ -41,6 +41,10 @@ func NewTokens(cfg *config.Config, user db.User) (*Tokens, error) {
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil
+}
+
+func NewAccessToken(cfg *config.Config, user db.User) (string, error) {
+	return SignAccess(cfg, user, uuid.New())
 }
 
 func SignAccess(cfg *config.Config, user db.User, jti uuid.UUID) (string, error) {
@@ -65,14 +69,20 @@ func SignAccess(cfg *config.Config, user db.User, jti uuid.UUID) (string, error)
 	return token.SignedString([]byte(cfg.JWTAccessSecret))
 }
 
-func SignRefresh(cfg *config.Config, user db.User, jti uuid.UUID) (string, error) {
+func SignRefresh(cfg *config.Config, user db.User, jti uuid.UUID, familyID pgtype.UUID) (string, error) {
 	userID, err := utils.UUIDString(user.ID)
 	if err != nil {
 		return "", err
 	}
 
+	familyIDStr, err := utils.UUIDString(familyID)
+	if err != nil {
+		return "", err
+	}
+
 	claims := RefreshClaims{
-		UserID: userID,
+		UserID:   userID,
+		FamilyID: familyIDStr,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        jti.String(),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(cfg.RefreshTokenTTL)),
@@ -123,6 +133,9 @@ func ParseRefresh(tokenString, secret string) (*RefreshClaims, error) {
 	}
 	if parsed.UserID == "" {
 		return nil, fmt.Errorf("missing user_id")
+	}
+	if parsed.FamilyID == "" {
+		return nil, fmt.Errorf("missing family_id")
 	}
 	return parsed, nil
 }
