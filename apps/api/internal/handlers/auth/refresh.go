@@ -46,9 +46,9 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 			return
 		}
 
-		userID, err := utils.ConvertToUUID(claims.UserID)
+		familyID, err := utils.ConvertToUUID(claims.FamilyID)
 		if err != nil {
-			rlog.Warn(c, "invalid user_id in refresh token", "error", err)
+			rlog.Warn(c, "invalid family_id in refresh token", "error", err)
 			utils.ClearAuthCookies(c, cfg)
 			c.JSON(http.StatusUnauthorized, types.APIResponse{
 				Success: false,
@@ -58,23 +58,23 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 			return
 		}
 
-		refreshTokenHash := session.HashRefreshToken(refreshTokenString)
-		stored, err := queries.GetRefreshTokenByUserIDAndToken(ctx, db.GetRefreshTokenByUserIDAndTokenParams{
-			UserID: userID,
-			Token:  refreshTokenHash,
-		})
+		sess, err := queries.GetActiveSessionByID(ctx, familyID)
 		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				utils.ClearAuthCookies(c, cfg)
-				c.JSON(http.StatusUnauthorized, types.APIResponse{
-					Success: false,
-					Message: "Invalid refresh token",
-					Code:    constants.TokenInvalid,
-				})
-				return
-			}
+			rlog.Warn(c, "session not found or expired", "family_id", claims.FamilyID, "error", err)
+			utils.ClearAuthCookies(c, cfg)
+			c.JSON(http.StatusUnauthorized, types.APIResponse{
+				Success: false,
+				Message: "Session expired",
+				Code:    constants.TokenInvalid,
+			})
+			return
+		}
 
-			rlog.Error(c, "failed to fetch refresh token", err)
+		presentedHash := session.HashRefreshToken(refreshTokenString)
+
+		user, err := queries.GetUserByID(ctx, sess.UserID)
+		if err != nil {
+			rlog.Error(c, "failed to fetch user", err, "user_id", sess.UserID)
 			c.JSON(http.StatusInternalServerError, types.APIResponse{
 				Success: false,
 				Message: "Something went wrong",
@@ -83,73 +83,111 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 			return
 		}
 
-		user, err := queries.GetUserByID(ctx, stored.UserID)
-		if err != nil {
-			rlog.Error(c, "failed to fetch user", err, "user_id", stored.UserID)
-			c.JSON(http.StatusInternalServerError, types.APIResponse{
-				Success: false,
-				Message: "Failed to process request",
-				Code:    constants.InternalServerError,
-			})
-			return
-		}
-
-		tokens, err := session.NewTokens(cfg, user)
-		if err != nil {
-			rlog.Error(c, "failed to sign tokens", err, "user_id", user.ID)
-			c.JSON(http.StatusInternalServerError, types.APIResponse{
-				Success: false,
-				Message: "Failed to process request",
-				Code:    constants.InternalServerError,
-			})
-			return
-		}
-
-		if time.Since(stored.CreatedAt.Time) < cfg.RefreshReuseWindow {
-			session.SetAccessCookie(c, cfg, tokens.AccessToken)
-			c.JSON(http.StatusOK, types.APIResponse{
-				Success: true,
-				Message: "Tokens refreshed",
-			})
-			return
-		}
-
-		_, err = queries.RotateRefreshToken(ctx, db.RotateRefreshTokenParams{
-			UserID:   userID,
-			OldToken: refreshTokenHash,
-			NewToken: session.HashRefreshToken(tokens.RefreshToken),
-			ExpiresAt: pgtype.Timestamptz{
-				Time:  time.Now().Add(cfg.RefreshTokenTTL),
-				Valid: true,
-			},
-		})
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				rlog.Warn(c, "refresh token already rotated", "user_id", user.ID)
-				utils.ClearAuthCookies(c, cfg)
-				c.JSON(http.StatusUnauthorized, types.APIResponse{
+		issueGraceAccess := func() {
+			accessToken, err := session.NewAccessToken(cfg, user)
+			if err != nil {
+				rlog.Error(c, "failed to sign access token", err, "user_id", user.ID)
+				c.JSON(http.StatusInternalServerError, types.APIResponse{
 					Success: false,
-					Message: "Invalid refresh token",
-					Code:    constants.TokenInvalid,
+					Message: "Failed to process request",
+					Code:    constants.InternalServerError,
 				})
 				return
 			}
 
-			rlog.Error(c, "failed to rotate refresh token", err, "user_id", user.ID)
-			c.JSON(http.StatusInternalServerError, types.APIResponse{
-				Success: false,
-				Message: "Failed to process request",
-				Code:    constants.InternalServerError,
+			session.SetAccessCookie(c, cfg, accessToken)
+			rlog.Info(c, "grace-window refresh (previous token reuse)", "user_id", user.ID)
+			c.JSON(http.StatusOK, types.APIResponse{
+				Success: true,
+				Message: "Tokens refreshed",
 			})
-			return
 		}
 
-		session.SetSessionCookies(c, cfg, tokens.AccessToken, tokens.RefreshToken)
-		rlog.Info(c, "tokens rotated successfully", "user_id", user.ID)
+		withinGrace := func(s db.Session) bool {
+			return s.PreviousTokenHash.Valid &&
+				presentedHash == s.PreviousTokenHash.String &&
+				s.PreviousRotatedAt.Valid &&
+				time.Since(s.PreviousRotatedAt.Time) < cfg.RefreshReuseWindow
+		}
 
-		c.JSON(http.StatusOK, types.APIResponse{
-			Success: true,
-			Message: "Tokens refreshed",
-		})
+		switch {
+		case presentedHash == sess.CurrentTokenHash:
+			tokens, err := session.NewTokens(cfg, user, familyID)
+			if err != nil {
+				rlog.Error(c, "failed to sign tokens", err, "user_id", user.ID)
+				c.JSON(http.StatusInternalServerError, types.APIResponse{
+					Success: false,
+					Message: "Failed to process request",
+					Code:    constants.InternalServerError,
+				})
+				return
+			}
+
+			_, err = queries.RotateSessionToken(ctx, db.RotateSessionTokenParams{
+				ID:                sess.ID,
+				NewTokenHash:      session.HashRefreshToken(tokens.RefreshToken),
+				ExpectedTokenHash: presentedHash,
+				ExpiresAt:         pgtype.Timestamptz{Time: time.Now().Add(cfg.RefreshTokenTTL), Valid: true},
+			})
+			if err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					// Lost the CAS race — another request already rotated this token.
+					// Reload and serve the grace path instead of failing the client.
+					reloaded, reloadErr := queries.GetActiveSessionByID(ctx, familyID)
+					if reloadErr != nil {
+						rlog.Warn(c, "session gone after lost rotation race", "error", reloadErr)
+						utils.ClearAuthCookies(c, cfg)
+						c.JSON(http.StatusUnauthorized, types.APIResponse{
+							Success: false,
+							Message: "Session expired",
+							Code:    constants.TokenInvalid,
+						})
+						return
+					}
+					if withinGrace(reloaded) {
+						issueGraceAccess()
+						return
+					}
+					rlog.Warn(c, "lost rotation race but grace window missed", "user_id", user.ID)
+					utils.ClearAuthCookies(c, cfg)
+					c.JSON(http.StatusUnauthorized, types.APIResponse{
+						Success: false,
+						Message: "Session invalid, please log in again",
+						Code:    constants.TokenInvalid,
+					})
+					return
+				}
+
+				rlog.Error(c, "failed to rotate session token", err, "user_id", user.ID)
+				c.JSON(http.StatusInternalServerError, types.APIResponse{
+					Success: false,
+					Message: "Failed to process request",
+					Code:    constants.InternalServerError,
+				})
+				return
+			}
+
+			session.SetSessionCookies(c, cfg, tokens.AccessToken, tokens.RefreshToken)
+			rlog.Info(c, "tokens rotated successfully", "user_id", user.ID)
+			c.JSON(http.StatusOK, types.APIResponse{
+				Success: true,
+				Message: "Tokens refreshed",
+			})
+
+		case withinGrace(sess):
+			issueGraceAccess()
+
+		default:
+			rlog.Warn(c, "stale or reused token outside grace window", "user_id", user.ID)
+			if err := queries.RevokeSession(ctx, sess.ID); err != nil {
+				rlog.Error(c, "failed to revoke session after stale token", err)
+			}
+			utils.ClearAuthCookies(c, cfg)
+			c.JSON(http.StatusUnauthorized, types.APIResponse{
+				Success: false,
+				Message: "Session invalid, please log in again",
+				Code:    constants.TokenInvalid,
+			})
+		}
 	}
 }

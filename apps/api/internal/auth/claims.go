@@ -12,6 +12,7 @@ type AccessClaims struct {
 }
 
 type RefreshClaims struct {
-	UserID string `json:"user_id"`
+	UserID   string `json:"user_id"`
+	FamilyID string `json:"family_id"`
 	jwt.RegisteredClaims
 }

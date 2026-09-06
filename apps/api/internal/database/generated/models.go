@@ -8,13 +8,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type RefreshToken struct {
-	ID        pgtype.UUID        `json:"id"`
-	UserID    pgtype.UUID        `json:"user_id"`
-	Token     string             `json:"token"`
-	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
-	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+type Session struct {
+	ID                pgtype.UUID        `json:"id"`
+	UserID            pgtype.UUID        `json:"user_id"`
+	CurrentTokenHash  string             `json:"current_token_hash"`
+	PreviousTokenHash pgtype.Text        `json:"previous_token_hash"`
+	PreviousRotatedAt pgtype.Timestamptz `json:"previous_rotated_at"`
+	UserAgent         pgtype.Text        `json:"user_agent"`
+	IpAddress         pgtype.Text        `json:"ip_address"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	LastSeenAt        pgtype.Timestamptz `json:"last_seen_at"`
+	ExpiresAt         pgtype.Timestamptz `json:"expires_at"`
+	RevokedAt         pgtype.Timestamptz `json:"revoked_at"`
 }
 
 type User struct {

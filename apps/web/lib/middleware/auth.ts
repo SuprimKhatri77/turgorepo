@@ -36,6 +36,12 @@ export function getSession(token: string): User | null {
   }
 }
 
+function forwardSetCookie(response: NextResponse, cookies: string[]): void {
+  cookies.forEach((cookie) => {
+    response.headers.append("set-cookie", cookie);
+  });
+}
+
 export async function attemptRefresh(
   refreshToken: string,
   req: NextRequest,
@@ -51,26 +57,16 @@ export async function attemptRefresh(
     console.log("refresh response status:", res.status);
 
     if (!res.ok) {
-      console.log(
-        "refresh failed with status:",
-        res.status,
-        "— clearing cookies:",
-        res.status === 401 ? "YES" : "NO",
-      );
       if (res.status === 401) {
-        console.log("in !res.ok block clearing cookies.....");
         const redirect = NextResponse.redirect(new URL("/auth/login", req.url));
         clearAuthCookies(redirect);
         return redirect;
       }
-
+      // Non-401 failure (e.g. 500): redirect without clearing cookies — session may still be valid
       return NextResponse.redirect(new URL("/auth/login", req.url));
     }
 
-    // get ALL cookies from refresh response
     const cookies = res.headers.getSetCookie();
-
-    // still need the access token value to check role
     const newAccessToken = extractTokenFromCookie(cookies.join("; "));
 
     if (!newAccessToken) {
@@ -84,30 +80,31 @@ export async function attemptRefresh(
     }
 
     if (!requiredRoles.includes(user.role)) {
-      return NextResponse.redirect(new URL("/", req.url));
+      const redirect = NextResponse.redirect(new URL("/", req.url));
+      forwardSetCookie(redirect, cookies);
+      return redirect;
     }
 
+    // Grace-window response: API only sets access cookie, no new refresh cookie.
+    // Retain the original refresh cookie instead of injecting null.
     const newRefreshToken = extractRefreshTokenFromCookie(cookies.join("; "));
+    const refreshCookieValue = newRefreshToken ?? refreshToken;
 
     const response = NextResponse.next({
       request: {
         headers: new Headers({
           ...Object.fromEntries(req.headers),
-          cookie: `access_token=${newAccessToken}; refresh_token=${newRefreshToken}`,
+          cookie: `access_token=${newAccessToken}; refresh_token=${refreshCookieValue}`,
         }),
       },
     });
 
-    cookies.forEach((cookie) => {
-      response.headers.append("set-cookie", cookie);
-    });
-
+    forwardSetCookie(response, cookies);
     return response;
   } catch (error) {
+    // Network/transport error: don't clear cookies — the session may still be valid
     console.log("attemptRefresh threw an error:", error);
-    const redirect = NextResponse.redirect(new URL("/auth/login", req.url));
-    clearAuthCookies(redirect);
-    return redirect;
+    return NextResponse.redirect(new URL("/auth/login", req.url));
   }
 }
 
@@ -116,13 +113,10 @@ export async function attemptRefreshForAuthRoute(
   req: NextRequest,
 ) {
   try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/refresh`,
-      {
-        method: "POST",
-        headers: { Cookie: `refresh_token=${refreshToken}` },
-      },
-    );
+    const res = await fetch(`${get_api_url()}/api/v1/auth/refresh`, {
+      method: "POST",
+      headers: { Cookie: `refresh_token=${refreshToken}` },
+    });
 
     if (!res.ok) {
       const response = NextResponse.next();
@@ -150,50 +144,21 @@ export async function attemptRefreshForAuthRoute(
     }
 
     if (user.role === "admin" || user.role === "superadmin") {
-      return NextResponse.redirect(new URL("/admin", req.url));
+      const redirect = NextResponse.redirect(new URL("/admin", req.url));
+      forwardSetCookie(redirect, cookies);
+      return redirect;
     }
 
     const response = NextResponse.next();
-    cookies.forEach((cookie) => {
-      response.headers.append("set-cookie", cookie);
-    });
+    forwardSetCookie(response, cookies);
     return response;
   } catch (error) {
+    // Network/transport error: don't clear cookies
     console.log("attemptRefreshForAuthRoute threw an error:", error);
-    const response = NextResponse.next();
-    clearAuthCookies(response);
-    return response;
+    return NextResponse.next();
   }
 }
 
-export async function getSessionFromRequest(
-  req: NextRequest,
-): Promise<User | null> {
-  const accessToken = req.cookies.get("access_token")?.value;
-  const refreshToken = req.cookies.get("refresh_token")?.value;
-
-  if (!refreshToken) return null;
-
-  if (accessToken) {
-    const user = await getSession(accessToken);
-    if (user) return user;
-  }
-
-  const res = await fetch(`${get_api_url()}/api/v1/auth/refresh`, {
-    method: "POST",
-    headers: { Cookie: `refresh_token=${refreshToken}` },
-  });
-
-  if (!res.ok) return null;
-
-  const cookies = res.headers.getSetCookie();
-  const newAccessToken = extractTokenFromCookie(cookies.join("; "));
-  if (!newAccessToken) return null;
-
-  return getSession(newAccessToken);
-}
-
-// parses access_token value out of the set-cookie header string
 export function extractTokenFromCookie(
   setCookie: string | null,
 ): string | null {
