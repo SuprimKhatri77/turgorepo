@@ -7,5 +7,6 @@ coverage
 bun.lock
 apps/api/internal/database/generated
 packages/api-client/src/generated
+packages/api-client/src/generated-server
 apps/api/openapi.json
 *.md

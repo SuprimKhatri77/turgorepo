@@ -14,7 +14,7 @@ A full-stack monorepo template — **Tur**bo + **Go** + repo — with a Next.js 
 | Database | PostgreSQL 17 |
 | Auth | JWT in HTTP-only cookies (access + refresh), session tokens in DB |
 | API docs | Zod schemas → OpenAPI 3 → [Scalar](https://scalar.com) UI |
-| Typed API client | OpenAPI → `@repo/api-client` ([@hey-api/openapi-ts](https://heyapi.dev)) |
+| Typed API client | OpenAPI → `@repo/api-client` (axios) + `@repo/api-client/server` (fetch) |
 
 ## Project structure
 
@@ -221,14 +221,21 @@ src/
 
 ### `@repo/api-client`
 
-Typed frontend SDK generated from `apps/api/openapi.json` with [@hey-api/openapi-ts](https://heyapi.dev). Same idea as tRPC (typed API calls) when the backend is Go, not TypeScript.
+Typed SDK generated from `apps/api/openapi.json` with [@hey-api/openapi-ts](https://heyapi.dev). Same idea as tRPC (typed API calls) when the backend is Go, not TypeScript.
+
+`bun run generate` produces **two** clients:
+
+| Import | Transport | Use |
+| --- | --- | --- |
+| `@repo/api-client` | Axios | Browser (mutations, TanStack Query) — refresh interceptors |
+| `@repo/api-client/server` | Fetch | RSC / server helpers — forward cookies, `INTERNAL_API_URL` |
 
 ```sh
-# Regenerates OpenAPI then the TS client (Turbo runs packages in dependency order)
+# Regenerates OpenAPI then both TS clients (Turbo runs packages in dependency order)
 bun run generate
 ```
 
-Use from the web app via the wired client (reuses axios + refresh interceptors):
+**Browser** (reuses axios + refresh interceptors):
 
 ```ts
 import {
@@ -246,7 +253,24 @@ const { data } = await postApiV1AuthLogin({
 const me = await getApiV1AuthMe({ client: apiClient, throwOnError: true });
 ```
 
-After changing Zod schemas or OpenAPI path definitions, run `bun run generate` and commit `packages/api-client/src/generated`. `apps/api/openapi.json` is local/CI build output (gitignored) used for Scalar docs and client generation.
+**Server Components** (cookie forwarding via `createServerApiClient`):
+
+```ts
+import {
+  createServerApiClient,
+  getApiV1Health,
+  getApiV1AuthMe,
+} from "@/lib/api/server-client";
+
+const client = await createServerApiClient();
+const health = await getApiV1Health({ client });
+
+// Authoritative /me (DB). For cheap layout JWT claims, use getCurrentUser().
+import { fetchCurrentUser } from "@/lib/api/auth/fetch-current-user";
+const user = await fetchCurrentUser();
+```
+
+After changing Zod schemas or OpenAPI path definitions, run `bun run generate` and commit `packages/api-client/src/generated` **and** `packages/api-client/src/generated-server`. `apps/api/openapi.json` is local/CI build output (gitignored) used for Scalar docs and client generation.
 
 ## Scripts
 
@@ -257,7 +281,7 @@ After changing Zod schemas or OpenAPI path definitions, run `bun run generate` a
 | `bun run lint` | Lint JS/TS across the monorepo |
 | `bun run lint:go` | Lint the Go API with golangci-lint |
 | `bun run check-types` | TypeScript type checking (includes `web`) |
-| `bun run generate` | Generate OpenAPI spec + typed `@repo/api-client` |
+| `bun run generate` | Generate OpenAPI spec + axios + fetch `@repo/api-client` outputs |
 | `bun run generate:check` | Regenerate and fail if committed output is stale |
 | `bun run db:migrate` | Run DB migrations up (`apps/api`) |
 | `bun run db:migrate:down` | Roll back migrations (`N=1 bun run db:migrate:down`) |
@@ -286,7 +310,7 @@ bun run dev --filter=api
 **pre-commit** (lint-staged):
 
 - **JS/TS in `apps/web` and `packages/ui`** — ESLint (`--fix`) + Prettier
-- **`packages/types` or `packages/openapi`** — runs `bun run generate` and stages OpenAPI + api-client output
+- **`packages/types` or `packages/openapi`** — runs `bun run generate` and stages both api-client outputs
 - **API SQL / sqlc config / migrations** — runs `bun run db:sqlc` and stages generated Go
 - **Other JS/TS / JSON / YAML / CSS** — Prettier
 - **Go** — `gofmt`

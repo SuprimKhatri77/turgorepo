@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { get_api_url } from "@/utils/get-api-url";
+import { createServerApiClient, getApiV1Health } from "@/lib/api/server-client";
 
 type HealthStatus = {
   online: boolean;
@@ -7,24 +7,33 @@ type HealthStatus = {
 };
 
 async function checkHealth(): Promise<HealthStatus> {
-  const api = get_api_url();
-  if (!api) return { online: false, message: "API URL is not configured" };
-
   try {
-    const response = await fetch(`${api}/api/v1/health`, {
+    const client = await createServerApiClient();
+
+    const { data, error, response } = await getApiV1Health({
+      client,
       cache: "no-store",
       signal: AbortSignal.timeout(5_000),
     });
-    if (!response.ok) {
-      return { online: false, message: `API responded ${response.status}` };
+
+    if (error || !response.ok) {
+      return {
+        online: false,
+        message: `API responded ${response.status}`,
+      };
     }
 
-    const body = (await response.json()) as { message?: string };
     return {
       online: true,
-      message: body.message ?? "Server is up and running",
+      message: data?.message ?? "Server is up and running",
     };
-  } catch {
+  } catch (err) {
+    if (
+      err instanceof Error &&
+      err.message.includes("API URL is not configured")
+    ) {
+      return { online: false, message: "API URL is not configured" };
+    }
     // API may be offline during local/CI builds
     return { online: false, message: "API unreachable" };
   }
@@ -36,7 +45,7 @@ const stack = [
   { label: "Backend", value: "Go + Gin, sqlc, golang-migrate" },
   { label: "Database", value: "PostgreSQL 17" },
   { label: "Auth", value: "JWT access + refresh in HTTP-only cookies" },
-  { label: "Contracts", value: "Zod → OpenAPI → typed API client" },
+  { label: "Contracts", value: "Zod → OpenAPI → axios + fetch typed clients" },
 ];
 
 export default async function Home() {
