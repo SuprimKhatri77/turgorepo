@@ -9,9 +9,6 @@ type HealthStatus = {
 async function checkHealth(): Promise<HealthStatus> {
   try {
     const client = await createServerApiClient();
-    if (!client.getConfig().baseUrl) {
-      return { online: false, message: "API URL is not configured" };
-    }
 
     const { data, error, response } = await getApiV1Health({
       client,
@@ -30,7 +27,13 @@ async function checkHealth(): Promise<HealthStatus> {
       online: true,
       message: data?.message ?? "Server is up and running",
     };
-  } catch {
+  } catch (err) {
+    if (
+      err instanceof Error &&
+      err.message.includes("API URL is not configured")
+    ) {
+      return { online: false, message: "API URL is not configured" };
+    }
     // API may be offline during local/CI builds
     return { online: false, message: "API unreachable" };
   }

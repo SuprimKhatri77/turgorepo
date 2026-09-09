@@ -12,10 +12,17 @@ import { getAllCookies } from "@/utils/get-all-cookies";
  * on guarded routes; expired access simply returns 401.
  */
 export async function createServerApiClient(): Promise<Client> {
+  const baseUrl = get_api_url();
+  if (!baseUrl) {
+    throw new Error(
+      "API URL is not configured. Set NEXT_PUBLIC_API_URL (and INTERNAL_API_URL in Docker).",
+    );
+  }
+
   const cookie = await getAllCookies();
   return createClient(
     createConfig({
-      baseUrl: get_api_url() ?? "",
+      baseUrl,
       headers: cookie ? { Cookie: cookie } : {},
     }),
   );
