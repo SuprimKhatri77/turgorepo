@@ -5,7 +5,10 @@
  */
 import { spawnSync } from "node:child_process";
 
-const generatedPaths = ["packages/api-client/src/generated"];
+const generatedPaths = [
+  "packages/api-client/src/generated",
+  "packages/api-client/src/generated-server",
+];
 
 function run(command: string, args: string[]): number {
   const result = spawnSync(command, args, {
@@ -47,7 +50,7 @@ Generated OpenAPI client is out of date.
 Run:
   bun run generate
 
-Then commit packages/api-client/src/generated.
+Then commit packages/api-client/src/generated and packages/api-client/src/generated-server.
 `);
   process.exit(1);
 }
