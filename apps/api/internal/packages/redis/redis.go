@@ -58,7 +58,14 @@ func ConnectWithRetry(ctx context.Context, redisURL string, maxRetries int) (*Cl
 			return client, nil
 		}
 		slog.Warn("failed to connect to redis, retrying...", "attempt", i+1, "max", maxRetries, "err", err)
-		time.Sleep(2 * time.Second)
+		if i+1 == maxRetries {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(2 * time.Second):
+		}
 	}
 	return nil, fmt.Errorf("failed to connect to redis after %d attempts: %w", maxRetries, err)
 }
