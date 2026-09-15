@@ -9,6 +9,7 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/database"
 	"github.com/suprimkhatri77/turgorepo/api/internal/packages/cloudinary"
+	apiredis "github.com/suprimkhatri77/turgorepo/api/internal/packages/redis"
 )
 
 func initDB(ctx context.Context, cfg *config.Config) (*database.DB, error) {
@@ -20,6 +21,17 @@ func initDB(ctx context.Context, cfg *config.Config) (*database.DB, error) {
 		return nil, fmt.Errorf("database: %w", err)
 	}
 	return db, nil
+}
+
+func initRedis(ctx context.Context, cfg *config.Config) (*apiredis.Client, error) {
+	if cfg.RedisURL == "" {
+		return nil, fmt.Errorf("config: REDIS_URL is required")
+	}
+	client, err := apiredis.ConnectWithRetry(ctx, cfg.RedisURL, 10)
+	if err != nil {
+		return nil, fmt.Errorf("redis: %w", err)
+	}
+	return client, nil
 }
 
 func initCloudinary(cfg *config.Config) (*cloudinary.Client, error) {

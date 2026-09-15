@@ -13,6 +13,7 @@ type Config struct {
 	Port                int
 	GinMode             string
 	DatabaseURL         string
+	RedisURL            string
 	JWTRefreshSecret    string
 	JWTAccessSecret     string
 	CloudinaryCloudName string
@@ -45,6 +46,7 @@ func Load() (*Config, error) {
 	}
 
 	dbURL := os.Getenv("DATABASE_URL")
+	redisURL := os.Getenv("REDIS_URL")
 	jwtRefreshSecret := os.Getenv("JWT_REFRESH_SECRET")
 	jwtAccessSecret := os.Getenv("JWT_ACCESS_SECRET")
 	cloudinaryCloudName := os.Getenv("CLOUDINARY_CLOUD_NAME")
@@ -59,6 +61,7 @@ func Load() (*Config, error) {
 		Port:                port,
 		GinMode:             ginMode,
 		DatabaseURL:         dbURL,
+		RedisURL:            redisURL,
 		JWTRefreshSecret:    jwtRefreshSecret,
 		JWTAccessSecret:     jwtAccessSecret,
 		CloudinaryCloudName: cloudinaryCloudName,
