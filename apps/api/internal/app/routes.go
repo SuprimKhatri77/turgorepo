@@ -7,26 +7,40 @@ import (
 	dbgen "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 	"github.com/suprimkhatri77/turgorepo/api/internal/middleware"
 	"github.com/suprimkhatri77/turgorepo/api/internal/packages/cloudinary"
+	apiredis "github.com/suprimkhatri77/turgorepo/api/internal/packages/redis"
 	"github.com/suprimkhatri77/turgorepo/api/internal/routes"
 	routesconfig "github.com/suprimkhatri77/turgorepo/api/internal/routes/config"
 )
 
-func buildRouter(cfg *config.Config, queries *dbgen.Queries, cld *cloudinary.Client, db *database.DB) *gin.Engine {
+func buildRouter(
+	cfg *config.Config,
+	queries *dbgen.Queries,
+	cld *cloudinary.Client,
+	db *database.DB,
+	redisClient *apiredis.Client,
+) *gin.Engine {
 	r := gin.New()
 	r.Use(middleware.RequestID())
 	r.Use(middleware.Recovery())
 	r.Use(gin.Logger())
 	r.Use(middleware.CORS(cfg))
 
-	routes.Setup(r, buildRouteConfig(cfg, queries, cld, db))
+	routes.Setup(r, buildRouteConfig(cfg, queries, cld, db, redisClient))
 	return r
 }
 
-func buildRouteConfig(cfg *config.Config, queries *dbgen.Queries, cld *cloudinary.Client, db *database.DB) routesconfig.Config {
+func buildRouteConfig(
+	cfg *config.Config,
+	queries *dbgen.Queries,
+	cld *cloudinary.Client,
+	db *database.DB,
+	redisClient *apiredis.Client,
+) routesconfig.Config {
 	return routesconfig.Config{
 		Config:    cfg,
 		Queries:   queries,
 		CldClient: cld,
 		PgxPool:   db.Pool,
+		Redis:     redisClient,
 	}
 }

@@ -43,7 +43,7 @@ const stack = [
   { label: "Monorepo", value: "Turborepo + Bun workspaces" },
   { label: "Frontend", value: "Next.js 16, React 19, TanStack Query" },
   { label: "Backend", value: "Go + Gin, sqlc, golang-migrate" },
-  { label: "Database", value: "PostgreSQL 17" },
+  { label: "Database", value: "PostgreSQL 17 + Redis 7" },
   { label: "Auth", value: "JWT access + refresh in HTTP-only cookies" },
   { label: "Contracts", value: "Zod → OpenAPI → axios + fetch typed clients" },
 ];

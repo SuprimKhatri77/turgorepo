@@ -5,6 +5,7 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 	"github.com/suprimkhatri77/turgorepo/api/internal/packages/cloudinary"
+	apiredis "github.com/suprimkhatri77/turgorepo/api/internal/packages/redis"
 )
 
 type Config struct {
@@ -12,4 +13,5 @@ type Config struct {
 	Queries   *db.Queries
 	CldClient *cloudinary.Client
 	PgxPool   *pgxpool.Pool
+	Redis     *apiredis.Client
 }

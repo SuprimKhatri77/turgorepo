@@ -1,6 +1,6 @@
 # Turgorepo
 
-A full-stack monorepo template — **Tur**bo + **Go** + repo — with a Next.js frontend, Go/Gin API, PostgreSQL, and shared TypeScript packages for types and API docs.
+A full-stack monorepo template — **Tur**bo + **Go** + repo — with a Next.js frontend, Go/Gin API, PostgreSQL, Redis, and shared TypeScript packages for types and API docs.
 
 **Author:** [Suprim Khatri](https://github.com/suprimkhatri77)
 
@@ -12,6 +12,7 @@ A full-stack monorepo template — **Tur**bo + **Go** + repo — with a Next.js 
 | Frontend | [Next.js 16](https://nextjs.org), React 19, TanStack Query, Zustand, Tailwind CSS 4 |
 | Backend | [Go](https://go.dev) + [Gin](https://gin-gonic.com), [sqlc](https://sqlc.dev), [golang-migrate](https://github.com/golang-migrate/migrate) |
 | Database | PostgreSQL 17 |
+| Cache / rate-limit ready | Redis 7 |
 | Auth | JWT in HTTP-only cookies (access + refresh), session tokens in DB |
 | API docs | Zod schemas → OpenAPI 3 → [Scalar](https://scalar.com) UI |
 | Typed API client | OpenAPI → `@repo/api-client` (axios) + `@repo/api-client/server` (fetch) |
@@ -65,6 +66,7 @@ Key variables:
 | Variable | Description |
 | --- | --- |
 | `DATABASE_URL` | PostgreSQL connection string |
+| `REDIS_URL` | Redis connection URL (`redis://redis:6379/0` in Compose; `redis://localhost:6379/0` for a local API) |
 | `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | JWT signing secrets |
 | `FRONTEND_URL` | Allowed CORS origin (e.g. `http://localhost:3000`) |
 | `COOKIE_DOMAIN` | Cookie domain (e.g. `localhost`) |
@@ -85,6 +87,7 @@ bun run docker:dev:up
 | API docs (Scalar) | <http://localhost:5000/api/v1/docs/> |
 | Health check | <http://localhost:5000/api/v1/health> |
 | PostgreSQL | localhost:5432 |
+| Redis | localhost:6379 |
 
 Run migrations inside the API container or locally:
 
@@ -95,7 +98,7 @@ make migrate-up
 
 ### 4. Run locally (without Docker)
 
-**Database** — start Postgres and set `DATABASE_URL` in `.env.local`.
+**Database** — start Postgres and Redis, then set `DATABASE_URL` and `REDIS_URL` in `.env.local` (use `localhost` hostnames when not in Compose).
 
 **API:**
 
