@@ -53,7 +53,7 @@ jobs:
         run: bun run lint
 
       - name: Lint Go
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v9
         with:
           version: v2.12.2
           working-directory: apps/api
