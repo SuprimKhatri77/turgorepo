@@ -89,7 +89,7 @@ Migrations run automatically when the API container starts.
 
 Follow logs with `bun run docker:dev:logs`, and stop with `bun run docker:dev:down`.
 
-**Port already in use?** Set `WEB_PORT`, `API_PORT`, `DB_PORT` or `REDIS_PORT` in `.env.local`, then update the matching URLs in the same file. On macOS, AirPlay Receiver often holds port 5000.
+**Port already in use?** Set `WEB_PORT`, `API_PORT`, `DB_PORT` or `REDIS_PORT` in `.env.local`, then update the matching URLs in the same file. Without Docker, the API listens on `PORT` instead of `API_PORT`. On macOS, AirPlay Receiver often holds port 5000.
 
 ### 3. Run without Docker
 
