@@ -10,7 +10,7 @@ export default defineConfig({
   plugins: [
     {
       name: "@hey-api/client-axios",
-      runtimeConfigPath: "../client-config",
+      runtimeConfigPath: "./src/client-config",
     },
   ],
 });

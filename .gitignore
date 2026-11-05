@@ -36,3 +36,7 @@ yarn-error.log*
 
 
 *.md
+
+# Local working notes
+CLAUDE.local.md
+.claude/
