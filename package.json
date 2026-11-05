@@ -16,11 +16,13 @@
     "db:sqlc": "cd apps/api && make sqlc",
     "db:sqlc:check": "bun run scripts/check-sqlc.ts",
     "db:seed": "cd apps/api && make seed",
-    "docker:dev:up": "docker compose --env-file .env.local -f docker-compose.dev.yml up --build",
+    "docker:dev:up": "docker compose --env-file .env.local -f docker-compose.dev.yml up --build --renew-anon-volumes --detach --wait",
     "docker:dev:down": "docker compose --env-file .env.local -f docker-compose.dev.yml down",
     "prepush": "bun run check-types && bun run lint:go && bun run test:go && bun run build",
     "ci": "bun run generate:check && bun run db:sqlc:check && bun run check-types && bun run lint && bun run lint:go && bun run test:go && bun run build",
-    "prepare": "husky"
+    "prepare": "husky",
+    "docker:dev:services": "docker compose --env-file .env.local -f docker-compose.dev.yml up --detach --wait db redis",
+    "docker:dev:logs": "docker compose --env-file .env.local -f docker-compose.dev.yml logs --follow"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.4",

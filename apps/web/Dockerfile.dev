@@ -6,8 +6,9 @@ RUN apk add --no-cache libc6-compat
  
 COPY bun.lock package.json turbo.json ./
 COPY apps/web/package.json ./apps/web/
+COPY apps/api/package.json ./apps/api/
 COPY packages/ ./packages/
-RUN bun install
+RUN bun install --frozen-lockfile
  
 EXPOSE 3000
  

@@ -34,7 +34,12 @@ func initRedis(ctx context.Context, cfg *config.Config) (*apiredis.Client, error
 	return client, nil
 }
 
+// initCloudinary returns a nil client when no credentials are set, so projects
+// that don't upload images need no Cloudinary account. Partial credentials are an error.
 func initCloudinary(cfg *config.Config) (*cloudinary.Client, error) {
+	if cfg.CloudinaryCloudName == "" && cfg.CloudinaryAPIKey == "" && cfg.CloudinaryAPISecret == "" {
+		return nil, nil
+	}
 	c, err := cloudinary.New(cfg.CloudinaryCloudName, cfg.CloudinaryAPIKey, cfg.CloudinaryAPISecret)
 	if err != nil {
 		return nil, fmt.Errorf("cloudinary: %w", err)

@@ -4,10 +4,10 @@ export default {
     `bunx eslint --fix --max-warnings=0 -c apps/web/eslint.config.mjs ${filenames.join(" ")}`,
     `bunx prettier --write ${filenames.join(" ")}`,
   ],
-  // Keep typed client in sync when contract sources change (openapi.json is gitignored).
+  // Keep the spec and typed clients in sync when contract sources change.
   "packages/{types,openapi}/**/*.{ts,tsx}": () => [
     "bun run generate",
-    "git add packages/api-client/src/generated packages/api-client/src/generated-server",
+    "git add apps/api/openapi.json packages/api-client/src/generated packages/api-client/src/generated-server",
   ],
   // Keep sqlc Go output in sync when queries/schema change.
   "apps/api/{sqlc.yml,internal/database/queries/**/*.sql,migrations/**/*.sql}":

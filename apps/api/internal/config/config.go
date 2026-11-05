@@ -22,7 +22,6 @@ type Config struct {
 	CloudinaryCloudName string
 	CloudinaryAPIKey    string
 	CloudinaryAPISecret string
-	BootstrapSecret     string
 	FrontendURL         string
 	CookieDomain        string
 	OpenAPIPath         string
@@ -56,7 +55,6 @@ func Load() (*Config, error) {
 	cloudinaryCloudName := os.Getenv("CLOUDINARY_CLOUD_NAME")
 	cloudinaryAPIKey := os.Getenv("CLOUDINARY_API_KEY")
 	cloudinaryAPISecret := os.Getenv("CLOUDINARY_API_SECRET")
-	bootstrapSecret := os.Getenv("BOOTSTRAP_SECRET")
 	frontendURL := os.Getenv("FRONTEND_URL")
 	cookieDomain := os.Getenv("COOKIE_DOMAIN")
 	openapiPath := os.Getenv("OPENAPI_PATH")
@@ -71,7 +69,6 @@ func Load() (*Config, error) {
 		CloudinaryCloudName: cloudinaryCloudName,
 		CloudinaryAPIKey:    cloudinaryAPIKey,
 		CloudinaryAPISecret: cloudinaryAPISecret,
-		BootstrapSecret:     bootstrapSecret,
 		FrontendURL:         frontendURL,
 		CookieDomain:        cookieDomain,
 		OpenAPIPath:         openapiPath,

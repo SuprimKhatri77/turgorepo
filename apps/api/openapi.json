@@ -1,0 +1,853 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Turgorepo API",
+    "version": "1.0.0",
+    "description": "API for the Turgorepo monorepo (Go/Gin backend). Auth uses HTTP-only cookies for access and refresh tokens."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Current host"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "accessTokenCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "access_token",
+        "description": "Short-lived JWT access token (15 minutes)"
+      },
+      "refreshTokenCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "refresh_token",
+        "description": "Long-lived JWT refresh token (30 days)"
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "superadmin",
+              "admin",
+              "member"
+            ]
+          },
+          "image_url": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "role"
+        ],
+        "example": {
+          "id": "550e8400-e29b-41d4-a716-446655440000",
+          "name": "Jane Doe",
+          "email": "jane@example.com",
+          "role": "member"
+        }
+      },
+      "RegisterBody": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 50,
+            "pattern": "^[\\p{L}\\p{M}]+(?:[ '’.\\-]+[\\p{L}\\p{M}]+)*\\.?$/u"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "password"
+        ],
+        "example": {
+          "name": "Jane Doe",
+          "email": "jane@example.com",
+          "password": "securepass123"
+        }
+      },
+      "LoginBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "example": {
+          "email": "jane@example.com",
+          "password": "securepass123"
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "INTERNAL_SERVER_ERROR",
+              "VALIDATION_FAILED",
+              "UNAUTHORIZED",
+              "INVALID_PAGE_PARAMETER",
+              "INVALID_ID_FORMAT",
+              "INVALID_QUERY_PARAM",
+              "PAGE_NOT_FOUND",
+              "RATE_LIMITED",
+              "SERVICE_UNAVAILABLE",
+              "INVALID_CREDENTIALS",
+              "INVALID_EMAIL",
+              "INVALID_PASSWORD",
+              "INVALID_TOKEN",
+              "TOKEN_EXPIRED",
+              "TOKEN_NOT_PROVIDED",
+              "TOKEN_INVALID",
+              "FORBIDDEN",
+              "USER_NOT_FOUND",
+              "USER_ALREADY_EXISTS"
+            ]
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "field": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "code",
+                "message"
+              ]
+            }
+          },
+          "meta": {
+            "nullable": true
+          }
+        },
+        "required": [
+          "success",
+          "message"
+        ],
+        "example": {
+          "success": true,
+          "message": "Server is up and running"
+        }
+      },
+      "AuthUserResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "INTERNAL_SERVER_ERROR",
+              "VALIDATION_FAILED",
+              "UNAUTHORIZED",
+              "INVALID_PAGE_PARAMETER",
+              "INVALID_ID_FORMAT",
+              "INVALID_QUERY_PARAM",
+              "PAGE_NOT_FOUND",
+              "RATE_LIMITED",
+              "SERVICE_UNAVAILABLE",
+              "INVALID_CREDENTIALS",
+              "INVALID_EMAIL",
+              "INVALID_PASSWORD",
+              "INVALID_TOKEN",
+              "TOKEN_EXPIRED",
+              "TOKEN_NOT_PROVIDED",
+              "TOKEN_INVALID",
+              "FORBIDDEN",
+              "USER_NOT_FOUND",
+              "USER_ALREADY_EXISTS"
+            ]
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "field": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "code",
+                "message"
+              ]
+            }
+          },
+          "meta": {
+            "nullable": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "superadmin",
+                  "admin",
+                  "member"
+                ]
+              },
+              "image_url": {
+                "type": "string",
+                "format": "uri"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "email",
+              "role"
+            ]
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "data"
+        ],
+        "example": {
+          "success": true,
+          "message": "logged in successfully",
+          "data": {
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "name": "Jane Doe",
+            "email": "jane@example.com",
+            "role": "member"
+          }
+        }
+      },
+      "MeResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "INTERNAL_SERVER_ERROR",
+              "VALIDATION_FAILED",
+              "UNAUTHORIZED",
+              "INVALID_PAGE_PARAMETER",
+              "INVALID_ID_FORMAT",
+              "INVALID_QUERY_PARAM",
+              "PAGE_NOT_FOUND",
+              "RATE_LIMITED",
+              "SERVICE_UNAVAILABLE",
+              "INVALID_CREDENTIALS",
+              "INVALID_EMAIL",
+              "INVALID_PASSWORD",
+              "INVALID_TOKEN",
+              "TOKEN_EXPIRED",
+              "TOKEN_NOT_PROVIDED",
+              "TOKEN_INVALID",
+              "FORBIDDEN",
+              "USER_NOT_FOUND",
+              "USER_ALREADY_EXISTS"
+            ]
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "field": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "code",
+                "message"
+              ]
+            }
+          },
+          "meta": {
+            "nullable": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "superadmin",
+                  "admin",
+                  "member"
+                ]
+              },
+              "image_url": {
+                "type": "string",
+                "format": "uri"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "email",
+              "role"
+            ]
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "data"
+        ],
+        "example": {
+          "success": true,
+          "message": "Valid session",
+          "data": {
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "name": "Jane Doe",
+            "email": "jane@example.com",
+            "role": "member"
+          }
+        }
+      },
+      "AuthSuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "INTERNAL_SERVER_ERROR",
+              "VALIDATION_FAILED",
+              "UNAUTHORIZED",
+              "INVALID_PAGE_PARAMETER",
+              "INVALID_ID_FORMAT",
+              "INVALID_QUERY_PARAM",
+              "PAGE_NOT_FOUND",
+              "RATE_LIMITED",
+              "SERVICE_UNAVAILABLE",
+              "INVALID_CREDENTIALS",
+              "INVALID_EMAIL",
+              "INVALID_PASSWORD",
+              "INVALID_TOKEN",
+              "TOKEN_EXPIRED",
+              "TOKEN_NOT_PROVIDED",
+              "TOKEN_INVALID",
+              "FORBIDDEN",
+              "USER_NOT_FOUND",
+              "USER_ALREADY_EXISTS"
+            ]
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "field": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "code",
+                "message"
+              ]
+            }
+          },
+          "meta": {
+            "nullable": true
+          }
+        },
+        "required": [
+          "success",
+          "message"
+        ],
+        "example": {
+          "success": true,
+          "message": "Logged out successfully"
+        }
+      },
+      "ApiErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "field": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "code",
+                "message"
+              ]
+            }
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "code"
+        ],
+        "example": {
+          "success": false,
+          "message": "Invalid request body",
+          "code": "VALIDATION_FAILED",
+          "errors": [
+            {
+              "code": "VALIDATION_FAILED",
+              "field": "email",
+              "message": "email must be a valid email address"
+            }
+          ]
+        }
+      }
+    },
+    "parameters": {}
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "summary": "Health check",
+        "description": "Returns whether the API server is running",
+        "responses": {
+          "200": {
+            "description": "Server is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "summary": "Register a new user",
+        "description": "Creates a new member account and sets access, refresh, and session cookies",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Registration successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthUserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "User already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many registration attempts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "summary": "Log in",
+        "description": "Authenticates a user and sets access, refresh, and session cookies",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Logged in successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthUserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many login attempts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "summary": "Log out",
+        "description": "Revokes the current refresh token when present and always clears auth cookies",
+        "security": [
+          {
+            "refreshTokenCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logged out successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSuccessResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "summary": "Refresh access token",
+        "description": "Issues a new access token and rotates the refresh token. The previous refresh token keeps working for 5 minutes so concurrent requests don't fail, but it only gets a new access token.",
+        "security": [
+          {
+            "refreshTokenCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tokens refreshed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid refresh token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Session store unavailable; cookies are kept",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "summary": "Get current user",
+        "description": "Returns the authenticated user's profile",
+        "security": [
+          {
+            "accessTokenCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Valid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid user ID format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
