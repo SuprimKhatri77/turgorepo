@@ -1,5 +1,6 @@
-import Link from "next/link";
+import { getCurrentUser } from "@/lib/api/auth/auth";
 import { createServerApiClient, getApiV1Health } from "@/lib/api/server-client";
+import { LandingActions } from "@/modules/auth/components/landing-actions";
 
 type HealthStatus = {
   online: boolean;
@@ -54,7 +55,12 @@ const stack = [
 
 export default async function Home() {
   const health = await checkHealth();
-  const publicApi = process.env.NEXT_PUBLIC_API_URL;
+  const user = await getCurrentUser();
+  // The API turns docs off in production by default.
+  const docsUrl =
+    process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_API_URL
+      ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/docs/`
+      : null;
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-10 px-6 py-16">
@@ -81,22 +87,11 @@ export default async function Home() {
         </p>
 
         <div className="flex flex-wrap gap-3 pt-1">
-          <Link
-            className="inline-flex h-9 items-center border border-transparent bg-primary px-4 text-xs font-medium text-primary-foreground transition hover:bg-primary/80"
-            href="/auth/register"
-          >
-            Create an account
-          </Link>
-          <Link
-            className="inline-flex h-9 items-center border border-border px-4 text-xs font-medium transition hover:bg-muted"
-            href="/auth/login"
-          >
-            Sign in
-          </Link>
-          {publicApi ? (
+          <LandingActions user={user} />
+          {docsUrl ? (
             <a
               className="inline-flex h-9 items-center border border-border px-4 text-xs font-medium transition hover:bg-muted"
-              href={`${publicApi}/api/v1/docs/`}
+              href={docsUrl}
               target="_blank"
               rel="noreferrer"
             >

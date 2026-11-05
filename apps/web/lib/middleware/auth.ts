@@ -3,7 +3,7 @@ import { userFromAccessToken } from "@/lib/api/auth/claims";
 import { get_api_url } from "@/utils/get-api-url";
 import { redirectForRole } from "./redirects";
 
-function clearAuthCookies(response: NextResponse) {
+export function clearAuthCookies(response: NextResponse) {
   const cookieOptions = {
     maxAge: 0,
     path: "/",
@@ -38,13 +38,10 @@ export async function attemptRefresh(
   requiredRoles: string[],
 ) {
   try {
-    console.log("attemptRefresh called, path:", req.nextUrl.pathname);
     const res = await fetch(`${get_api_url()}/api/v1/auth/refresh`, {
       method: "POST",
       headers: { Cookie: `refresh_token=${refreshToken}` },
     });
-
-    console.log("refresh response status:", res.status);
 
     if (!res.ok) {
       if (res.status === 401) {
@@ -101,7 +98,7 @@ export async function attemptRefresh(
     return response;
   } catch (error) {
     // Network/transport error: don't clear cookies — the session may still be valid
-    console.log("attemptRefresh threw an error:", error);
+    console.error("Refresh failed in proxy:", error);
     return NextResponse.redirect(new URL("/auth/login", req.url));
   }
 }
@@ -146,7 +143,7 @@ export async function attemptRefreshForAuthRoute(
     return redirect;
   } catch (error) {
     // Network/transport error: don't clear cookies
-    console.log("attemptRefreshForAuthRoute threw an error:", error);
+    console.error("Refresh failed in proxy:", error);
     return NextResponse.next();
   }
 }

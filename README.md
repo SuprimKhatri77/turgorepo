@@ -178,10 +178,13 @@ Next.js app with cookie-based auth, axios interceptors for token refresh, and ro
 
 It handles:
 
+It runs on every page, and handles:
+
 - `/auth/*` — redirect authenticated users away from login/register
 - `/admin/*` — require `admin` or `superadmin` role
+- `/dashboard/*` — require any logged-in user
 
-Route rules live in `apps/web/lib/middleware/config.ts`.
+To protect a new page, add it to `ROLE_RULES` in `apps/web/lib/middleware/config.ts`. The proxy only decodes tokens, so call `requireUser()` in the page as well, which verifies the session with the API. `apps/web/app/admin/page.tsx` is an example.
 
 ### Shared types
 
