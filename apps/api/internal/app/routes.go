@@ -1,6 +1,8 @@
 package app
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/database"
@@ -18,15 +20,22 @@ func buildRouter(
 	cld *cloudinary.Client,
 	db *database.DB,
 	redisClient *apiredis.Client,
-) *gin.Engine {
+) (*gin.Engine, error) {
 	r := gin.New()
+
+	// Without this, gin trusts every proxy and clients can fake their IP with
+	// X-Forwarded-For, which would defeat per-IP rate limits.
+	if err := r.SetTrustedProxies(cfg.TrustedProxies); err != nil {
+		return nil, fmt.Errorf("config: invalid TRUSTED_PROXIES: %w", err)
+	}
+
 	r.Use(middleware.RequestID())
 	r.Use(middleware.Recovery())
 	r.Use(gin.Logger())
 	r.Use(middleware.CORS(cfg))
 
 	routes.Setup(r, buildRouteConfig(cfg, queries, cld, db, redisClient))
-	return r
+	return r, nil
 }
 
 func buildRouteConfig(
