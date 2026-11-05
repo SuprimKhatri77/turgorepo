@@ -131,7 +131,7 @@ Base path: `/api/v1`
 | `POST` | `/auth/register` | Create account, set cookies |
 | `POST` | `/auth/login` | Sign in, set cookies |
 | `POST` | `/auth/logout` | Revoke session, clear cookies |
-| `POST` | `/auth/refresh` | Refresh access token (rotates refresh token after 5 min) |
+| `POST` | `/auth/refresh` | Refresh access token and rotate the refresh token. The previous token keeps working for 5 minutes for concurrent requests, but only gets a new access token |
 | `GET` | `/auth/me` | Current user (requires auth) |
 
 Auth uses HTTP-only cookies:
@@ -140,7 +140,7 @@ Auth uses HTTP-only cookies:
 - `refresh_token` — 30-day JWT, hashed and stored in DB
 - `is_logged_in` — public flag for the frontend
 
-User roles: `superadmin`, `admin`, `staff`, `member`
+User roles: `superadmin`, `admin`, `member`
 
 ### API docs
 

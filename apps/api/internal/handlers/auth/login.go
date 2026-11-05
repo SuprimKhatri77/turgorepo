@@ -3,6 +3,7 @@ package auth
 import (
 	"errors"
 	"net/http"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
@@ -10,6 +11,7 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	"github.com/suprimkhatri77/turgorepo/api/internal/packages/rlog"
+	"github.com/suprimkhatri77/turgorepo/api/internal/ratelimit"
 	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
@@ -19,12 +21,23 @@ import (
 
 type LoginRequest struct {
 	Email    string `json:"email" label:"Email" binding:"required,email" msg_required:"Email is required" msg_email:"Enter a valid email address"`
-	Password string `json:"password" label:"Password" binding:"required,min=8,max=50" msg_required:"Password is required" msg_min:"Password must be at least 8 characters" msg_max:"Password cannot exceed 50 characters"`
+	Password string `json:"password" label:"Password" binding:"required,max_bytes=72" msg_required:"Password is required" msg_max_bytes:"Password cannot exceed 72 bytes"`
 }
+
+// dummyPasswordHash is compared against when the email is unknown, so that path
+// takes as long as a wrong password and response time doesn't reveal which emails exist.
+var dummyPasswordHash = sync.OnceValue(func() []byte {
+	hash, err := bcrypt.GenerateFromPassword([]byte("dummy-password-for-timing"), bcrypt.DefaultCost)
+	if err != nil {
+		panic(err)
+	}
+	return hash
+})
 
 func Login(
 	queries repository.AuthRepository,
 	cfg *config.Config,
+	limiter ratelimit.Limiter,
 ) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -35,12 +48,18 @@ func Login(
 		}
 
 		utils.TrimStruct(req, "Password")
+		req.Email = utils.NormalizeEmail(req.Email)
+
+		if !ratelimit.Check(c, limiter, ratelimit.LoginPerAccount, ratelimit.AccountKey(c, req.Email)) {
+			return
+		}
 
 		rlog.Info(c, "login attempt")
 
 		user, err := queries.GetUserByEmail(ctx, req.Email)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
+				_ = bcrypt.CompareHashAndPassword(dummyPasswordHash(), []byte(req.Password))
 				rlog.Warn(c, "invalid credentials (user not found)")
 
 				c.JSON(http.StatusUnauthorized, types.APIResponse{

@@ -1,8 +1,11 @@
 package config
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -23,6 +26,7 @@ type Config struct {
 	FrontendURL         string
 	CookieDomain        string
 	OpenAPIPath         string
+	TrustedProxies      []string
 	AccessTokenTTL      time.Duration
 	RefreshTokenTTL     time.Duration
 	RefreshReuseWindow  time.Duration
@@ -71,10 +75,72 @@ func Load() (*Config, error) {
 		FrontendURL:         frontendURL,
 		CookieDomain:        cookieDomain,
 		OpenAPIPath:         openapiPath,
+		TrustedProxies:      splitList(os.Getenv("TRUSTED_PROXIES")),
 		AccessTokenTTL:      15 * time.Minute,
 		RefreshTokenTTL:     30 * 24 * time.Hour,
 		RefreshReuseWindow:  5 * time.Minute,
 	}, nil
+}
+
+// splitList parses a comma-separated env value, dropping blanks.
+func splitList(value string) []string {
+	var items []string
+	for _, item := range strings.Split(value, ",") {
+		if item = strings.TrimSpace(item); item != "" {
+			items = append(items, item)
+		}
+	}
+	return items
+}
+
+const minJWTSecretBytes = 32
+
+// IsRelease reports whether the API is running in production mode.
+func (c *Config) IsRelease() bool {
+	return c.GinMode == "release"
+}
+
+// Validate rejects configuration the API must not start with. JWT secrets are
+// always required; release mode also rejects weak secrets, since anyone who can
+// guess one can forge tokens for any user.
+func (c *Config) Validate() error {
+	var errs []error
+
+	if c.JWTAccessSecret == "" {
+		errs = append(errs, errors.New("JWT_ACCESS_SECRET is required"))
+	}
+	if c.JWTRefreshSecret == "" {
+		errs = append(errs, errors.New("JWT_REFRESH_SECRET is required"))
+	}
+
+	if c.IsRelease() {
+		errs = append(errs, validateReleaseSecret("JWT_ACCESS_SECRET", c.JWTAccessSecret))
+		errs = append(errs, validateReleaseSecret("JWT_REFRESH_SECRET", c.JWTRefreshSecret))
+		if c.JWTAccessSecret != "" && c.JWTAccessSecret == c.JWTRefreshSecret {
+			errs = append(errs, errors.New("JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be different"))
+		}
+		if c.FrontendURL == "" {
+			errs = append(errs, errors.New("FRONTEND_URL is required in release mode"))
+		}
+		if c.CookieDomain == "" {
+			errs = append(errs, errors.New("COOKIE_DOMAIN is required in release mode"))
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
+func validateReleaseSecret(name, secret string) error {
+	if secret == "" {
+		return nil // already reported as missing
+	}
+	if len(secret) < minJWTSecretBytes {
+		return fmt.Errorf("%s must be at least %d bytes in release mode", name, minJWTSecretBytes)
+	}
+	if strings.Contains(strings.ToLower(secret), "change-me") {
+		return fmt.Errorf("%s is still a placeholder value", name)
+	}
+	return nil
 }
 
 func (c *Config) AccessCookieMaxAge() int {

@@ -50,12 +50,25 @@ func SetAccessCookie(c *gin.Context, cfg *config.Config, accessToken string) {
 	utils.SetAuthCookie(c, "access_token", accessToken, cfg.AccessCookieMaxAge(), cfg)
 }
 
-func PublicUser(user db.User) db.User {
-	return db.User{
-		ID:       user.ID,
-		Name:     user.Name,
-		Email:    user.Email,
-		Role:     user.Role,
-		ImageUrl: user.ImageUrl,
+// PublicUserResponse is the user shape returned by the API. It matches UserSchema
+// in @repo/types.
+type PublicUserResponse struct {
+	ID       string  `json:"id"`
+	Name     string  `json:"name"`
+	Email    string  `json:"email"`
+	Role     string  `json:"role"`
+	ImageURL *string `json:"image_url,omitempty"`
+}
+
+func PublicUser(user db.User) PublicUserResponse {
+	public := PublicUserResponse{
+		ID:    uuid.UUID(user.ID.Bytes).String(),
+		Name:  user.Name,
+		Email: user.Email,
+		Role:  user.Role,
 	}
+	if user.ImageUrl.Valid {
+		public.ImageURL = &user.ImageUrl.String
+	}
+	return public
 }

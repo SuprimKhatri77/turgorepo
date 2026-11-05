@@ -1,6 +1,6 @@
-import { User } from "@repo/types";
-import { jwtDecode } from "jwt-decode";
+import type { User } from "@repo/types";
 import { cookies } from "next/headers";
+import { userFromAccessToken } from "./claims";
 
 /**
  * Cheap current user from JWT claims (no API call).
@@ -13,11 +13,5 @@ export async function getCurrentUser(): Promise<User | null> {
   const accessToken = cookieStore.get("access_token")?.value;
   if (!accessToken) return null;
 
-  try {
-    const decoded = jwtDecode<User & { exp: number }>(accessToken);
-    if (decoded.exp * 1000 < Date.now()) return null;
-    return decoded;
-  } catch {
-    return null;
-  }
+  return userFromAccessToken(accessToken);
 }

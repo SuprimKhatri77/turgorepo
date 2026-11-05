@@ -32,6 +32,10 @@ func New(ctx context.Context) (*App, error) {
 
 	initLogger(cfg)
 
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("config: %w", err)
+	}
+
 	db, err := initDB(ctx, cfg)
 	if err != nil {
 		return nil, err
@@ -56,7 +60,12 @@ func New(ctx context.Context) (*App, error) {
 	// Initialize cron jobs when needed:
 	// cron.CronExample(queries)
 
-	r := buildRouter(cfg, queries, cldClient, db, redisClient)
+	r, err := buildRouter(cfg, queries, cldClient, db, redisClient)
+	if err != nil {
+		_ = redisClient.Close()
+		db.Close()
+		return nil, err
+	}
 
 	return &App{
 		Cfg:       cfg,

@@ -13,6 +13,4 @@ CREATE TABLE sessions (
 );
 
 CREATE INDEX idx_sessions_user_id_active ON sessions(user_id) WHERE revoked_at IS NULL;
-CREATE INDEX idx_sessions_current_token ON sessions(current_token_hash);
-
-DROP TABLE IF EXISTS refresh_tokens;
+CREATE INDEX idx_sessions_expires_at ON sessions(expires_at);

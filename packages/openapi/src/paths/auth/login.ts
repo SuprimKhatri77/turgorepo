@@ -25,6 +25,7 @@ export function registerLoginPath() {
       },
       400: errorResponse("Validation failed"),
       401: errorResponse("Invalid credentials"),
+      429: errorResponse("Too many login attempts"),
       500: errorResponse("Internal server error"),
     },
   });
