@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { attemptRefresh, attemptRefreshForAuthRoute, getSession } from "./auth";
+import { userFromAccessToken } from "@/lib/api/auth/claims";
+import { attemptRefresh, attemptRefreshForAuthRoute } from "./auth";
 import { redirectForRole, redirectTo } from "./redirects";
 
 export async function handleAuthRoute(req: NextRequest): Promise<NextResponse> {
@@ -15,12 +16,11 @@ export async function handleAuthRoute(req: NextRequest): Promise<NextResponse> {
 
   const accessToken = req.cookies.get("access_token")?.value;
   if (accessToken) {
-    const user = getSession(accessToken);
+    const user = userFromAccessToken(accessToken);
     console.log("auth route: session user:", user?.role ?? "null");
 
     if (user) {
-      const roleRedirect = redirectForRole(req, user.role);
-      if (roleRedirect) return roleRedirect;
+      return redirectForRole(req, user.role);
     }
   }
 
@@ -47,7 +47,7 @@ export async function handleProtectedRoute(
   }
 
   if (accessToken) {
-    const user = getSession(accessToken);
+    const user = userFromAccessToken(accessToken);
     console.log("protected route: session user:", user?.role ?? "null");
 
     if (user) {

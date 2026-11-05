@@ -7,7 +7,6 @@ export const AUTH_ENDPOINTS = [
   "/auth/register",
 ];
 export const PROTECTED_PATHS = Object.keys(ROLE_RULES);
-export const COOKIE_DOMAIN = process.env.NEXT_PUBLIC_COOKIE_DOMAIN || "";
 
 export function isProtectedPath(pathname: string) {
   return PROTECTED_PATHS.some((path) => pathname.startsWith(path));

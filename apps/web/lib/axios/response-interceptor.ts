@@ -1,6 +1,6 @@
 import axios from "axios";
 import type { AxiosInstance, InternalAxiosRequestConfig } from "axios";
-import { AUTH_ENDPOINTS, COOKIE_DOMAIN, isProtectedPath } from "./constants";
+import { AUTH_ENDPOINTS, isProtectedPath } from "./constants";
 import {
   getIsRefreshing,
   processQueue,
@@ -54,18 +54,16 @@ export function attachResponseInterceptor(api: AxiosInstance) {
         processQueue(null); // unblock queued requests
         return api(originalRequest); // retry the original call
       } catch (refreshError) {
-        const isDefinitive401 =
+        processQueue(refreshError); // reject all queued requests
+
+        // A 401 means the session is over, and the API has already cleared the
+        // cookies. Anything else (e.g. a 503 during an outage) isn't a logout.
+        const sessionEnded =
           axios.isAxiosError(refreshError) &&
           refreshError.response?.status === 401;
 
-        if (isDefinitive401) {
-          document.cookie = `is_logged_in=; max-age=0; path=/; domain=${COOKIE_DOMAIN}`;
-        }
-
-        processQueue(refreshError); // reject all queued requests
-
-        // on protected routes, send to login; on public pages stay put
         if (
+          sessionEnded &&
           typeof window !== "undefined" &&
           isProtectedPath(window.location.pathname)
         ) {

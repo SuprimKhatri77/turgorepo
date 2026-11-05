@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { User } from "@repo/types";
-import { jwtDecode } from "jwt-decode";
+import { userFromAccessToken } from "@/lib/api/auth/claims";
 import { get_api_url } from "@/utils/get-api-url";
+import { redirectForRole } from "./redirects";
 
 function clearAuthCookies(response: NextResponse) {
   const cookieOptions = {
@@ -24,16 +24,6 @@ function clearAuthCookies(response: NextResponse) {
     ...cookieOptions,
     httpOnly: false,
   });
-}
-
-export function getSession(token: string): User | null {
-  try {
-    const decoded = jwtDecode<User & { exp: number }>(token);
-    if (decoded.exp * 1000 < Date.now()) return null;
-    return decoded;
-  } catch {
-    return null;
-  }
 }
 
 function forwardSetCookie(response: NextResponse, cookies: string[]): void {
@@ -73,7 +63,7 @@ export async function attemptRefresh(
       return NextResponse.redirect(new URL("/auth/login", req.url));
     }
 
-    const user = await getSession(newAccessToken);
+    const user = userFromAccessToken(newAccessToken);
 
     if (!user) {
       return NextResponse.redirect(new URL("/auth/login", req.url));
@@ -90,14 +80,22 @@ export async function attemptRefresh(
     const newRefreshToken = extractRefreshTokenFromCookie(cookies.join("; "));
     const refreshCookieValue = newRefreshToken ?? refreshToken;
 
-    const response = NextResponse.next({
-      request: {
-        headers: new Headers({
-          ...Object.fromEntries(req.headers),
-          cookie: `access_token=${newAccessToken}; refresh_token=${refreshCookieValue}`,
-        }),
-      },
-    });
+    // Pass the new tokens to the page without dropping the request's other cookies.
+    const otherCookies = req.cookies
+      .getAll()
+      .filter(({ name }) => name !== "access_token" && name !== "refresh_token")
+      .map(({ name, value }) => `${name}=${value}`);
+    const headers = new Headers(req.headers);
+    headers.set(
+      "cookie",
+      [
+        ...otherCookies,
+        `access_token=${newAccessToken}`,
+        `refresh_token=${refreshCookieValue}`,
+      ].join("; "),
+    );
+
+    const response = NextResponse.next({ request: { headers } });
 
     forwardSetCookie(response, cookies);
     return response;
@@ -135,7 +133,7 @@ export async function attemptRefreshForAuthRoute(
       return response;
     }
 
-    const user = await getSession(newAccessToken);
+    const user = userFromAccessToken(newAccessToken);
 
     if (!user) {
       const response = NextResponse.next();
@@ -143,15 +141,9 @@ export async function attemptRefreshForAuthRoute(
       return response;
     }
 
-    if (user.role === "admin" || user.role === "superadmin") {
-      const redirect = NextResponse.redirect(new URL("/admin", req.url));
-      forwardSetCookie(redirect, cookies);
-      return redirect;
-    }
-
-    const response = NextResponse.next();
-    forwardSetCookie(response, cookies);
-    return response;
+    const redirect = redirectForRole(req, user.role);
+    forwardSetCookie(redirect, cookies);
+    return redirect;
   } catch (error) {
     // Network/transport error: don't clear cookies
     console.log("attemptRefreshForAuthRoute threw an error:", error);
