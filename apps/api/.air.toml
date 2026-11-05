@@ -6,7 +6,9 @@ tmp_dir = "tmp"
 [build]
   args_bin = []
   bin = "./tmp/main"
-  cmd = "go build -o ./tmp/main ./cmd/server"
+  # Rename into place so a rebuild triggered during startup can't leave air running
+  # a half-written binary, which fails with "Text file busy" and never retries.
+  cmd = "go build -o ./tmp/main.new ./cmd/server && mv ./tmp/main.new ./tmp/main"
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "node_modules"]
   exclude_file = []
