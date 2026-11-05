@@ -24,5 +24,9 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/auth/:path*"],
+  // Every page, so that ROLE_RULES in lib/middleware/config.ts is the only place
+  // to protect one. Skips API routes and static files.
+  matcher: [
+    "/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+  ],
 };

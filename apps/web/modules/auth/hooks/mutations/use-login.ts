@@ -9,6 +9,7 @@ import {
   postApiV1AuthLogin,
   type LoginBody,
 } from "@/lib/api/client";
+import { homePathForRole } from "@/lib/middleware/config";
 import { useAuthStore } from "@/store/auth";
 import { getApiError } from "@/utils/get-api-error";
 
@@ -26,7 +27,7 @@ export function useLogin() {
     onSuccess: (response) => {
       setUser(response.data.data);
       toast.success(response.data.message);
-      router.replace("/");
+      router.replace(homePathForRole(response.data.data.role));
       router.refresh();
     },
     onError: (error) => {
