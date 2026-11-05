@@ -25,6 +25,7 @@ export function registerRegisterPath() {
       },
       400: errorResponse("Validation failed"),
       409: errorResponse("User already exists"),
+      413: errorResponse("Request body is too large"),
       429: errorResponse("Too many registration attempts"),
       500: errorResponse("Internal server error"),
     },

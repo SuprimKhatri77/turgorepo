@@ -51,7 +51,14 @@ func ConnectWithRetry(ctx context.Context, connString string, maxRetries int) (*
 			return database, nil
 		}
 		slog.Warn("failed to connect to database, retrying...", "attempt", i+1, "max", maxRetries, "err", err)
-		time.Sleep(2 * time.Second)
+		if i+1 == maxRetries {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(2 * time.Second):
+		}
 	}
 	return nil, fmt.Errorf("failed to open database after %d attempts: %w", maxRetries, err)
 }

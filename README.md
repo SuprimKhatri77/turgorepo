@@ -108,6 +108,15 @@ bun run dev --filter=web
 bun run dev --filter=api
 ```
 
+### 4. Deploy
+
+Production images, and a guide for AWS ECS with an external database, are in [docs/deploy-aws.md](docs/deploy-aws.md).
+
+```sh
+bun run docker:build:api
+NEXT_PUBLIC_API_URL=https://api.example.com bun run docker:build:web
+```
+
 ## API
 
 Base path: `/api/v1`
@@ -116,7 +125,8 @@ Base path: `/api/v1`
 
 | Method | Path | Description |
 | --- | --- | --- |
-| `GET` | `/health` | Health check |
+| `GET` | `/health` | Liveness: the process is up. Use this for load balancers |
+| `GET` | `/ready` | Readiness: the database and Redis are reachable. Use this for monitoring |
 | `POST` | `/auth/register` | Create account, set cookies |
 | `POST` | `/auth/login` | Sign in, set cookies |
 | `POST` | `/auth/logout` | Revoke session, clear cookies |
@@ -280,6 +290,9 @@ After changing Zod schemas or OpenAPI path definitions, run `bun run generate` a
 | `bun run docker:dev:services` | Start only Postgres and Redis in Docker |
 | `bun run docker:dev:logs` | Follow Docker stack logs |
 | `bun run docker:dev:down` | Stop the Docker stack |
+| `bun run docker:build:api` | Build the production API image |
+| `bun run docker:build:web` | Build the production web image (needs `NEXT_PUBLIC_API_URL` set) |
+| `bun run start` | Build and run both apps without Docker |
 | `bun run format` | Format with Prettier |
 | `bun run prepush` | Typecheck + lint:go + test:go + build (same as the pre-push hook) |
 | `bun run ci` | Full local CI: generate:check, sqlc:check, typecheck, lint, lint:go, test:go, build |

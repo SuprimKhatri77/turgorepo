@@ -16,6 +16,7 @@ type Config struct {
 	Port                int
 	GinMode             string
 	DatabaseURL         string
+	MigrateDatabaseURL  string
 	RedisURL            string
 	JWTRefreshSecret    string
 	JWTAccessSecret     string
@@ -26,6 +27,7 @@ type Config struct {
 	CookieDomain        string
 	OpenAPIPath         string
 	TrustedProxies      []string
+	DocsEnabled         bool
 	AccessTokenTTL      time.Duration
 	RefreshTokenTTL     time.Duration
 	RefreshReuseWindow  time.Duration
@@ -63,6 +65,7 @@ func Load() (*Config, error) {
 		Port:                port,
 		GinMode:             ginMode,
 		DatabaseURL:         dbURL,
+		MigrateDatabaseURL:  firstNonEmpty(os.Getenv("MIGRATE_DATABASE_URL"), dbURL),
 		RedisURL:            redisURL,
 		JWTRefreshSecret:    jwtRefreshSecret,
 		JWTAccessSecret:     jwtAccessSecret,
@@ -73,10 +76,28 @@ func Load() (*Config, error) {
 		CookieDomain:        cookieDomain,
 		OpenAPIPath:         openapiPath,
 		TrustedProxies:      splitList(os.Getenv("TRUSTED_PROXIES")),
+		DocsEnabled:         docsEnabled(os.Getenv("DOCS_ENABLED"), ginMode),
 		AccessTokenTTL:      15 * time.Minute,
 		RefreshTokenTTL:     30 * 24 * time.Hour,
 		RefreshReuseWindow:  5 * time.Minute,
 	}, nil
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+// docsEnabled keeps API docs off in release mode unless explicitly turned on.
+func docsEnabled(value, ginMode string) bool {
+	if enabled, err := strconv.ParseBool(value); err == nil {
+		return enabled
+	}
+	return ginMode != "release"
 }
 
 // splitList parses a comma-separated env value, dropping blanks.

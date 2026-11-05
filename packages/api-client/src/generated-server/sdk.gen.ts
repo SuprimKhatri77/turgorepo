@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { GetApiV1AuthMeData, GetApiV1AuthMeErrors, GetApiV1AuthMeResponses, GetApiV1HealthData, GetApiV1HealthResponses, PostApiV1AuthLoginData, PostApiV1AuthLoginErrors, PostApiV1AuthLoginResponses, PostApiV1AuthLogoutData, PostApiV1AuthLogoutErrors, PostApiV1AuthLogoutResponses, PostApiV1AuthRefreshData, PostApiV1AuthRefreshErrors, PostApiV1AuthRefreshResponses, PostApiV1AuthRegisterData, PostApiV1AuthRegisterErrors, PostApiV1AuthRegisterResponses } from './types.gen';
+import type { GetApiV1AuthMeData, GetApiV1AuthMeErrors, GetApiV1AuthMeResponses, GetApiV1HealthData, GetApiV1HealthResponses, GetApiV1ReadyData, GetApiV1ReadyErrors, GetApiV1ReadyResponses, PostApiV1AuthLoginData, PostApiV1AuthLoginErrors, PostApiV1AuthLoginResponses, PostApiV1AuthLogoutData, PostApiV1AuthLogoutErrors, PostApiV1AuthLogoutResponses, PostApiV1AuthRefreshData, PostApiV1AuthRefreshErrors, PostApiV1AuthRefreshResponses, PostApiV1AuthRegisterData, PostApiV1AuthRegisterErrors, PostApiV1AuthRegisterResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -24,6 +24,13 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
  * Returns whether the API server is running
  */
 export const getApiV1Health = <ThrowOnError extends boolean = false>(options?: Options<GetApiV1HealthData, ThrowOnError>): RequestResult<GetApiV1HealthResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetApiV1HealthResponses, unknown, ThrowOnError>({ url: '/api/v1/health', ...options });
+
+/**
+ * Readiness check
+ *
+ * Returns whether the API can reach its database and Redis
+ */
+export const getApiV1Ready = <ThrowOnError extends boolean = false>(options?: Options<GetApiV1ReadyData, ThrowOnError>): RequestResult<GetApiV1ReadyResponses, GetApiV1ReadyErrors, ThrowOnError> => (options?.client ?? client).get<GetApiV1ReadyResponses, GetApiV1ReadyErrors, ThrowOnError>({ url: '/api/v1/ready', ...options });
 
 /**
  * Register a new user

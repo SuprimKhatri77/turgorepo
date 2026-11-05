@@ -26,7 +26,7 @@ export type LoginBody = {
 export type HealthResponse = {
     success: true;
     message: string;
-    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS';
+    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'PAYLOAD_TOO_LARGE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS';
     errors?: Array<{
         code: string;
         field?: string;
@@ -38,7 +38,7 @@ export type HealthResponse = {
 export type AuthUserResponse = {
     success: true;
     message: string;
-    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS';
+    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'PAYLOAD_TOO_LARGE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS';
     errors?: Array<{
         code: string;
         field?: string;
@@ -57,7 +57,7 @@ export type AuthUserResponse = {
 export type MeResponse = {
     success: true;
     message: string;
-    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS';
+    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'PAYLOAD_TOO_LARGE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS';
     errors?: Array<{
         code: string;
         field?: string;
@@ -76,7 +76,7 @@ export type MeResponse = {
 export type AuthSuccessResponse = {
     success: true;
     message: string;
-    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS';
+    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'PAYLOAD_TOO_LARGE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS';
     errors?: Array<{
         code: string;
         field?: string;
@@ -112,6 +112,31 @@ export type GetApiV1HealthResponses = {
 
 export type GetApiV1HealthResponse = GetApiV1HealthResponses[keyof GetApiV1HealthResponses];
 
+export type GetApiV1ReadyData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/ready';
+};
+
+export type GetApiV1ReadyErrors = {
+    /**
+     * A dependency is unavailable
+     */
+    503: ApiErrorResponse;
+};
+
+export type GetApiV1ReadyError = GetApiV1ReadyErrors[keyof GetApiV1ReadyErrors];
+
+export type GetApiV1ReadyResponses = {
+    /**
+     * Service is ready
+     */
+    200: HealthResponse;
+};
+
+export type GetApiV1ReadyResponse = GetApiV1ReadyResponses[keyof GetApiV1ReadyResponses];
+
 export type PostApiV1AuthRegisterData = {
     body?: RegisterBody;
     path?: never;
@@ -128,6 +153,10 @@ export type PostApiV1AuthRegisterErrors = {
      * User already exists
      */
     409: ApiErrorResponse;
+    /**
+     * Request body is too large
+     */
+    413: ApiErrorResponse;
     /**
      * Too many registration attempts
      */
@@ -165,6 +194,10 @@ export type PostApiV1AuthLoginErrors = {
      * Invalid credentials
      */
     401: ApiErrorResponse;
+    /**
+     * Request body is too large
+     */
+    413: ApiErrorResponse;
     /**
      * Too many login attempts
      */
