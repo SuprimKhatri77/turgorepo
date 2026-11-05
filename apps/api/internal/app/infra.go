@@ -49,7 +49,7 @@ func initCloudinary(cfg *config.Config) (*cloudinary.Client, error) {
 
 func initLogger(cfg *config.Config) {
 	var handler slog.Handler
-	if os.Getenv("GO_ENV") == "production" {
+	if cfg.IsRelease() {
 		handler = slog.NewJSONHandler(os.Stdout, nil)
 	} else {
 		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{

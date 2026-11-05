@@ -6,8 +6,10 @@ import (
 	"log/slog"
 
 	"github.com/gin-gonic/gin"
+	robfigcron "github.com/robfig/cron/v3"
 
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
+	"github.com/suprimkhatri77/turgorepo/api/internal/cron"
 	"github.com/suprimkhatri77/turgorepo/api/internal/database"
 	dbgen "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 	"github.com/suprimkhatri77/turgorepo/api/internal/packages/cloudinary"
@@ -22,6 +24,7 @@ type App struct {
 	Redis     *apiredis.Client
 	CldClient *cloudinary.Client
 	Router    *gin.Engine
+	Scheduler *robfigcron.Cron
 }
 
 func New(ctx context.Context) (*App, error) {
@@ -57,11 +60,16 @@ func New(ctx context.Context) (*App, error) {
 	queries := dbgen.New(db.Pool)
 	validator.Init()
 
-	// Initialize cron jobs when needed:
-	// cron.CronExample(queries)
+	scheduler, err := cron.Start(queries)
+	if err != nil {
+		_ = redisClient.Close()
+		db.Close()
+		return nil, fmt.Errorf("cron: %w", err)
+	}
 
 	r, err := buildRouter(cfg, queries, cldClient, db, redisClient)
 	if err != nil {
+		scheduler.Stop()
 		_ = redisClient.Close()
 		db.Close()
 		return nil, err
@@ -74,10 +82,14 @@ func New(ctx context.Context) (*App, error) {
 		Redis:     redisClient,
 		CldClient: cldClient,
 		Router:    r,
+		Scheduler: scheduler,
 	}, nil
 }
 
 func (a *App) Close() {
+	if a.Scheduler != nil {
+		<-a.Scheduler.Stop().Done()
+	}
 	if a.Redis != nil {
 		if err := a.Redis.Close(); err != nil {
 			slog.Warn("failed to close redis", "err", err)

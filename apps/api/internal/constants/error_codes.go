@@ -11,6 +11,7 @@ const (
 	PageNotFound        = "PAGE_NOT_FOUND"
 	RateLimited         = "RATE_LIMITED"
 	ServiceUnavailable  = "SERVICE_UNAVAILABLE"
+	PayloadTooLarge     = "PAYLOAD_TOO_LARGE"
 
 	// auth
 	InvalidCredentials = "INVALID_CREDENTIALS"

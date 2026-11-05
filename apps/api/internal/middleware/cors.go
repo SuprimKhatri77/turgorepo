@@ -9,12 +9,7 @@ import (
 func CORS(cfg *config.Config) gin.HandlerFunc {
 	config := cors.DefaultConfig()
 
-	allowOrigins := []string{"http://localhost:3000"}
-	if cfg.FrontendURL != "" {
-		allowOrigins = append(allowOrigins, cfg.FrontendURL)
-	}
-
-	config.AllowOrigins = allowOrigins
+	config.AllowOrigins = allowedOrigins(cfg)
 
 	config.AllowCredentials = true
 
@@ -30,4 +25,13 @@ func CORS(cfg *config.Config) gin.HandlerFunc {
 	config.ExposeHeaders = []string{"Content-Length", "X-Request-ID"}
 
 	return cors.New(config)
+}
+
+// allowedOrigins never includes localhost in release mode, where credentialed
+// requests from a developer's machine must not reach production.
+func allowedOrigins(cfg *config.Config) []string {
+	if cfg.FrontendURL != "" {
+		return []string{cfg.FrontendURL}
+	}
+	return []string{"http://localhost:3000"}
 }

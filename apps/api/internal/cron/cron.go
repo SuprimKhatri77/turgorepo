@@ -1,21 +1,43 @@
+// Package cron runs the API's scheduled jobs.
 package cron
 
 import (
-	"log"
+	"context"
+	"log/slog"
+	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/robfig/cron/v3"
-	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 )
 
-func CronExample(queries *db.Queries) {
+const cleanupTimeout = time.Minute
+
+// SessionStore is the part of the database the jobs need.
+type SessionStore interface {
+	DeleteExpiredSessions(ctx context.Context) (pgconn.CommandTag, error)
+}
+
+// Start schedules the jobs and returns the running scheduler. Every API container
+// runs its own scheduler, so jobs must be safe to run more than once.
+func Start(store SessionStore) (*cron.Cron, error) {
 	c := cron.New()
 
-	_, err := c.AddFunc("0 0 * * *", func() {
-		// TODO: Implement a job
-	})
-	if err != nil {
-		log.Fatalf("cron failed: %v", err)
+	if _, err := c.AddFunc("@daily", func() { cleanupExpiredSessions(store) }); err != nil {
+		return nil, err
 	}
 
 	c.Start()
+	return c, nil
+}
+
+func cleanupExpiredSessions(store SessionStore) {
+	ctx, cancel := context.WithTimeout(context.Background(), cleanupTimeout)
+	defer cancel()
+
+	result, err := store.DeleteExpiredSessions(ctx)
+	if err != nil {
+		slog.Error("failed to delete expired sessions", "err", err)
+		return
+	}
+	slog.Info("deleted expired sessions", "count", result.RowsAffected())
 }

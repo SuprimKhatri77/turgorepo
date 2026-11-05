@@ -82,3 +82,21 @@ func TestSplitList(t *testing.T) {
 		t.Errorf("empty value should give nil, got %v", got)
 	}
 }
+
+func TestDocsEnabled(t *testing.T) {
+	tests := []struct {
+		value, mode string
+		want        bool
+	}{
+		{"", "debug", true},
+		{"", "release", false},
+		{"true", "release", true},
+		{"false", "debug", false},
+		{"not-a-bool", "release", false},
+	}
+	for _, tt := range tests {
+		if got := docsEnabled(tt.value, tt.mode); got != tt.want {
+			t.Errorf("docsEnabled(%q, %q) = %v, want %v", tt.value, tt.mode, got, tt.want)
+		}
+	}
+}

@@ -14,6 +14,10 @@ import (
 	routesconfig "github.com/suprimkhatri77/turgorepo/api/internal/routes/config"
 )
 
+// maxRequestBodyBytes applies to every route. If you add file uploads, move
+// BodyLimit onto a route group so the upload route can have its own limit.
+const maxRequestBodyBytes = 1 << 20
+
 func buildRouter(
 	cfg *config.Config,
 	queries *dbgen.Queries,
@@ -31,8 +35,13 @@ func buildRouter(
 
 	r.Use(middleware.RequestID())
 	r.Use(middleware.Recovery())
-	r.Use(gin.Logger())
+	if cfg.IsRelease() {
+		r.Use(middleware.RequestLogger())
+	} else {
+		r.Use(gin.Logger())
+	}
 	r.Use(middleware.CORS(cfg))
+	r.Use(middleware.BodyLimit(maxRequestBodyBytes))
 
 	routes.Setup(r, buildRouteConfig(cfg, queries, cld, db, redisClient))
 	return r, nil

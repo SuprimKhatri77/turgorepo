@@ -1,5 +1,6 @@
 import { registry } from "../registry.ts";
 import { schemas } from "../schemas/index.ts";
+import { errorResponse } from "./shared.ts";
 
 export function registerHealthPath() {
   registry.registerPath({
@@ -14,6 +15,22 @@ export function registerHealthPath() {
           "application/json": { schema: schemas.HealthResponse },
         },
       },
+    },
+  });
+
+  registry.registerPath({
+    method: "get",
+    path: "/api/v1/ready",
+    summary: "Readiness check",
+    description: "Returns whether the API can reach its database and Redis",
+    responses: {
+      200: {
+        description: "Service is ready",
+        content: {
+          "application/json": { schema: schemas.HealthResponse },
+        },
+      },
+      503: errorResponse("A dependency is unavailable"),
     },
   });
 }

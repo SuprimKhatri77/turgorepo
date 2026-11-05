@@ -31,10 +31,6 @@ func setupDocsRoutes(r *gin.RouterGroup, cfg config.Config) {
 		html := strings.Replace(scalarHTML, `data-url="/openapi.json"`, `data-url="`+r.BasePath()+`/openapi.json"`, 1)
 		c.String(http.StatusOK, html)
 	})
-
-	r.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"message": "Welcome to the API"})
-	})
 }
 
 // scalarHTML is the Scalar API docs page that loads /openapi.json.
@@ -44,12 +40,10 @@ const scalarHTML = `<!DOCTYPE html>
   <title>API Docs</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="https://cdn.jsdelivr.net/npm/@scalar/api-reference/favicon.ico" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@scalar/api-reference/style.css" />
 </head>
 <body>
   <script id="api-reference" data-url="/openapi.json"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.77.0"></script>
 </body>
 </html>
 `

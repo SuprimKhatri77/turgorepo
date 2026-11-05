@@ -74,3 +74,65 @@ jobs:
           NEXT_PUBLIC_API_URL: http://localhost:5000
           INTERNAL_API_URL: http://localhost:5000
           COOKIE_DOMAIN: localhost
+
+  migrations:
+    name: Migrations up and down
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: turgorepo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/turgorepo?sslmode=disable
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: apps/api/go.sum
+
+      - name: Migrate up, down, and up again
+        working-directory: apps/api
+        run: |
+          go run ./cmd/migrate up
+          go run ./cmd/migrate down 3
+          go run ./cmd/migrate up
+
+  images:
+    name: Build production images
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Build API image
+        run: docker build -t turgorepo-api apps/api
+
+      - name: Build web image
+        run: >-
+          docker build -f apps/web/Dockerfile
+          --build-arg NEXT_PUBLIC_API_URL=https://api.example.com
+          -t turgorepo-web .
