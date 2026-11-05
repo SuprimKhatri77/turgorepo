@@ -71,7 +71,7 @@ export const postApiV1AuthLogout = <ThrowOnError extends boolean = false>(option
 /**
  * Refresh access token
  *
- * Issues a new access token using the refresh token cookie. Rotates the refresh token when the current one is older than 5 minutes.
+ * Issues a new access token and rotates the refresh token. The previous refresh token keeps working for 5 minutes so concurrent requests don't fail, but it only gets a new access token.
  */
 export const postApiV1AuthRefresh = <ThrowOnError extends boolean = false>(options?: Options<PostApiV1AuthRefreshData, ThrowOnError>): RequestResult<PostApiV1AuthRefreshResponses, PostApiV1AuthRefreshErrors, ThrowOnError> => (options?.client ?? client).post<PostApiV1AuthRefreshResponses, PostApiV1AuthRefreshErrors, ThrowOnError>({
     security: [{

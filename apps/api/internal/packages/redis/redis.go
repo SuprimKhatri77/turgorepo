@@ -69,3 +69,30 @@ func ConnectWithRetry(ctx context.Context, redisURL string, maxRetries int) (*Cl
 	}
 	return nil, fmt.Errorf("failed to connect to redis after %d attempts: %w", maxRetries, err)
 }
+
+// allowScript increments a fixed-window counter and returns its count and time
+// left. It runs atomically so concurrent requests can't leave a key without an expiry.
+var allowScript = goredis.NewScript(`
+local count = redis.call("INCR", KEYS[1])
+if count == 1 then
+  redis.call("PEXPIRE", KEYS[1], ARGV[1])
+end
+local ttl = redis.call("PTTL", KEYS[1])
+if ttl < 0 then
+  redis.call("PEXPIRE", KEYS[1], ARGV[1])
+  ttl = tonumber(ARGV[1])
+end
+return {count, ttl}
+`)
+
+// Allow implements ratelimit.Limiter using a fixed window per key.
+func (c *Client) Allow(ctx context.Context, key string, limit int, window time.Duration) (bool, time.Duration, error) {
+	values, err := allowScript.Run(ctx, c.rdb, []string{key}, window.Milliseconds()).Int64Slice()
+	if err != nil {
+		return false, 0, err
+	}
+	if len(values) != 2 {
+		return false, 0, fmt.Errorf("rate limit script returned %d values", len(values))
+	}
+	return values[0] <= int64(limit), time.Duration(values[1]) * time.Millisecond, nil
+}

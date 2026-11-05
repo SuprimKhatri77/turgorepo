@@ -14,6 +14,7 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	dbgen "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
+	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -84,6 +85,8 @@ func Seed(ctx context.Context) error {
 }
 
 func upsertSeedUser(ctx context.Context, queries *dbgen.Queries, u seedUser) error {
+	u.Email = utils.NormalizeEmail(u.Email)
+
 	existing, err := queries.GetUserByEmail(ctx, u.Email)
 	if err == nil {
 		slog.Info("seed user already exists, skipping", "email", existing.Email, "role", existing.Role)

@@ -6,6 +6,5 @@ export const UserSchema = UserSchemaBase.openapi("User", {
     name: "Jane Doe",
     email: "jane@example.com",
     role: "member",
-    image_url: null,
   },
 });

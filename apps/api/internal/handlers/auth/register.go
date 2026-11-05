@@ -19,9 +19,9 @@ import (
 )
 
 type RegisterRequest struct {
-	Name     string `json:"name" label:"Name" binding:"required,not_blank,min=2,max=50,alphaspace" msg_required:"Name is required" msg_min:"Name must be at least 2 characters" msg_max:"Name cannot exceed 50 characters" msg_alphaspace:"Name can only contain letters and spaces" msg_not_blank:"Name cannot be blank"`
+	Name     string `json:"name" label:"Name" binding:"required,not_blank,min=2,max=50,person_name" msg_required:"Name is required" msg_min:"Name must be at least 2 characters" msg_max:"Name cannot exceed 50 characters" msg_person_name:"Name can only contain letters, spaces, and ' . -" msg_not_blank:"Name cannot be blank"`
 	Email    string `json:"email" label:"Email" binding:"required,email" msg_required:"Email is required" msg_email:"Enter a valid email address"`
-	Password string `json:"password" label:"Password" binding:"required,not_blank,min=8,max=50" msg_required:"Password is required" msg_min:"Password must be at least 8 characters" msg_max:"Password cannot exceed 50 characters" msg_not_blank:"Password cannot be blank"`
+	Password string `json:"password" label:"Password" binding:"required,not_blank,min=8,max_bytes=72" msg_required:"Password is required" msg_min:"Password must be at least 8 characters" msg_max_bytes:"Password cannot exceed 72 bytes" msg_not_blank:"Password cannot be blank"`
 }
 
 func Register(queries repository.AuthRepository, cfg *config.Config) gin.HandlerFunc {
@@ -34,6 +34,7 @@ func Register(queries repository.AuthRepository, cfg *config.Config) gin.Handler
 		}
 
 		utils.TrimStruct(req, "Password")
+		req.Email = utils.NormalizeEmail(req.Email)
 
 		passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {

@@ -8,7 +8,7 @@ export function registerRefreshPath() {
     path: "/api/v1/auth/refresh",
     summary: "Refresh access token",
     description:
-      "Issues a new access token using the refresh token cookie. Rotates the refresh token when the current one is older than 5 minutes.",
+      "Issues a new access token and rotates the refresh token. The previous refresh token keeps working for 5 minutes so concurrent requests don't fail, but it only gets a new access token.",
     security: [{ refreshTokenCookie: [] }],
     responses: {
       200: {
@@ -19,6 +19,7 @@ export function registerRefreshPath() {
       },
       401: errorResponse("Missing or invalid refresh token"),
       500: errorResponse("Internal server error"),
+      503: errorResponse("Session store unavailable; cookies are kept"),
     },
   });
 }

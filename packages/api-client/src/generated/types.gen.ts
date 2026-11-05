@@ -8,7 +8,7 @@ export type User = {
     id: string;
     name: string;
     email: string;
-    role: 'superadmin' | 'admin' | 'staff' | 'member';
+    role: 'superadmin' | 'admin' | 'member';
     image_url?: string;
 };
 
@@ -26,7 +26,7 @@ export type LoginBody = {
 export type HealthResponse = {
     success: true;
     message: string;
-    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS';
+    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS';
     errors?: Array<{
         code: string;
         field?: string;
@@ -38,7 +38,7 @@ export type HealthResponse = {
 export type AuthUserResponse = {
     success: true;
     message: string;
-    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS';
+    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS';
     errors?: Array<{
         code: string;
         field?: string;
@@ -49,7 +49,7 @@ export type AuthUserResponse = {
         id: string;
         name: string;
         email: string;
-        role: 'superadmin' | 'admin' | 'staff' | 'member';
+        role: 'superadmin' | 'admin' | 'member';
         image_url?: string;
     };
 };
@@ -57,7 +57,7 @@ export type AuthUserResponse = {
 export type MeResponse = {
     success: true;
     message: string;
-    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS';
+    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS';
     errors?: Array<{
         code: string;
         field?: string;
@@ -68,7 +68,7 @@ export type MeResponse = {
         id: string;
         name: string;
         email: string;
-        role: 'superadmin' | 'admin' | 'staff' | 'member';
+        role: 'superadmin' | 'admin' | 'member';
         image_url?: string;
     };
 };
@@ -76,7 +76,7 @@ export type MeResponse = {
 export type AuthSuccessResponse = {
     success: true;
     message: string;
-    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS';
+    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS';
     errors?: Array<{
         code: string;
         field?: string;
@@ -129,6 +129,10 @@ export type PostApiV1AuthRegisterErrors = {
      */
     409: ApiErrorResponse;
     /**
+     * Too many registration attempts
+     */
+    429: ApiErrorResponse;
+    /**
      * Internal server error
      */
     500: ApiErrorResponse;
@@ -161,6 +165,10 @@ export type PostApiV1AuthLoginErrors = {
      * Invalid credentials
      */
     401: ApiErrorResponse;
+    /**
+     * Too many login attempts
+     */
+    429: ApiErrorResponse;
     /**
      * Internal server error
      */
@@ -219,6 +227,10 @@ export type PostApiV1AuthRefreshErrors = {
      * Internal server error
      */
     500: ApiErrorResponse;
+    /**
+     * Session store unavailable; cookies are kept
+     */
+    503: ApiErrorResponse;
 };
 
 export type PostApiV1AuthRefreshError = PostApiV1AuthRefreshErrors[keyof PostApiV1AuthRefreshErrors];

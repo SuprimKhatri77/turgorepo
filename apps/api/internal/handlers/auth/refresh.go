@@ -60,7 +60,11 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 
 		sess, err := queries.GetActiveSessionByID(ctx, familyID)
 		if err != nil {
-			rlog.Warn(c, "session not found or expired", "family_id", claims.FamilyID, "error", err)
+			if !errors.Is(err, pgx.ErrNoRows) {
+				respondSessionLookupFailed(c, err)
+				return
+			}
+			rlog.Warn(c, "session not found or expired", "family_id", claims.FamilyID)
 			utils.ClearAuthCookies(c, cfg)
 			c.JSON(http.StatusUnauthorized, types.APIResponse{
 				Success: false,
@@ -135,7 +139,11 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 					// Reload and serve the grace path instead of failing the client.
 					reloaded, reloadErr := queries.GetActiveSessionByID(ctx, familyID)
 					if reloadErr != nil {
-						rlog.Warn(c, "session gone after lost rotation race", "error", reloadErr)
+						if !errors.Is(reloadErr, pgx.ErrNoRows) {
+							respondSessionLookupFailed(c, reloadErr)
+							return
+						}
+						rlog.Warn(c, "session gone after lost rotation race")
 						utils.ClearAuthCookies(c, cfg)
 						c.JSON(http.StatusUnauthorized, types.APIResponse{
 							Success: false,
@@ -190,4 +198,15 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 			})
 		}
 	}
+}
+
+// respondSessionLookupFailed reports a database failure without clearing cookies:
+// the session may still be valid, so an outage must not log the user out.
+func respondSessionLookupFailed(c *gin.Context, err error) {
+	rlog.Error(c, "failed to look up session", err)
+	c.JSON(http.StatusServiceUnavailable, types.APIResponse{
+		Success: false,
+		Message: "Service temporarily unavailable",
+		Code:    constants.ServiceUnavailable,
+	})
 }

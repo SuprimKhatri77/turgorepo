@@ -9,6 +9,8 @@ const (
 	InvalidIDFormat     = "INVALID_ID_FORMAT"
 	InvalidQueryParam   = "INVALID_QUERY_PARAM"
 	PageNotFound        = "PAGE_NOT_FOUND"
+	RateLimited         = "RATE_LIMITED"
+	ServiceUnavailable  = "SERVICE_UNAVAILABLE"
 
 	// auth
 	InvalidCredentials = "INVALID_CREDENTIALS"

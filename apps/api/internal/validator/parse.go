@@ -56,7 +56,7 @@ func mapTagToCode(tag string) string {
 		return "REQUIRED_FIELD"
 	case "min":
 		return "TOO_SHORT"
-	case "max":
+	case "max", "max_bytes":
 		return "TOO_LONG"
 	case "email":
 		return "INVALID_EMAIL"
@@ -64,7 +64,7 @@ func mapTagToCode(tag string) string {
 		return "INVALID_UUID"
 	case "url":
 		return "INVALID_URL"
-	case "alphaspace":
+	case "person_name":
 		return "INVALID_FORMAT"
 	case "alphanum":
 		return "INVALID_FORMAT"
@@ -109,8 +109,10 @@ func buildMessage(fe validator.FieldError, label string) string {
 		return fmt.Sprintf("%s must be a valid ID", label)
 	case "url":
 		return fmt.Sprintf("%s must be a valid URL", label)
-	case "alphaspace":
-		return fmt.Sprintf("%s can only contain letters and spaces", label)
+	case "max_bytes":
+		return fmt.Sprintf("%s is too long", label)
+	case "person_name":
+		return fmt.Sprintf("%s can only contain letters, spaces, and ' . -", label)
 	case "gt":
 		return fmt.Sprintf("%s must be greater than %s", label, fe.Param())
 	case "gte":
