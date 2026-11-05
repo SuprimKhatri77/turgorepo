@@ -180,6 +180,9 @@ func (c *Config) Validate() error {
 		if c.CookieDomain == "" {
 			errs = append(errs, errors.New("COOKIE_DOMAIN is required in release mode"))
 		}
+		if c.SMTPAllowPlaintext && !isLocalMailServer(c.SMTPHost) {
+			errs = append(errs, errors.New("SMTP_ALLOW_PLAINTEXT is only allowed with a local mail server in release mode"))
+		}
 		// Without email, people silently can't reset their passwords.
 		if c.SMTPHost == "" {
 			errs = append(errs, errors.New("SMTP_HOST is required in release mode"))
@@ -187,6 +190,16 @@ func (c *Config) Validate() error {
 	}
 
 	return errors.Join(errs...)
+}
+
+// isLocalMailServer matches the hosts used to test production images locally, where
+// plaintext is safe because the mail never leaves the machine.
+func isLocalMailServer(host string) bool {
+	switch host {
+	case "localhost", "127.0.0.1", "::1", "mailpit":
+		return true
+	}
+	return false
 }
 
 func validateReleaseSecret(name, secret string) error {

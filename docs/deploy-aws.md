@@ -127,6 +127,28 @@ API tasks need outbound access to the SMTP endpoint on port 587, through a NAT g
 
 This setup hasn't been tested against real SES yet.
 
+### Alert when email fails
+
+Users see the same "check your email" message even when sending fails, so nothing tells you it's broken unless you watch the logs. Production logs are JSON, which CloudWatch can filter on. Create a metric from the failures, and an alarm on the metric:
+
+```sh
+aws logs put-metric-filter \
+  --log-group-name "$API_LOG_GROUP" \
+  --filter-name password-email-failures \
+  --filter-pattern '{ $.msg = "failed to send password*" }' \
+  --metric-transformations metricName=PasswordEmailFailures,metricNamespace=MyApp,metricValue=1,defaultValue=0
+
+aws cloudwatch put-metric-alarm \
+  --alarm-name password-email-failures \
+  --namespace MyApp --metric-name PasswordEmailFailures \
+  --statistic Sum --period 300 --evaluation-periods 1 --threshold 1 \
+  --comparison-operator GreaterThanOrEqualToThreshold \
+  --treat-missing-data notBreaching \
+  --alarm-actions "$SNS_TOPIC_ARN"
+```
+
+These commands haven't been run against a real AWS account yet.
+
 ## Security groups
 
 | Resource | Allow inbound from |
