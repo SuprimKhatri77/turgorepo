@@ -32,12 +32,7 @@
       "cache": false,
       "persistent": true,
       "dependsOn": ["build"],
-      "env": [
-        "PORT",
-        "INTERNAL_API_URL",
-        "NEXT_PUBLIC_API_URL",
-        "COOKIE_DOMAIN"
-      ]
+      "env": ["INTERNAL_API_URL", "NEXT_PUBLIC_API_URL", "COOKIE_DOMAIN"]
     }
   }
 }
