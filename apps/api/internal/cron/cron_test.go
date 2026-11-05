@@ -9,24 +9,34 @@ import (
 )
 
 type fakeStore struct {
-	calls int
-	err   error
+	sessionCalls, tokenCalls int
+	sessionErr               error
 }
 
 func (s *fakeStore) DeleteExpiredSessions(context.Context) (pgconn.CommandTag, error) {
-	s.calls++
-	return pgconn.NewCommandTag("DELETE 2"), s.err
+	s.sessionCalls++
+	return pgconn.NewCommandTag("DELETE 2"), s.sessionErr
 }
 
-func TestCleanupExpiredSessions(t *testing.T) {
-	store := &fakeStore{}
-	cleanupExpiredSessions(store)
-	if store.calls != 1 {
-		t.Errorf("calls = %d", store.calls)
-	}
+func (s *fakeStore) DeleteExpiredPasswordResetTokens(context.Context) (pgconn.CommandTag, error) {
+	s.tokenCalls++
+	return pgconn.NewCommandTag("DELETE 1"), nil
+}
 
-	// A database error is logged rather than panicking inside the scheduler.
-	cleanupExpiredSessions(&fakeStore{err: errors.New("down")})
+func TestCleanupExpired(t *testing.T) {
+	store := &fakeStore{}
+	cleanupExpired(store)
+	if store.sessionCalls != 1 || store.tokenCalls != 1 {
+		t.Errorf("calls = %+v", store)
+	}
+}
+
+func TestCleanupContinuesAfterAnError(t *testing.T) {
+	store := &fakeStore{sessionErr: errors.New("down")}
+	cleanupExpired(store)
+	if store.tokenCalls != 1 {
+		t.Error("a failed job stopped the next one")
+	}
 }
 
 func TestStartSchedulesJobs(t *testing.T) {

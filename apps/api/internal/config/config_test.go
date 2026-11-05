@@ -17,6 +17,8 @@ func releaseConfig() Config {
 		JWTRefreshSecret: strongRefresh,
 		FrontendURL:      "https://app.example.com",
 		CookieDomain:     ".example.com",
+		SMTPHost:         "email-smtp.us-east-1.amazonaws.com",
+		EmailFrom:        "no-reply@example.com",
 	}
 }
 
@@ -34,6 +36,8 @@ func TestValidate(t *testing.T) {
 		{name: "same secrets", modify: func(c *Config) { c.JWTRefreshSecret = strongAccess }, wantErr: "must be different"},
 		{name: "no frontend url", modify: func(c *Config) { c.FrontendURL = "" }, wantErr: "FRONTEND_URL"},
 		{name: "no cookie domain", modify: func(c *Config) { c.CookieDomain = "" }, wantErr: "COOKIE_DOMAIN"},
+		{name: "no smtp host", modify: func(c *Config) { c.SMTPHost = "" }, wantErr: "SMTP_HOST is required"},
+		{name: "no email from", modify: func(c *Config) { c.EmailFrom = "" }, wantErr: "EMAIL_FROM"},
 		{
 			name: "debug mode allows weak secrets",
 			modify: func(c *Config) {
@@ -42,6 +46,8 @@ func TestValidate(t *testing.T) {
 				c.JWTRefreshSecret = "access-secret"
 				c.FrontendURL = ""
 				c.CookieDomain = ""
+				c.SMTPHost = ""
+				c.EmailFrom = ""
 			},
 		},
 		{
@@ -98,5 +104,32 @@ func TestDocsEnabled(t *testing.T) {
 		if got := docsEnabled(tt.value, tt.mode); got != tt.want {
 			t.Errorf("docsEnabled(%q, %q) = %v, want %v", tt.value, tt.mode, got, tt.want)
 		}
+	}
+}
+
+func TestSMTPAllowPlaintext(t *testing.T) {
+	tests := []struct {
+		value, mode string
+		want        bool
+	}{
+		{"", "debug", true},
+		{"", "release", false},
+		{"true", "release", true},
+		{"false", "debug", false},
+		{"not-a-bool", "release", false},
+	}
+	for _, tt := range tests {
+		if got := smtpAllowPlaintext(tt.value, tt.mode); got != tt.want {
+			t.Errorf("smtpAllowPlaintext(%q, %q) = %v, want %v", tt.value, tt.mode, got, tt.want)
+		}
+	}
+}
+
+func TestSMTPPort(t *testing.T) {
+	if got := smtpPort("1025"); got != 1025 {
+		t.Errorf("got %d", got)
+	}
+	if got := smtpPort(""); got != defaultSMTPPort {
+		t.Errorf("empty value: got %d", got)
 	}
 }

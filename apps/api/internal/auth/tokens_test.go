@@ -185,10 +185,10 @@ func TestParseRefreshRejectsAccessToken(t *testing.T) {
 	}
 }
 
-func TestHashRefreshTokenIsDeterministic(t *testing.T) {
-	first := HashRefreshToken("refresh-token")
-	second := HashRefreshToken("refresh-token")
-	other := HashRefreshToken("other-token")
+func TestHashTokenIsDeterministic(t *testing.T) {
+	first := HashToken("refresh-token")
+	second := HashToken("refresh-token")
+	other := HashToken("other-token")
 
 	if first != second {
 		t.Fatal("hash should be deterministic")

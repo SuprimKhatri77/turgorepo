@@ -28,6 +28,13 @@ type Config struct {
 	OpenAPIPath         string
 	TrustedProxies      []string
 	DocsEnabled         bool
+	SMTPHost            string
+	SMTPPort            int
+	SMTPUsername        string
+	SMTPPassword        string
+	SMTPAllowPlaintext  bool
+	EmailFrom           string
+	PasswordResetTTL    time.Duration
 	AccessTokenTTL      time.Duration
 	RefreshTokenTTL     time.Duration
 	RefreshReuseWindow  time.Duration
@@ -77,6 +84,13 @@ func Load() (*Config, error) {
 		OpenAPIPath:         openapiPath,
 		TrustedProxies:      splitList(os.Getenv("TRUSTED_PROXIES")),
 		DocsEnabled:         docsEnabled(os.Getenv("DOCS_ENABLED"), ginMode),
+		SMTPHost:            os.Getenv("SMTP_HOST"),
+		SMTPPort:            smtpPort(os.Getenv("SMTP_PORT")),
+		SMTPUsername:        os.Getenv("SMTP_USERNAME"),
+		SMTPPassword:        os.Getenv("SMTP_PASSWORD"),
+		SMTPAllowPlaintext:  smtpAllowPlaintext(os.Getenv("SMTP_ALLOW_PLAINTEXT"), ginMode),
+		EmailFrom:           os.Getenv("EMAIL_FROM"),
+		PasswordResetTTL:    time.Hour,
 		AccessTokenTTL:      15 * time.Minute,
 		RefreshTokenTTL:     30 * 24 * time.Hour,
 		RefreshReuseWindow:  5 * time.Minute,
@@ -100,6 +114,22 @@ func docsEnabled(value, ginMode string) bool {
 	return ginMode != "release"
 }
 
+func smtpPort(value string) int {
+	if port, err := strconv.Atoi(value); err == nil {
+		return port
+	}
+	return defaultSMTPPort
+}
+
+// smtpAllowPlaintext requires TLS in release mode unless explicitly turned off,
+// which is only meant for testing production images against a local mail server.
+func smtpAllowPlaintext(value, ginMode string) bool {
+	if allowed, err := strconv.ParseBool(value); err == nil {
+		return allowed
+	}
+	return ginMode != "release"
+}
+
 // splitList parses a comma-separated env value, dropping blanks.
 func splitList(value string) []string {
 	var items []string
@@ -111,7 +141,10 @@ func splitList(value string) []string {
 	return items
 }
 
-const minJWTSecretBytes = 32
+const (
+	minJWTSecretBytes = 32
+	defaultSMTPPort   = 587
+)
 
 // IsRelease reports whether the API is running in production mode.
 func (c *Config) IsRelease() bool {
@@ -131,6 +164,10 @@ func (c *Config) Validate() error {
 		errs = append(errs, errors.New("JWT_REFRESH_SECRET is required"))
 	}
 
+	if c.SMTPHost != "" && c.EmailFrom == "" {
+		errs = append(errs, errors.New("EMAIL_FROM is required when SMTP_HOST is set"))
+	}
+
 	if c.IsRelease() {
 		errs = append(errs, validateReleaseSecret("JWT_ACCESS_SECRET", c.JWTAccessSecret))
 		errs = append(errs, validateReleaseSecret("JWT_REFRESH_SECRET", c.JWTRefreshSecret))
@@ -142,6 +179,10 @@ func (c *Config) Validate() error {
 		}
 		if c.CookieDomain == "" {
 			errs = append(errs, errors.New("COOKIE_DOMAIN is required in release mode"))
+		}
+		// Without email, people silently can't reset their passwords.
+		if c.SMTPHost == "" {
+			errs = append(errs, errors.New("SMTP_HOST is required in release mode"))
 		}
 	}
 

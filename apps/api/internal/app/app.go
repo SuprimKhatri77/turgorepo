@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	robfigcron "github.com/robfig/cron/v3"
 
+	"github.com/suprimkhatri77/turgorepo/api/internal/background"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/cron"
 	"github.com/suprimkhatri77/turgorepo/api/internal/database"
@@ -17,6 +19,8 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/validator"
 )
 
+const jobsShutdownTimeout = 10 * time.Second
+
 type App struct {
 	Cfg       *config.Config
 	Queries   *dbgen.Queries
@@ -25,6 +29,7 @@ type App struct {
 	CldClient *cloudinary.Client
 	Router    *gin.Engine
 	Scheduler *robfigcron.Cron
+	Jobs      *background.Runner
 }
 
 func New(ctx context.Context) (*App, error) {
@@ -67,7 +72,9 @@ func New(ctx context.Context) (*App, error) {
 		return nil, fmt.Errorf("cron: %w", err)
 	}
 
-	r, err := buildRouter(cfg, queries, cldClient, db, redisClient)
+	jobs := &background.Runner{}
+
+	r, err := buildRouter(cfg, queries, cldClient, db, redisClient, initMailer(cfg), jobs)
 	if err != nil {
 		scheduler.Stop()
 		_ = redisClient.Close()
@@ -83,12 +90,21 @@ func New(ctx context.Context) (*App, error) {
 		CldClient: cldClient,
 		Router:    r,
 		Scheduler: scheduler,
+		Jobs:      jobs,
 	}, nil
 }
 
 func (a *App) Close() {
 	if a.Scheduler != nil {
 		<-a.Scheduler.Stop().Done()
+	}
+	// Jobs use Redis and the database, so they finish before those close.
+	if a.Jobs != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), jobsShutdownTimeout)
+		defer cancel()
+		if !a.Jobs.Wait(ctx) {
+			slog.Warn("shut down before background jobs finished")
+		}
 	}
 	if a.Redis != nil {
 		if err := a.Redis.Close(); err != nil {

@@ -21,7 +21,7 @@
     "prepush": "bun run check-types && bun run lint:go && bun run test:go && bun run build",
     "ci": "bun run generate:check && bun run db:sqlc:check && bun run check-types && bun run lint && bun run lint:go && bun run test:go && bun run build",
     "prepare": "husky",
-    "docker:dev:services": "docker compose --env-file .env.local -f docker-compose.dev.yml up --detach --wait db redis",
+    "docker:dev:services": "docker compose --env-file .env.local -f docker-compose.dev.yml up --detach --wait db redis mailpit",
     "docker:dev:logs": "docker compose --env-file .env.local -f docker-compose.dev.yml logs --follow",
     "start": "turbo run start",
     "docker:build:api": "docker build -t turgorepo-api apps/api",

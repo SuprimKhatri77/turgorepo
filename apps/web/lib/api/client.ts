@@ -24,15 +24,19 @@ client.setConfig({ ...apiConfig });
 export {
   getApiV1AuthMe,
   getApiV1Health,
+  postApiV1AuthForgotPassword,
   postApiV1AuthLogin,
   postApiV1AuthLogout,
   postApiV1AuthRefresh,
   postApiV1AuthRegister,
+  postApiV1AuthResetPassword,
 } from "@repo/api-client";
 
 export type {
+  ForgotPasswordBody,
   LoginBody,
   MeResponse,
   RegisterBody,
+  ResetPasswordBody,
   User,
 } from "@repo/api-client";

@@ -37,7 +37,7 @@ type FormValues = {
   password: string;
 };
 
-const inputClassName =
+export const inputClassName =
   "h-9 w-full border border-input bg-background px-3 text-sm outline-none transition focus:border-ring focus:ring-1 focus:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive/20";
 
 export function AuthForm(props: AuthFormProps) {
@@ -145,7 +145,17 @@ export function AuthForm(props: AuthFormProps) {
         </Field>
 
         <Field data-invalid={Boolean(fieldErrors.password)}>
-          <FieldLabel htmlFor="password">Password</FieldLabel>
+          <div className="flex items-center justify-between gap-2">
+            <FieldLabel htmlFor="password">Password</FieldLabel>
+            {!isRegister && (
+              <Link
+                className="text-xs text-muted-foreground underline underline-offset-4"
+                href="/auth/forgot-password"
+              >
+                Forgot password?
+              </Link>
+            )}
+          </div>
           <input
             id="password"
             name="password"
@@ -183,7 +193,7 @@ export function AuthForm(props: AuthFormProps) {
   );
 }
 
-function toFieldErrors(
+export function toFieldErrors(
   issues: ReadonlyArray<{ path: PropertyKey[]; message: string }>,
 ): Record<string, string> {
   const errors: Record<string, string> = {};

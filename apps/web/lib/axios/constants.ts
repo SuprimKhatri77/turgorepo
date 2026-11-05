@@ -6,6 +6,8 @@ export const AUTH_ENDPOINTS = [
   "/auth/login",
   "/auth/logout",
   "/auth/register",
+  "/auth/forgot-password",
+  "/auth/reset-password",
 ];
 export const PROTECTED_PATHS = Object.keys(ROLE_RULES);
 

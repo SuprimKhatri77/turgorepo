@@ -9,6 +9,11 @@ const fitsBcrypt = (password: string) =>
 
 const passwordTooLong = `Password cannot exceed ${MAX_PASSWORD_BYTES} bytes`;
 
+const newPassword = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .refine(fitsBcrypt, passwordTooLong);
+
 export const RegisterBodySchema = z.object({
   name: z
     .string()
@@ -20,10 +25,7 @@ export const RegisterBodySchema = z.object({
       "Name can only contain letters, spaces, and ' . -",
     ),
   email: z.email("Enter a valid email address"),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .refine(fitsBcrypt, passwordTooLong),
+  password: newPassword,
 });
 
 export type RegisterBody = z.infer<typeof RegisterBodySchema>;
@@ -37,3 +39,16 @@ export const LoginBodySchema = z.object({
 });
 
 export type LoginBody = z.infer<typeof LoginBodySchema>;
+
+export const ForgotPasswordBodySchema = z.object({
+  email: z.email("Enter a valid email address"),
+});
+
+export type ForgotPasswordBody = z.infer<typeof ForgotPasswordBodySchema>;
+
+export const ResetPasswordBodySchema = z.object({
+  token: z.string().min(1).max(128),
+  password: newPassword,
+});
+
+export type ResetPasswordBody = z.infer<typeof ResetPasswordBodySchema>;

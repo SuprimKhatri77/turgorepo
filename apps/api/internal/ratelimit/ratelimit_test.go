@@ -23,6 +23,8 @@ func (l *fakeLimiter) Allow(_ context.Context, key string, _ int, _ time.Duratio
 	return l.allowed, l.retryAfter, l.err
 }
 
+func (l *fakeLimiter) Clear(context.Context, string) error { return nil }
+
 func serve(limiter Limiter) (*httptest.ResponseRecorder, *bool) {
 	gin.SetMode(gin.TestMode)
 	called := false

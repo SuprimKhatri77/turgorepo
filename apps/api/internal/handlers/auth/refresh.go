@@ -74,7 +74,7 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 			return
 		}
 
-		presentedHash := session.HashRefreshToken(refreshTokenString)
+		presentedHash := session.HashToken(refreshTokenString)
 
 		user, err := queries.GetUserByID(ctx, sess.UserID)
 		if err != nil {
@@ -129,7 +129,7 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 
 			_, err = queries.RotateSessionToken(ctx, db.RotateSessionTokenParams{
 				ID:                sess.ID,
-				NewTokenHash:      session.HashRefreshToken(tokens.RefreshToken),
+				NewTokenHash:      session.HashToken(tokens.RefreshToken),
 				ExpectedTokenHash: presentedHash,
 				ExpiresAt:         pgtype.Timestamptz{Time: time.Now().Add(cfg.RefreshTokenTTL), Valid: true},
 			})

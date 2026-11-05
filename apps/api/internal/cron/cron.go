@@ -12,17 +12,18 @@ import (
 
 const cleanupTimeout = time.Minute
 
-// SessionStore is the part of the database the jobs need.
-type SessionStore interface {
+// Store is the part of the database the jobs need.
+type Store interface {
 	DeleteExpiredSessions(ctx context.Context) (pgconn.CommandTag, error)
+	DeleteExpiredPasswordResetTokens(ctx context.Context) (pgconn.CommandTag, error)
 }
 
 // Start schedules the jobs and returns the running scheduler. Every API container
 // runs its own scheduler, so jobs must be safe to run more than once.
-func Start(store SessionStore) (*cron.Cron, error) {
+func Start(store Store) (*cron.Cron, error) {
 	c := cron.New()
 
-	if _, err := c.AddFunc("@daily", func() { cleanupExpiredSessions(store) }); err != nil {
+	if _, err := c.AddFunc("@daily", func() { cleanupExpired(store) }); err != nil {
 		return nil, err
 	}
 
@@ -30,14 +31,25 @@ func Start(store SessionStore) (*cron.Cron, error) {
 	return c, nil
 }
 
-func cleanupExpiredSessions(store SessionStore) {
+func cleanupExpired(store Store) {
 	ctx, cancel := context.WithTimeout(context.Background(), cleanupTimeout)
 	defer cancel()
 
-	result, err := store.DeleteExpiredSessions(ctx)
-	if err != nil {
-		slog.Error("failed to delete expired sessions", "err", err)
-		return
+	jobs := []struct {
+		name string
+		run  func(context.Context) (pgconn.CommandTag, error)
+	}{
+		{"sessions", store.DeleteExpiredSessions},
+		{"password reset tokens", store.DeleteExpiredPasswordResetTokens},
 	}
-	slog.Info("deleted expired sessions", "count", result.RowsAffected())
+
+	// One failing doesn't stop the other.
+	for _, job := range jobs {
+		result, err := job.run(ctx)
+		if err != nil {
+			slog.Error("failed to delete expired rows", "table", job.name, "err", err)
+			continue
+		}
+		slog.Info("deleted expired rows", "table", job.name, "count", result.RowsAffected())
+	}
 }

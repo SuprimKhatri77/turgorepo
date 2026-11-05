@@ -26,4 +26,7 @@ const (
 	// user
 	UserNotFound      = "USER_NOT_FOUND"
 	UserAlreadyExists = "USER_ALREADY_EXISTS"
+
+	// password reset
+	InvalidResetToken = "INVALID_RESET_TOKEN"
 )

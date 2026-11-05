@@ -4,11 +4,13 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/suprimkhatri77/turgorepo/api/internal/background"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/database"
 	dbgen "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 	"github.com/suprimkhatri77/turgorepo/api/internal/middleware"
 	"github.com/suprimkhatri77/turgorepo/api/internal/packages/cloudinary"
+	"github.com/suprimkhatri77/turgorepo/api/internal/packages/email"
 	apiredis "github.com/suprimkhatri77/turgorepo/api/internal/packages/redis"
 	"github.com/suprimkhatri77/turgorepo/api/internal/routes"
 	routesconfig "github.com/suprimkhatri77/turgorepo/api/internal/routes/config"
@@ -24,6 +26,8 @@ func buildRouter(
 	cld *cloudinary.Client,
 	db *database.DB,
 	redisClient *apiredis.Client,
+	mailer email.Mailer,
+	jobs *background.Runner,
 ) (*gin.Engine, error) {
 	r := gin.New()
 
@@ -43,7 +47,7 @@ func buildRouter(
 	r.Use(middleware.CORS(cfg))
 	r.Use(middleware.BodyLimit(maxRequestBodyBytes))
 
-	routes.Setup(r, buildRouteConfig(cfg, queries, cld, db, redisClient))
+	routes.Setup(r, buildRouteConfig(cfg, queries, cld, db, redisClient, mailer, jobs))
 	return r, nil
 }
 
@@ -53,6 +57,8 @@ func buildRouteConfig(
 	cld *cloudinary.Client,
 	db *database.DB,
 	redisClient *apiredis.Client,
+	mailer email.Mailer,
+	jobs *background.Runner,
 ) routesconfig.Config {
 	return routesconfig.Config{
 		Config:    cfg,
@@ -60,5 +66,7 @@ func buildRouteConfig(
 		CldClient: cld,
 		PgxPool:   db.Pool,
 		Redis:     redisClient,
+		Mailer:    mailer,
+		Jobs:      jobs,
 	}
 }

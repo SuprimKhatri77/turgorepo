@@ -96,3 +96,8 @@ func (c *Client) Allow(ctx context.Context, key string, limit int, window time.D
 	}
 	return values[0] <= int64(limit), time.Duration(values[1]) * time.Millisecond, nil
 }
+
+// Clear implements ratelimit.Limiter by deleting a key's counter.
+func (c *Client) Clear(ctx context.Context, key string) error {
+	return c.rdb.Del(ctx, key).Err()
+}
