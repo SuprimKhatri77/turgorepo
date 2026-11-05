@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
@@ -20,14 +21,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const revokeTimeout = 500 * time.Millisecond
+
 type ResetPasswordRequest struct {
 	Token    string `json:"token" label:"Reset link" binding:"required,max=128" msg_required:"Reset link is missing" msg_max:"Reset link is invalid"`
 	Password string `json:"password" label:"Password" binding:"required,not_blank,min=8,max_bytes=72" msg_required:"Password is required" msg_min:"Password must be at least 8 characters" msg_max_bytes:"Password cannot exceed 72 bytes" msg_not_blank:"Password cannot be blank"`
 }
 
 // ResetPassword sets a new password using a token from a reset email, and logs the
-// user out everywhere. Existing access tokens stay valid until they expire, because
-// they aren't checked against the database.
+// user out everywhere, including access tokens that haven't expired yet.
 func ResetPassword(deps PasswordResetDeps) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		req, ok := validator.BindJSON[ResetPasswordRequest](c)
@@ -71,6 +73,8 @@ func ResetPassword(deps PasswordResetDeps) gin.HandlerFunc {
 
 		rlog.Info(c, "password reset", "user_id", user.ID)
 
+		revokeAccessTokens(c, deps, user)
+
 		// Someone locked out by wrong passwords should be able to log in straight away.
 		ratelimit.ClearAccount(c, deps.Limiter, user.Email)
 		utils.ClearAuthCookies(c, deps.Config)
@@ -86,6 +90,22 @@ func ResetPassword(deps PasswordResetDeps) gin.HandlerFunc {
 			Success: true,
 			Message: "Your password has been reset. Please sign in",
 		})
+	}
+}
+
+// revokeAccessTokens runs after the database commit, so a refresh can't issue a new
+// token after the cutoff. A failure doesn't fail the reset, because the password and
+// sessions have already changed, and old access tokens expire on their own soon.
+func revokeAccessTokens(c *gin.Context, deps PasswordResetDeps, user db.User) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), revokeTimeout)
+	defer cancel()
+
+	userID, err := utils.UUIDString(user.ID)
+	if err == nil {
+		err = deps.Revoker.RevokeTokensBefore(ctx, userID, time.Now(), deps.Config.AccessTokenTTL)
+	}
+	if err != nil {
+		rlog.Error(c, "failed to revoke access tokens after password reset", err, "user_id", user.ID)
 	}
 }
 

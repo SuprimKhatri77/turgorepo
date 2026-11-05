@@ -162,7 +162,9 @@ User roles: `superadmin`, `admin`, `member`
 
 Reset links expire after 1 hour and work once, and requesting a new one cancels the old one. Only a hash of the token is stored. The link carries the token in its URL fragment (`#token=...`), which browsers don't send to servers, so it stays out of access logs.
 
-After a reset, every session is revoked immediately. Existing access tokens keep working until they expire (up to 15 minutes), because they aren't checked against the database.
+A reset logs the user out everywhere straight away. Sessions are revoked in the database, and Redis holds a cutoff time that makes `RequireAuth` reject older access tokens. The cutoff removes itself after 15 minutes, when those tokens would have expired anyway. If Redis is down, requests are allowed and the error is logged, so old access tokens can keep working until they expire.
+
+Logging out only ends that device's session. Its access token keeps working until it expires, up to 15 minutes.
 
 To read reset emails locally, open Mailpit at <http://localhost:8025>.
 

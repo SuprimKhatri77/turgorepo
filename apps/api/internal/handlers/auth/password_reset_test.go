@@ -51,11 +51,30 @@ type inlineJobs struct{}
 
 func (inlineJobs) Go(_ string, job func(ctx context.Context)) { job(context.Background()) }
 
+// fakeRevoker records the cutoffs it's asked to set.
+type fakeRevoker struct {
+	userIDs []string
+	cutoff  time.Time
+	ttl     time.Duration
+	err     error
+}
+
+func (r *fakeRevoker) RevokeTokensBefore(_ context.Context, userID string, cutoff time.Time, ttl time.Duration) error {
+	r.userIDs = append(r.userIDs, userID)
+	r.cutoff = cutoff
+	r.ttl = ttl
+	return r.err
+}
+
+func (r *fakeRevoker) TokensValidAfter(context.Context, string) (time.Time, bool, error) {
+	return time.Time{}, false, nil
+}
+
 func resetDeps(repo *resetRepo, limiter *fakeLimiter, mailer *fakeMailer) PasswordResetDeps {
 	cfg := testConfig()
 	cfg.FrontendURL = "https://app.example.com/"
 	cfg.PasswordResetTTL = time.Hour
-	return PasswordResetDeps{Queries: repo, Config: cfg, Limiter: limiter, Mailer: mailer, Jobs: inlineJobs{}}
+	return PasswordResetDeps{Queries: repo, Config: cfg, Limiter: limiter, Revoker: &fakeRevoker{}, Mailer: mailer, Jobs: inlineJobs{}}
 }
 
 func tokenFromEmail(t *testing.T, msg email.Message) string {
@@ -181,6 +200,45 @@ func TestResetPassword(t *testing.T) {
 		}
 		if len(mailer.sent) != 1 || !strings.Contains(mailer.sent[0].Subject, "changed") {
 			t.Errorf("sent = %+v", mailer.sent)
+		}
+	})
+
+	t.Run("revokes the user's access tokens", func(t *testing.T) {
+		repo := &resetRepo{fakeRepo: fakeRepo{user: testUser(t)}}
+		deps := resetDeps(repo, &fakeLimiter{}, &fakeMailer{})
+		revoker := &fakeRevoker{}
+		deps.Revoker = revoker
+
+		before := time.Now()
+		serve(ResetPassword(deps), body("the-token", "new-password-123"))
+
+		if len(revoker.userIDs) != 1 || revoker.userIDs[0] != "01010101-0101-0101-0101-010101010101" {
+			t.Fatalf("userIDs = %v", revoker.userIDs)
+		}
+		if revoker.cutoff.Before(before) || revoker.cutoff.After(time.Now()) {
+			t.Errorf("cutoff = %v", revoker.cutoff)
+		}
+		if revoker.ttl != deps.Config.AccessTokenTTL {
+			t.Errorf("ttl = %v, want %v", revoker.ttl, deps.Config.AccessTokenTTL)
+		}
+	})
+
+	t.Run("a failed revocation doesn't fail the reset", func(t *testing.T) {
+		repo := &resetRepo{fakeRepo: fakeRepo{user: testUser(t)}}
+		deps := resetDeps(repo, &fakeLimiter{}, &fakeMailer{})
+		deps.Revoker = &fakeRevoker{err: errors.New("redis down")}
+		if w := serve(ResetPassword(deps), body("the-token", "new-password-123")); w.Code != http.StatusOK {
+			t.Errorf("status = %d", w.Code)
+		}
+	})
+
+	t.Run("an invalid token revokes nothing", func(t *testing.T) {
+		deps := resetDeps(&resetRepo{resetErr: pgx.ErrNoRows}, &fakeLimiter{}, &fakeMailer{})
+		revoker := &fakeRevoker{}
+		deps.Revoker = revoker
+		serve(ResetPassword(deps), body("bad", "new-password-123"))
+		if len(revoker.userIDs) != 0 {
+			t.Errorf("userIDs = %v", revoker.userIDs)
 		}
 	})
 
