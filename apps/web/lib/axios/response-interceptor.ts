@@ -69,6 +69,8 @@ export function attachResponseInterceptor(api: AxiosInstance) {
           typeof window !== "undefined" &&
           isProtectedPath(window.location.pathname)
         ) {
+          // Interceptors run outside React, so the Next router is not available here.
+          // eslint-disable-next-line @next/next/no-location-assign-relative-destination
           window.location.href = "/auth/login";
         }
 

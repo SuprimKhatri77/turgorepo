@@ -16,6 +16,10 @@ async function checkHealth(): Promise<HealthStatus> {
       signal: AbortSignal.timeout(5_000),
     });
 
+    if (!response) {
+      return { online: false, message: "API unreachable" };
+    }
+
     if (error || !response.ok) {
       return {
         online: false,
