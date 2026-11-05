@@ -25,7 +25,8 @@
     "docker:dev:logs": "docker compose --env-file .env.local -f docker-compose.dev.yml logs --follow",
     "start": "turbo run start",
     "docker:build:api": "docker build -t turgorepo-api apps/api",
-    "docker:build:web": "docker build --build-arg NEXT_PUBLIC_API_URL -f apps/web/Dockerfile -t turgorepo-web ."
+    "docker:build:web": "docker build --build-arg NEXT_PUBLIC_API_URL -f apps/web/Dockerfile -t turgorepo-web .",
+    "init": "bun run scripts/init-project.ts"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.4",
