@@ -1,11 +1,16 @@
 ENV_FILE ?= ../../.env.local
-include $(ENV_FILE)
+# Optional: sqlc, build, lint and test need no environment, and CI has no env file.
+-include $(ENV_FILE)
 export
 
-.PHONY: migrate-up migrate-down sqlc seed run build lint test deps
-migrate-up:
+.PHONY: require-database-url migrate-up migrate-down sqlc seed run build lint test deps
+
+require-database-url:
+	@test -n "$${DATABASE_URL}" || { echo "DATABASE_URL is not set. Run: cp .env.example .env.local (repo root)"; exit 1; }
+
+migrate-up: require-database-url
 	migrate -path migrations -database "$${DATABASE_URL}" up
-migrate-down:
+migrate-down: require-database-url
 	migrate -path migrations -database "$${DATABASE_URL}" down ${N}
 
 sqlc:
