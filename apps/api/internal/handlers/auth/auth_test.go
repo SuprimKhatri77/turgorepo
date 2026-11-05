@@ -101,6 +101,12 @@ func (r *fakeRepo) RevokeSession(_ context.Context, id pgtype.UUID) error {
 type fakeLimiter struct {
 	blocked bool
 	keys    []string
+	cleared []string
+}
+
+func (l *fakeLimiter) Clear(_ context.Context, key string) error {
+	l.cleared = append(l.cleared, key)
+	return nil
 }
 
 func (l *fakeLimiter) Allow(_ context.Context, key string, _ int, _ time.Duration) (bool, time.Duration, error) {
@@ -341,7 +347,7 @@ func refreshFixture(t *testing.T) (db.User, string, db.Session) {
 	return user, tokens.RefreshToken, db.Session{
 		ID:               testUUID(2),
 		UserID:           user.ID,
-		CurrentTokenHash: session.HashRefreshToken(tokens.RefreshToken),
+		CurrentTokenHash: session.HashToken(tokens.RefreshToken),
 	}
 }
 

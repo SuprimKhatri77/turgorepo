@@ -117,6 +117,43 @@
           "password": "securepass123"
         }
       },
+      "ForgotPasswordBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "example": {
+          "email": "jane@example.com"
+        }
+      },
+      "ResetPasswordBody": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8
+          }
+        },
+        "required": [
+          "token",
+          "password"
+        ],
+        "example": {
+          "token": "<token from the reset email>",
+          "password": "<new password>"
+        }
+      },
       "HealthResponse": {
         "type": "object",
         "properties": {
@@ -151,7 +188,8 @@
               "TOKEN_INVALID",
               "FORBIDDEN",
               "USER_NOT_FOUND",
-              "USER_ALREADY_EXISTS"
+              "USER_ALREADY_EXISTS",
+              "INVALID_RESET_TOKEN"
             ]
           },
           "errors": {
@@ -222,7 +260,8 @@
               "TOKEN_INVALID",
               "FORBIDDEN",
               "USER_NOT_FOUND",
-              "USER_ALREADY_EXISTS"
+              "USER_ALREADY_EXISTS",
+              "INVALID_RESET_TOKEN"
             ]
           },
           "errors": {
@@ -334,7 +373,8 @@
               "TOKEN_INVALID",
               "FORBIDDEN",
               "USER_NOT_FOUND",
-              "USER_ALREADY_EXISTS"
+              "USER_ALREADY_EXISTS",
+              "INVALID_RESET_TOKEN"
             ]
           },
           "errors": {
@@ -446,7 +486,8 @@
               "TOKEN_INVALID",
               "FORBIDDEN",
               "USER_NOT_FOUND",
-              "USER_ALREADY_EXISTS"
+              "USER_ALREADY_EXISTS",
+              "INVALID_RESET_TOKEN"
             ]
           },
           "errors": {
@@ -880,6 +921,130 @@
           },
           "404": {
             "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/forgot-password": {
+      "post": {
+        "summary": "Request a password reset",
+        "description": "Emails a reset link if the address has an account. The response is the same whether or not it does, so it can't be used to discover accounts.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Request accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request body is too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/reset-password": {
+      "post": {
+        "summary": "Set a new password",
+        "description": "Sets a new password using the token from a reset email, logs the user out on all devices and clears cookies. Tokens work once and expire after 1 hour.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed, or the token is invalid or expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request body is too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {

@@ -9,6 +9,7 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/database"
 	"github.com/suprimkhatri77/turgorepo/api/internal/packages/cloudinary"
+	"github.com/suprimkhatri77/turgorepo/api/internal/packages/email"
 	apiredis "github.com/suprimkhatri77/turgorepo/api/internal/packages/redis"
 )
 
@@ -45,6 +46,25 @@ func initCloudinary(cfg *config.Config) (*cloudinary.Client, error) {
 		return nil, fmt.Errorf("cloudinary: %w", err)
 	}
 	return c, nil
+}
+
+func initMailer(cfg *config.Config) email.Mailer {
+	// Config validation requires SMTP in release mode, so this is development only.
+	if cfg.SMTPHost == "" {
+		slog.Warn("SMTP_HOST is unset, so emails will be written to the log")
+		return email.LogMailer{}
+	}
+	if cfg.IsRelease() && cfg.SMTPAllowPlaintext {
+		slog.Warn("SMTP_ALLOW_PLAINTEXT is on, so email may be sent without TLS")
+	}
+	return email.NewSMTPMailer(email.SMTPOptions{
+		Host:           cfg.SMTPHost,
+		Port:           cfg.SMTPPort,
+		Username:       cfg.SMTPUsername,
+		Password:       cfg.SMTPPassword,
+		From:           cfg.EmailFrom,
+		AllowPlaintext: cfg.SMTPAllowPlaintext,
+	})
 }
 
 func initLogger(cfg *config.Config) {

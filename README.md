@@ -78,6 +78,7 @@ The defaults work as they are. Key variables:
 | `TRUSTED_PROXIES` | Comma-separated CIDRs of proxies allowed to set `X-Forwarded-For`. Leave empty without a proxy |
 | `NEXT_PUBLIC_API_URL` | API URL for the browser, built into the web app |
 | `INTERNAL_API_URL` | API URL for server-side web requests |
+| `SMTP_*` / `EMAIL_FROM` | How email is sent. Locally this is Mailpit, and production requires it |
 | `CLOUDINARY_*` | Optional. Set all three to enable image uploads |
 
 Keep one `.env.local` at the repo root. It works both on your machine and in Docker, because `docker-compose.dev.yml` swaps in Docker hostnames where needed.
@@ -99,14 +100,15 @@ Migrations run automatically when the API container starts.
 | Health check | <http://localhost:5000/api/v1/health> |
 | PostgreSQL | localhost:5432 |
 | Redis | localhost:6379 |
+| Mailpit (local email inbox) | <http://localhost:8025> |
 
 Follow logs with `bun run docker:dev:logs`, and stop with `bun run docker:dev:down`.
 
-**Port already in use?** Set `WEB_PORT`, `API_PORT`, `DB_PORT` or `REDIS_PORT` in `.env.local`, then update the matching URLs in the same file. Without Docker, the API listens on `PORT` instead of `API_PORT`. On macOS, AirPlay Receiver often holds port 5000.
+**Port already in use?** Set `WEB_PORT`, `API_PORT`, `DB_PORT`, `REDIS_PORT`, `MAILPIT_PORT` or `MAILPIT_SMTP_PORT` in `.env.local`, then update the matching URLs in the same file. Without Docker, the API listens on `PORT` instead of `API_PORT`. On macOS, AirPlay Receiver often holds port 5000.
 
 ### 3. Run without Docker
 
-Start Postgres and Redis yourself, or run only those in Docker:
+Start Postgres, Redis and Mailpit yourself, or run only those in Docker:
 
 ```sh
 bun run docker:dev:services
@@ -142,6 +144,8 @@ Base path: `/api/v1`
 | `GET` | `/ready` | Readiness: the database and Redis are reachable. Use this for monitoring |
 | `POST` | `/auth/register` | Create account, set cookies |
 | `POST` | `/auth/login` | Sign in, set cookies |
+| `POST` | `/auth/forgot-password` | Email a reset link. Responds the same whether or not the account exists |
+| `POST` | `/auth/reset-password` | Set a new password with an emailed token, and log out on all devices |
 | `POST` | `/auth/logout` | Revoke session, clear cookies |
 | `POST` | `/auth/refresh` | Refresh access token and rotate the refresh token. The previous token keeps working for 5 minutes for concurrent requests, but only gets a new access token |
 | `GET` | `/auth/me` | Current user (requires auth) |
@@ -153,6 +157,14 @@ Auth uses HTTP-only cookies:
 - `is_logged_in` — public flag for the frontend
 
 User roles: `superadmin`, `admin`, `member`
+
+### Password reset
+
+Reset links expire after 1 hour and work once, and requesting a new one cancels the old one. Only a hash of the token is stored. The link carries the token in its URL fragment (`#token=...`), which browsers don't send to servers, so it stays out of access logs.
+
+After a reset, every session is revoked immediately. Existing access tokens keep working until they expire (up to 15 minutes), because they aren't checked against the database.
+
+To read reset emails locally, open Mailpit at <http://localhost:8025>.
 
 ### API docs
 
@@ -303,7 +315,7 @@ After changing Zod schemas or OpenAPI path definitions, run `bun run generate` a
 | `bun run db:sqlc:check` | Regenerate sqlc and fail if committed output is stale |
 | `bun run db:seed` | Insert demo admin + member users (idempotent) |
 | `bun run docker:dev:up` | Build and start the Docker stack, and wait until it's healthy |
-| `bun run docker:dev:services` | Start only Postgres and Redis in Docker |
+| `bun run docker:dev:services` | Start only Postgres, Redis and Mailpit in Docker |
 | `bun run docker:dev:logs` | Follow Docker stack logs |
 | `bun run docker:dev:down` | Stop the Docker stack |
 | `bun run docker:build:api` | Build the production API image |

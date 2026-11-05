@@ -23,10 +23,19 @@ export type LoginBody = {
     password: string;
 };
 
+export type ForgotPasswordBody = {
+    email: string;
+};
+
+export type ResetPasswordBody = {
+    token: string;
+    password: string;
+};
+
 export type HealthResponse = {
     success: true;
     message: string;
-    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'PAYLOAD_TOO_LARGE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS';
+    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'PAYLOAD_TOO_LARGE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS' | 'INVALID_RESET_TOKEN';
     errors?: Array<{
         code: string;
         field?: string;
@@ -38,7 +47,7 @@ export type HealthResponse = {
 export type AuthUserResponse = {
     success: true;
     message: string;
-    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'PAYLOAD_TOO_LARGE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS';
+    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'PAYLOAD_TOO_LARGE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS' | 'INVALID_RESET_TOKEN';
     errors?: Array<{
         code: string;
         field?: string;
@@ -57,7 +66,7 @@ export type AuthUserResponse = {
 export type MeResponse = {
     success: true;
     message: string;
-    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'PAYLOAD_TOO_LARGE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS';
+    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'PAYLOAD_TOO_LARGE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS' | 'INVALID_RESET_TOKEN';
     errors?: Array<{
         code: string;
         field?: string;
@@ -76,7 +85,7 @@ export type MeResponse = {
 export type AuthSuccessResponse = {
     success: true;
     message: string;
-    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'PAYLOAD_TOO_LARGE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS';
+    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'PAYLOAD_TOO_LARGE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS' | 'INVALID_RESET_TOKEN';
     errors?: Array<{
         code: string;
         field?: string;
@@ -317,3 +326,73 @@ export type GetApiV1AuthMeResponses = {
 };
 
 export type GetApiV1AuthMeResponse = GetApiV1AuthMeResponses[keyof GetApiV1AuthMeResponses];
+
+export type PostApiV1AuthForgotPasswordData = {
+    body?: ForgotPasswordBody;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/forgot-password';
+};
+
+export type PostApiV1AuthForgotPasswordErrors = {
+    /**
+     * Validation failed
+     */
+    400: ApiErrorResponse;
+    /**
+     * Request body is too large
+     */
+    413: ApiErrorResponse;
+    /**
+     * Too many requests
+     */
+    429: ApiErrorResponse;
+};
+
+export type PostApiV1AuthForgotPasswordError = PostApiV1AuthForgotPasswordErrors[keyof PostApiV1AuthForgotPasswordErrors];
+
+export type PostApiV1AuthForgotPasswordResponses = {
+    /**
+     * Request accepted
+     */
+    200: AuthSuccessResponse;
+};
+
+export type PostApiV1AuthForgotPasswordResponse = PostApiV1AuthForgotPasswordResponses[keyof PostApiV1AuthForgotPasswordResponses];
+
+export type PostApiV1AuthResetPasswordData = {
+    body?: ResetPasswordBody;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/reset-password';
+};
+
+export type PostApiV1AuthResetPasswordErrors = {
+    /**
+     * Validation failed, or the token is invalid or expired
+     */
+    400: ApiErrorResponse;
+    /**
+     * Request body is too large
+     */
+    413: ApiErrorResponse;
+    /**
+     * Too many requests
+     */
+    429: ApiErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: ApiErrorResponse;
+};
+
+export type PostApiV1AuthResetPasswordError = PostApiV1AuthResetPasswordErrors[keyof PostApiV1AuthResetPasswordErrors];
+
+export type PostApiV1AuthResetPasswordResponses = {
+    /**
+     * Password reset
+     */
+    200: AuthSuccessResponse;
+};
+
+export type PostApiV1AuthResetPasswordResponse = PostApiV1AuthResetPasswordResponses[keyof PostApiV1AuthResetPasswordResponses];

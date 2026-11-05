@@ -21,6 +21,7 @@ export const ErrorCodeSchema = z.enum([
   "FORBIDDEN",
   "USER_NOT_FOUND",
   "USER_ALREADY_EXISTS",
+  "INVALID_RESET_TOKEN",
 ]);
 
 export type ErrorCode = z.infer<typeof ErrorCodeSchema>;

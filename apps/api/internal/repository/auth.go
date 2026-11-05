@@ -17,4 +17,7 @@ type AuthRepository interface {
 	RotateSessionToken(ctx context.Context, params db.RotateSessionTokenParams) (db.Session, error)
 	RevokeSession(ctx context.Context, id pgtype.UUID) error
 	RevokeAllUserSessions(ctx context.Context, userID pgtype.UUID) error
+
+	CreatePasswordResetToken(ctx context.Context, params db.CreatePasswordResetTokenParams) error
+	ResetPasswordWithToken(ctx context.Context, params db.ResetPasswordWithTokenParams) (db.User, error)
 }

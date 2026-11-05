@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"time"
@@ -19,9 +21,22 @@ type Tokens struct {
 	RefreshToken string
 }
 
-func HashRefreshToken(token string) string {
+// HashToken returns the form of a token stored in the database. SHA-256 is enough
+// because tokens are long and random, so there's nothing to brute force.
+func HashToken(token string) string {
 	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])
+}
+
+// NewResetToken returns a random password reset token and its hash. Only the hash
+// is stored, so a database leak doesn't expose usable links.
+func NewResetToken() (token, hash string, err error) {
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", "", fmt.Errorf("generate reset token: %w", err)
+	}
+	token = base64.RawURLEncoding.EncodeToString(raw)
+	return token, HashToken(token), nil
 }
 
 func NewTokens(cfg *config.Config, user db.User, familyID pgtype.UUID) (*Tokens, error) {

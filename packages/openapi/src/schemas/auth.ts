@@ -1,10 +1,12 @@
 import {
   AuthSuccessResponseSchema,
   AuthUserResponseSchema,
+  ForgotPasswordBodySchema as ForgotPasswordBodySchemaBase,
   HealthResponseSchema,
   LoginBodySchema as LoginBodySchemaBase,
   MeResponseSchema,
   RegisterBodySchema as RegisterBodySchemaBase,
+  ResetPasswordBodySchema as ResetPasswordBodySchemaBase,
 } from "@repo/types";
 
 export const RegisterBodySchema = RegisterBodySchemaBase.openapi(
@@ -24,6 +26,25 @@ export const LoginBodySchema = LoginBodySchemaBase.openapi("LoginBody", {
     password: "securepass123",
   },
 });
+
+export const ForgotPasswordBodySchema = ForgotPasswordBodySchemaBase.openapi(
+  "ForgotPasswordBody",
+  {
+    example: {
+      email: "jane@example.com",
+    },
+  },
+);
+
+export const ResetPasswordBodySchema = ResetPasswordBodySchemaBase.openapi(
+  "ResetPasswordBody",
+  {
+    example: {
+      token: "<token from the reset email>",
+      password: "<new password>",
+    },
+  },
+);
 
 export const HealthResponse = HealthResponseSchema.openapi("HealthResponse", {
   example: {

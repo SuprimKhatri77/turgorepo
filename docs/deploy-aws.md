@@ -46,11 +46,16 @@ Next builds `NEXT_PUBLIC_API_URL` into the web image, so each environment with a
 | `REDIS_URL` | `rediss://...` | Secrets Manager |
 | `JWT_ACCESS_SECRET` | `openssl rand -base64 48` | Secrets Manager |
 | `JWT_REFRESH_SECRET` | `openssl rand -base64 48`, a different value | Secrets Manager |
+| `SMTP_USERNAME` | From your email provider. See [Email](#email) | Secrets Manager |
+| `SMTP_PASSWORD` | From your email provider | Secrets Manager |
+| `SMTP_HOST` | Such as `email-smtp.us-east-1.amazonaws.com` | Task definition |
+| `SMTP_PORT` | `587` | Task definition |
+| `EMAIL_FROM` | Such as `no-reply@example.com` | Task definition |
 | `FRONTEND_URL` | `https://app.example.com` | Task definition |
 | `COOKIE_DOMAIN` | `.example.com` | Task definition |
 | `TRUSTED_PROXIES` | Your VPC CIDR, such as `10.0.0.0/16` | Task definition |
 
-The API refuses to start if the JWT secrets are weak, or `FRONTEND_URL` or `COOKIE_DOMAIN` are missing.
+The API refuses to start if the JWT secrets are weak, or `FRONTEND_URL`, `COOKIE_DOMAIN`, `SMTP_HOST` or `EMAIL_FROM` are missing.
 
 `TRUSTED_PROXIES` matters behind an ALB. If it's unset, every request appears to come from the load balancer, so all users share one rate limit. Don't set it wider than your VPC, or clients can fake their IP.
 
@@ -109,6 +114,19 @@ The app uses pgx, so settings go in the connection string.
 
 The default pool is the larger of 4 connections or the number of CPUs, per container. To change it, add `pool_max_conns=10` to the connection string, and keep the total across all tasks below your database's limit.
 
+## Email
+
+Password reset emails go over SMTP, so any provider works. TLS is required in production. These steps are for Amazon SES:
+
+1. Verify your domain in the SES console, and add the DNS records it gives you. This also sets up DKIM.
+2. Request production access. New SES accounts are in a sandbox that can only send to verified addresses.
+3. Create SMTP credentials in the SES console, under **SMTP settings**. They aren't the same as your AWS access keys.
+4. Set `SMTP_HOST` to the endpoint for your region, `SMTP_PORT=587`, and `EMAIL_FROM` to an address on the verified domain.
+
+API tasks need outbound access to the SMTP endpoint on port 587, through a NAT gateway or VPC endpoint if they run in private subnets. If email can't be sent, the API logs the error and `forgot-password` still returns its normal response, so set an alert on `failed to send password reset email`.
+
+This setup hasn't been tested against real SES yet.
+
 ## Security groups
 
 | Resource | Allow inbound from |
@@ -129,7 +147,7 @@ docker compose --env-file .env.production -f docker-compose.prod.yml --profile l
 docker compose --env-file .env.production -f docker-compose.prod.yml run --rm api /app/migrate up
 ```
 
-For local testing, set `FRONTEND_URL` and `NEXT_PUBLIC_API_URL` to your `localhost` URLs, and `COOKIE_DOMAIN=localhost`.
+For local testing, set `FRONTEND_URL` and `NEXT_PUBLIC_API_URL` to your `localhost` URLs, and `COOKIE_DOMAIN=localhost`. Emails go to Mailpit at <http://localhost:8025>.
 
 ## Running without Docker
 

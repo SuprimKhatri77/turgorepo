@@ -46,5 +46,11 @@ services:
     profiles: [local-deps]
     image: redis:7-alpine
 
+  mailpit:
+    profiles: [local-deps]
+    image: axllent/mailpit:v1.29
+    ports:
+      - "127.0.0.1:${MAILPIT_PORT:-8025}:8025"
+
 volumes:
   pgdata:

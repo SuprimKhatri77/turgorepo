@@ -24,7 +24,7 @@ func IssueSession(c *gin.Context, queries repository.AuthRepository, cfg *config
 	_, err = queries.CreateSession(c.Request.Context(), db.CreateSessionParams{
 		ID:               familyID,
 		UserID:           user.ID,
-		CurrentTokenHash: HashRefreshToken(tokens.RefreshToken),
+		CurrentTokenHash: HashToken(tokens.RefreshToken),
 		UserAgent:        pgtype.Text{String: c.Request.UserAgent(), Valid: true},
 		IpAddress:        pgtype.Text{String: c.ClientIP(), Valid: true},
 		ExpiresAt: pgtype.Timestamptz{

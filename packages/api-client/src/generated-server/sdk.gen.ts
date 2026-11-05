@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { GetApiV1AuthMeData, GetApiV1AuthMeErrors, GetApiV1AuthMeResponses, GetApiV1HealthData, GetApiV1HealthResponses, GetApiV1ReadyData, GetApiV1ReadyErrors, GetApiV1ReadyResponses, PostApiV1AuthLoginData, PostApiV1AuthLoginErrors, PostApiV1AuthLoginResponses, PostApiV1AuthLogoutData, PostApiV1AuthLogoutErrors, PostApiV1AuthLogoutResponses, PostApiV1AuthRefreshData, PostApiV1AuthRefreshErrors, PostApiV1AuthRefreshResponses, PostApiV1AuthRegisterData, PostApiV1AuthRegisterErrors, PostApiV1AuthRegisterResponses } from './types.gen';
+import type { GetApiV1AuthMeData, GetApiV1AuthMeErrors, GetApiV1AuthMeResponses, GetApiV1HealthData, GetApiV1HealthResponses, GetApiV1ReadyData, GetApiV1ReadyErrors, GetApiV1ReadyResponses, PostApiV1AuthForgotPasswordData, PostApiV1AuthForgotPasswordErrors, PostApiV1AuthForgotPasswordResponses, PostApiV1AuthLoginData, PostApiV1AuthLoginErrors, PostApiV1AuthLoginResponses, PostApiV1AuthLogoutData, PostApiV1AuthLogoutErrors, PostApiV1AuthLogoutResponses, PostApiV1AuthRefreshData, PostApiV1AuthRefreshErrors, PostApiV1AuthRefreshResponses, PostApiV1AuthRegisterData, PostApiV1AuthRegisterErrors, PostApiV1AuthRegisterResponses, PostApiV1AuthResetPasswordData, PostApiV1AuthResetPasswordErrors, PostApiV1AuthResetPasswordResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -103,4 +103,32 @@ export const getApiV1AuthMe = <ThrowOnError extends boolean = false>(options?: O
         }],
     url: '/api/v1/auth/me',
     ...options
+});
+
+/**
+ * Request a password reset
+ *
+ * Emails a reset link if the address has an account. The response is the same whether or not it does, so it can't be used to discover accounts.
+ */
+export const postApiV1AuthForgotPassword = <ThrowOnError extends boolean = false>(options?: Options<PostApiV1AuthForgotPasswordData, ThrowOnError>): RequestResult<PostApiV1AuthForgotPasswordResponses, PostApiV1AuthForgotPasswordErrors, ThrowOnError> => (options?.client ?? client).post<PostApiV1AuthForgotPasswordResponses, PostApiV1AuthForgotPasswordErrors, ThrowOnError>({
+    url: '/api/v1/auth/forgot-password',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+    }
+});
+
+/**
+ * Set a new password
+ *
+ * Sets a new password using the token from a reset email, logs the user out on all devices and clears cookies. Tokens work once and expire after 1 hour.
+ */
+export const postApiV1AuthResetPassword = <ThrowOnError extends boolean = false>(options?: Options<PostApiV1AuthResetPasswordData, ThrowOnError>): RequestResult<PostApiV1AuthResetPasswordResponses, PostApiV1AuthResetPasswordErrors, ThrowOnError> => (options?.client ?? client).post<PostApiV1AuthResetPasswordResponses, PostApiV1AuthResetPasswordErrors, ThrowOnError>({
+    url: '/api/v1/auth/reset-password',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+    }
 });
