@@ -85,7 +85,8 @@ jobs:
         image: postgres:17-alpine
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          # Throwaway database, so it needs no password.
+          POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: turgorepo
         ports:
           - 5432:5432
@@ -96,7 +97,7 @@ jobs:
           --health-retries 10
 
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/turgorepo?sslmode=disable
+      DATABASE_URL: postgresql://postgres@localhost:5432/turgorepo?sslmode=disable
 
     steps:
       - name: Checkout

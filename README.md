@@ -375,6 +375,10 @@ PRs and pushes to `main` run `.github/workflows/ci.yml`:
 
 `main` requires the CI check **Lint, typecheck, and build** before merge (configured via GitHub branch protection).
 
+### GitGuardian
+
+`.gitguardian.yaml` stops secret scanners flagging the local defaults in `.env.example` and `.env.production.example`. Those two files aren't scanned, so never put real values in them.
+
 ### Dependabot
 
 Weekly update PRs are configured in `.github/dependabot.yml` for:
