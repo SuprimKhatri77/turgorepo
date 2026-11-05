@@ -76,6 +76,7 @@ func SignAccess(cfg *config.Config, user db.User, jti uuid.UUID) (string, error)
 		ImageURL: textValue(user.ImageUrl),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        jti.String(),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(cfg.AccessTokenTTL)),
 		},
 	}

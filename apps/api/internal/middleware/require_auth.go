@@ -1,7 +1,9 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	session "github.com/suprimkhatri77/turgorepo/api/internal/auth"
@@ -11,7 +13,10 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 )
 
-func RequireAuth(cfg *config.Config) gin.HandlerFunc {
+// revocationCheckTimeout keeps a slow Redis from delaying every authenticated request.
+const revocationCheckTimeout = 200 * time.Millisecond
+
+func RequireAuth(cfg *config.Config, revoker session.TokenRevoker) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accessToken, err := c.Cookie("access_token")
 		if err != nil {
@@ -51,6 +56,18 @@ func RequireAuth(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
+		if tokenRevoked(c, revoker, claims) {
+			rlog.Warn(c, "revoked access token", "user_id", claims.UserID)
+
+			c.JSON(http.StatusUnauthorized, types.APIResponse{
+				Success: false,
+				Message: "Invalid access token",
+				Code:    constants.TokenInvalid,
+			})
+			c.Abort()
+			return
+		}
+
 		rlog.Info(c, "authenticated request", "user_id", claims.UserID, "role", claims.Role)
 
 		c.Set(constants.UserIDKey, claims.UserID)
@@ -58,4 +75,19 @@ func RequireAuth(cfg *config.Config) gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// tokenRevoked checks for a revocation such as a password reset. If Redis fails it
+// logs the error and allows the request: an outage shouldn't log out every user, and
+// tokens still expire on their own within minutes.
+func tokenRevoked(c *gin.Context, revoker session.TokenRevoker, claims *session.AccessClaims) bool {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), revocationCheckTimeout)
+	defer cancel()
+
+	cutoff, found, err := revoker.TokensValidAfter(ctx, claims.UserID)
+	if err != nil {
+		rlog.Error(c, "token revocation check failed, allowing request", err, "user_id", claims.UserID)
+		return false
+	}
+	return found && claims.IssuedAtOrBefore(cutoff)
 }

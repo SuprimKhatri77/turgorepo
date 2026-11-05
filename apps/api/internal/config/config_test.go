@@ -37,6 +37,25 @@ func TestValidate(t *testing.T) {
 		{name: "no frontend url", modify: func(c *Config) { c.FrontendURL = "" }, wantErr: "FRONTEND_URL"},
 		{name: "no cookie domain", modify: func(c *Config) { c.CookieDomain = "" }, wantErr: "COOKIE_DOMAIN"},
 		{name: "no smtp host", modify: func(c *Config) { c.SMTPHost = "" }, wantErr: "SMTP_HOST is required"},
+		{
+			name:    "plaintext with a real mail server",
+			modify:  func(c *Config) { c.SMTPAllowPlaintext = true },
+			wantErr: "SMTP_ALLOW_PLAINTEXT",
+		},
+		{
+			name: "plaintext with a local mail server",
+			modify: func(c *Config) {
+				c.SMTPAllowPlaintext = true
+				c.SMTPHost = "mailpit"
+			},
+		},
+		{
+			name: "debug mode allows plaintext anywhere",
+			modify: func(c *Config) {
+				c.GinMode = "debug"
+				c.SMTPAllowPlaintext = true
+			},
+		},
 		{name: "no email from", modify: func(c *Config) { c.EmailFrom = "" }, wantErr: "EMAIL_FROM"},
 		{
 			name: "debug mode allows weak secrets",

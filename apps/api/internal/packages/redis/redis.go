@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -100,4 +101,25 @@ func (c *Client) Allow(ctx context.Context, key string, limit int, window time.D
 // Clear implements ratelimit.Limiter by deleting a key's counter.
 func (c *Client) Clear(ctx context.Context, key string) error {
 	return c.rdb.Del(ctx, key).Err()
+}
+
+func tokenCutoffKey(userID string) string {
+	return "auth:tokens_valid_after:" + userID
+}
+
+// RevokeTokensBefore implements auth.TokenRevoker.
+func (c *Client) RevokeTokensBefore(ctx context.Context, userID string, cutoff time.Time, ttl time.Duration) error {
+	return c.rdb.Set(ctx, tokenCutoffKey(userID), cutoff.Unix(), ttl).Err()
+}
+
+// TokensValidAfter implements auth.TokenRevoker.
+func (c *Client) TokensValidAfter(ctx context.Context, userID string) (time.Time, bool, error) {
+	seconds, err := c.rdb.Get(ctx, tokenCutoffKey(userID)).Int64()
+	if errors.Is(err, goredis.Nil) {
+		return time.Time{}, false, nil
+	}
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	return time.Unix(seconds, 0), true, nil
 }

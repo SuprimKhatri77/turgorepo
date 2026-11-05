@@ -33,6 +33,7 @@ type PasswordResetDeps struct {
 	Queries repository.AuthRepository
 	Config  *config.Config
 	Limiter ratelimit.Limiter
+	Revoker session.TokenRevoker
 	Mailer  email.Mailer
 	Jobs    JobRunner
 }

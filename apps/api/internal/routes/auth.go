@@ -23,6 +23,7 @@ func setupAuthRoutes(router *gin.RouterGroup, cfg config.Config) {
 		Queries: cfg.Queries,
 		Config:  cfg.Config,
 		Limiter: cfg.Redis,
+		Revoker: cfg.Redis,
 		Mailer:  cfg.Mailer,
 		Jobs:    cfg.Jobs,
 	}
@@ -37,5 +38,5 @@ func setupAuthRoutes(router *gin.RouterGroup, cfg config.Config) {
 
 	auth.POST("/logout", authHandler.Logout(cfg.Queries, cfg.Config))
 	auth.POST("/refresh", authHandler.Refresh(cfg.Queries, cfg.Config))
-	auth.GET("/me", middleware.RequireAuth(cfg.Config), authHandler.Me(cfg.Queries))
+	auth.GET("/me", middleware.RequireAuth(cfg.Config, cfg.Redis), authHandler.Me(cfg.Queries))
 }
