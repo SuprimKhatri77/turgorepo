@@ -1,5 +1,5 @@
 # Air config for hot reload
-# Install: go install github.com/air-verse/air@latest
+# Install: go install github.com/air-verse/air@v1.67.4
 root = "."
 tmp_dir = "tmp"
 

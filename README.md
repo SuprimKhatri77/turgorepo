@@ -28,8 +28,6 @@ turgorepo/
 │   ├── types/        # Shared Zod schemas + TypeScript types
 │   ├── openapi/      # OpenAPI spec generation (outputs to apps/api/openapi.json)
 │   ├── api-client/   # Typed TS client generated from OpenAPI (tRPC-like DX for Go)
-│   ├── ui/           # Shared React components
-│   ├── eslint-config/
 │   └── typescript-config/
 ├── docker-compose.dev.yml
 └── .env.example
@@ -37,8 +35,9 @@ turgorepo/
 
 ## Prerequisites
 
-- [Bun](https://bun.sh) >= 1.3
-- [Go](https://go.dev) >= 1.23
+- [Bun](https://bun.sh) 1.4.4
+- [Go](https://go.dev) 1.27.3
+- [sqlc](https://sqlc.dev) 1.31.1 (CI pins this version, and a different one fails `db:sqlc:check`)
 - [Docker](https://www.docker.com) & Docker Compose (for containerized dev)
 - [golang-migrate](https://github.com/golang-migrate/migrate) CLI (for local migrations)
 - [golangci-lint](https://golangci-lint.run/welcome/install/) (for Go linting)
@@ -312,7 +311,7 @@ bun run dev --filter=api
 
 **pre-commit** (lint-staged):
 
-- **JS/TS in `apps/web` and `packages/ui`** — ESLint (`--fix`) + Prettier
+- **JS/TS in `apps/web`** — ESLint (`--fix`) + Prettier
 - **`packages/types` or `packages/openapi`** — runs `bun run generate` and stages both api-client outputs
 - **API SQL / sqlc config / migrations** — runs `bun run db:sqlc` and stages generated Go
 - **Other JS/TS / JSON / YAML / CSS** — Prettier
@@ -337,6 +336,8 @@ PRs and pushes to `main` run `.github/workflows/ci.yml`:
 - `check-types`
 - `lint` (JS/TS)
 - `lint:go` (golangci-lint)
+- `go test`
+- `govulncheck` (Go dependency and standard library vulnerabilities)
 - `build`
 
 ### Branch protection
@@ -415,7 +416,7 @@ The API uses [Air](https://github.com/air-verse/air) in Docker (`apps/api/.air.t
 
 ```sh
 cd apps/api
-go run github.com/air-verse/air@latest
+go run github.com/air-verse/air@v1.67.4
 ```
 
 ## License

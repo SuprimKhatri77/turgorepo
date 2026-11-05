@@ -39,7 +39,7 @@ const generateStatus = run("sqlc", ["generate"], "apps/api");
 if (generateStatus !== 0) {
   console.error(`
 sqlc generate failed. Install sqlc:
-  go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
+  go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
 `);
   process.exit(generateStatus);
 }
