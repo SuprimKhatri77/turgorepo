@@ -43,11 +43,11 @@ func Seed(ctx context.Context) error {
 
 	queries := dbgen.New(db.Pool)
 
-	adminPassword, err := requireEnv("SEED_ADMIN_PASSWORD")
+	adminPassword, err := requireSeedPassword(cfg, "SEED_ADMIN_PASSWORD")
 	if err != nil {
 		return err
 	}
-	memberPassword, err := requireEnv("SEED_MEMBER_PASSWORD")
+	memberPassword, err := requireSeedPassword(cfg, "SEED_MEMBER_PASSWORD")
 	if err != nil {
 		return err
 	}
@@ -121,10 +121,15 @@ func upsertSeedUser(ctx context.Context, queries *dbgen.Queries, u seedUser) err
 	return nil
 }
 
-func requireEnv(key string) (string, error) {
+// requireSeedPassword rejects the public placeholder passwords from .env.example
+// in release mode, where they would create a real admin with a known password.
+func requireSeedPassword(cfg *config.Config, key string) (string, error) {
 	v := strings.TrimSpace(os.Getenv(key))
 	if v == "" {
 		return "", fmt.Errorf("%s is required (set it in .env.local before running seed)", key)
+	}
+	if cfg.IsRelease() && strings.HasPrefix(v, "change-me") {
+		return "", fmt.Errorf("%s is still a placeholder value", key)
 	}
 	return v, nil
 }

@@ -44,40 +44,39 @@ turgorepo/
 
 ## Getting started
 
-### 1. Clone and install
+### 1. Clone and configure
 
 ```sh
 git clone <your-repo-url> turgorepo
 cd turgorepo
 bun install
-```
-
-### 2. Environment
-
-Copy the example env and adjust as needed:
-
-```sh
 cp .env.example .env.local
 ```
 
-Key variables:
+The defaults work as they are. Key variables:
 
 | Variable | Description |
 | --- | --- |
 | `DATABASE_URL` | PostgreSQL connection string |
-| `REDIS_URL` | Redis connection URL (`redis://redis:6379/0` in Compose; `redis://localhost:6379/0` for a local API) |
-| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | JWT signing secrets |
-| `FRONTEND_URL` | Allowed CORS origin (e.g. `http://localhost:3000`) |
-| `COOKIE_DOMAIN` | Cookie domain (e.g. `localhost`) |
-| `NEXT_PUBLIC_API_URL` | API URL for the browser (e.g. `http://localhost:5000`) |
-| `INTERNAL_API_URL` | API URL inside Docker network (e.g. `http://api:5000`) |
+| `REDIS_URL` | Redis connection URL |
+| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | JWT signing secrets. Release mode requires at least 32 bytes, and they must differ |
+| `FRONTEND_URL` | Allowed CORS origin |
+| `COOKIE_DOMAIN` | Cookie domain, used in release mode |
+| `TRUSTED_PROXIES` | Comma-separated CIDRs of proxies allowed to set `X-Forwarded-For`. Leave empty without a proxy |
+| `NEXT_PUBLIC_API_URL` | API URL for the browser, built into the web app |
+| `INTERNAL_API_URL` | API URL for server-side web requests |
+| `CLOUDINARY_*` | Optional. Set all three to enable image uploads |
 
-### 3. Run with Docker (recommended)
+Keep one `.env.local` at the repo root. It works both on your machine and in Docker, because `docker-compose.dev.yml` swaps in Docker hostnames where needed.
+
+### 2. Run with Docker (recommended)
 
 ```sh
-bun run docker:dev:up
-# stop: bun run docker:dev:down
+bun run docker:dev:up      # builds, starts everything, and waits until it's healthy
+bun run db:seed            # optional: creates the demo users
 ```
+
+Migrations run automatically when the API container starts.
 
 | Service | URL |
 | --- | --- |
@@ -88,35 +87,25 @@ bun run docker:dev:up
 | PostgreSQL | localhost:5432 |
 | Redis | localhost:6379 |
 
-Run migrations inside the API container or locally:
+Follow logs with `bun run docker:dev:logs`, and stop with `bun run docker:dev:down`.
+
+**Port already in use?** Set `WEB_PORT`, `API_PORT`, `DB_PORT` or `REDIS_PORT` in `.env.local`, then update the matching URLs in the same file. Without Docker, the API listens on `PORT` instead of `API_PORT`. On macOS, AirPlay Receiver often holds port 5000.
+
+### 3. Run without Docker
+
+Start Postgres and Redis yourself, or run only those in Docker:
 
 ```sh
-cd apps/api
-make migrate-up
+bun run docker:dev:services
+bun run db:migrate         # first time, and after adding migrations
 ```
 
-### 4. Run locally (without Docker)
-
-**Database** — start Postgres and Redis, then set `DATABASE_URL` and `REDIS_URL` in `.env.local` (use `localhost` hostnames when not in Compose).
-
-**API:**
+Then start the apps, together or one at a time:
 
 ```sh
-cd apps/api
-make migrate-up   # first time
-make run          # or: go run ./cmd/server
-```
-
-**Web:**
-
-```sh
+bun run dev                # API and web
 bun run dev --filter=web
-```
-
-**Everything via Turbo:**
-
-```sh
-bun run dev
+bun run dev --filter=api
 ```
 
 ## API
@@ -150,7 +139,7 @@ Generate the OpenAPI spec from shared Zod schemas:
 bun run generate
 ```
 
-This writes `apps/api/openapi.json`. Scalar docs are served at `/api/v1/docs/`.
+This writes `apps/api/openapi.json`, which is committed. Scalar docs are served at `/api/v1/docs/`.
 
 ### Database workflow
 
@@ -162,13 +151,12 @@ make migrate-up
 make migrate-down N=1   # rollback last N migrations
 
 # Regenerate sqlc types after changing queries/schema
-sqlc generate
+make sqlc
 ```
 
 Source layout:
 
-- `migrations/` — SQL migrations
-- `internal/database/schema/` — table definitions for sqlc
+- `migrations/` — SQL migrations, which sqlc also reads as the schema
 - `internal/database/queries/` — SQL queries
 - `internal/database/generated/` — sqlc output (do not edit)
 
@@ -176,9 +164,7 @@ Source layout:
 
 Next.js app with cookie-based auth, axios interceptors for token refresh, and route protection via Next.js proxy middleware.
 
-### Proxy middleware (`_proxy.ts`)
-
-The file is intentionally named `_proxy.ts` (underscore prefix disables it). When you need route middleware, rename it to `proxy.ts` and it works as-is.
+### Proxy middleware (`proxy.ts`)
 
 It handles:
 
@@ -272,7 +258,7 @@ import { fetchCurrentUser } from "@/lib/api/auth/fetch-current-user";
 const user = await fetchCurrentUser();
 ```
 
-After changing Zod schemas or OpenAPI path definitions, run `bun run generate` and commit `packages/api-client/src/generated` **and** `packages/api-client/src/generated-server`. `apps/api/openapi.json` is local/CI build output (gitignored) used for Scalar docs and client generation.
+After changing Zod schemas or OpenAPI path definitions, run `bun run generate` and commit `apps/api/openapi.json`, `packages/api-client/src/generated` **and** `packages/api-client/src/generated-server`. The pre-commit hook does this for you.
 
 ## Scripts
 
@@ -290,11 +276,13 @@ After changing Zod schemas or OpenAPI path definitions, run `bun run generate` a
 | `bun run db:sqlc` | Regenerate sqlc Go code from SQL queries |
 | `bun run db:sqlc:check` | Regenerate sqlc and fail if committed output is stale |
 | `bun run db:seed` | Insert demo admin + member users (idempotent) |
-| `bun run docker:dev:up` | Start Docker Compose stack with `.env.local` |
-| `bun run docker:dev:down` | Stop Docker Compose stack |
+| `bun run docker:dev:up` | Build and start the Docker stack, and wait until it's healthy |
+| `bun run docker:dev:services` | Start only Postgres and Redis in Docker |
+| `bun run docker:dev:logs` | Follow Docker stack logs |
+| `bun run docker:dev:down` | Stop the Docker stack |
 | `bun run format` | Format with Prettier |
-| `bun run prepush` | Typecheck + lint:go + build (same as the pre-push hook) |
-| `bun run ci` | Full local CI: generate:check, sqlc:check, typecheck, lint, lint:go, build |
+| `bun run prepush` | Typecheck + lint:go + test:go + build (same as the pre-push hook) |
+| `bun run ci` | Full local CI: generate:check, sqlc:check, typecheck, lint, lint:go, test:go, build |
 
 Filter to a single app:
 
@@ -325,7 +313,7 @@ fix: validate user_id claim on logout
 chore: bump golangci-lint config
 ```
 
-**pre-push** — runs `bun run prepush` (`check-types` + `lint:go` + `build`) so the same quality gates as CI run before push. Skip hooks with `git push --no-verify` when you need to (use sparingly).
+**pre-push** — runs `bun run prepush` (`check-types` + `lint:go` + `test:go` + `build`) so the same quality gates as CI run before push. Skip hooks with `git push --no-verify` when you need to (use sparingly).
 
 ### GitHub Actions CI
 
@@ -393,11 +381,9 @@ Every response includes `X-Request-ID` (reuses the incoming header or mints a UU
 
 ### Database seed
 
-After migrations, set seed passwords in `.env.local` (required — no defaults):
+`.env.example` sets placeholder passwords for local use, and release mode refuses them:
 
 ```sh
-SEED_ADMIN_PASSWORD=your-local-admin-password
-SEED_MEMBER_PASSWORD=your-local-member-password
 bun run db:seed
 ```
 

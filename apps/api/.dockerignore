@@ -1,8 +1,8 @@
-apps/backend/tmp/
-apps/backend/*.exe
-apps/backend/*.test
-node_modules/
-.git/
+tmp/
+*.exe
+*.test
+server
+.git
 .gitignore
 **/*.env*
 **/*.md

@@ -1,12 +1,18 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
+  "globalDependencies": [".env.local"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".next/**", "!.next/cache/**", "server"],
-      "env": ["NODE_ENV", "NEXT_PUBLIC_API_URL", "COOKIE_DOMAIN"]
+      "env": [
+        "NODE_ENV",
+        "NEXT_PUBLIC_API_URL",
+        "INTERNAL_API_URL",
+        "COOKIE_DOMAIN"
+      ]
     },
     "generate": {
       "dependsOn": ["^generate"]
@@ -20,7 +26,7 @@
     "dev": {
       "cache": false,
       "persistent": true,
-      "env": ["INTERNAL_API_URL", "NEXT_PUBLIC_API_URL"]
+      "env": ["INTERNAL_API_URL", "NEXT_PUBLIC_API_URL", "COOKIE_DOMAIN"]
     }
   }
 }

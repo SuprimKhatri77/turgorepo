@@ -34,9 +34,6 @@ yarn-error.log*
 .DS_Store
 *.pem
 
-
-*.md
-
 # Local working notes
 CLAUDE.local.md
 .claude/

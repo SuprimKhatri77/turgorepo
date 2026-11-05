@@ -133,7 +133,7 @@ export default async function Home() {
           {`bun install
 cp .env.example .env.local
 bun run docker:dev:up
-bun run db:migrate && bun run db:seed`}
+bun run db:seed`}
         </pre>
       </section>
     </main>

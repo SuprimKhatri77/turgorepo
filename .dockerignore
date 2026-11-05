@@ -1,8 +1,9 @@
-apps/web/.next/
-apps/web/node_modules/
-apps/backend/tmp/
-apps/backend/*.exe
-node_modules/
-.git/
-**/.env*
-**/README.md
+**/node_modules
+**/.next
+**/.turbo
+**/tmp
+.git
+.gitignore
+**/*.env*
+!**/.env.example
+**/*.md

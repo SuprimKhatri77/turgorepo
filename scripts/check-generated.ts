@@ -6,6 +6,7 @@
 import { spawnSync } from "node:child_process";
 
 const generatedPaths = [
+  "apps/api/openapi.json",
   "packages/api-client/src/generated",
   "packages/api-client/src/generated-server",
 ];

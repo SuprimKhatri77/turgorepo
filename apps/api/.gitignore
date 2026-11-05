@@ -1,5 +1,4 @@
 /server
-/openapi.json
 build-errors.log
 
 
@@ -86,6 +85,3 @@ build/
 
 # Air live reload tool (if you use it)
 tmp/
-
-
-*.md
