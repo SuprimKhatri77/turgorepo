@@ -40,8 +40,8 @@ export const ResetPasswordBodySchema = ResetPasswordBodySchemaBase.openapi(
   "ResetPasswordBody",
   {
     example: {
-      token: "token-from-the-reset-email",
-      password: "new-securepass123",
+      token: "<token from the reset email>",
+      password: "<new password>",
     },
   },
 );
