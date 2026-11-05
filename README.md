@@ -1,9 +1,22 @@
 # Turgorepo
 
-A full-stack monorepo template — **Tur**bo + **Go** + repo — with a Next.js frontend, Go/Gin API, PostgreSQL, Redis, and shared TypeScript packages for types and API docs.
+A full-stack monorepo with a Next.js frontend, Go/Gin API, PostgreSQL, Redis, and shared TypeScript packages for types and API docs.
 
+<!-- template:start -->
 **Author:** [Suprim Khatri](https://github.com/suprimkhatri77)
 
+## Start a new project from this template
+
+Turgorepo is **Tur**bo + **Go** + repo. Click **Use this template** on GitHub, clone your copy, then run:
+
+```sh
+bun run init --name acme-app --module github.com/acme/acme-app
+git add -A && git commit -m "chore: initialize acme-app"
+```
+
+This renames the project, Go module, Docker project and database, creates `.env.local` with generated JWT secrets, and removes itself along with this section. Then continue from [Run with Docker](#2-run-with-docker-recommended).
+
+<!-- template:end -->
 ## Stack
 
 | Layer | Tech |

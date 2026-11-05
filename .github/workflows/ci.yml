@@ -136,3 +136,47 @@ jobs:
           docker build -f apps/web/Dockerfile
           --build-arg NEXT_PUBLIC_API_URL=https://api.example.com
           -t turgorepo-web .
+
+  # template:start
+  template-init:
+    name: Template init
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: apps/api/go.sum
+
+      - name: Run the init script
+        run: bun run init --name acme-app --module github.com/acme/acme-app
+
+      - name: Check that nothing was missed
+        run: |
+          if git grep -il turgorepo -- ':!LICENSE' ; then
+            echo "Files above still mention the template name"
+            exit 1
+          fi
+          git ls-files --others --exclude-standard | (! grep -i turgorepo)
+
+      - name: Typecheck
+        run: bun run check-types
+
+      - name: Build and test the API
+        working-directory: apps/api
+        run: |
+          go build ./...
+          go test ./...
+  # template:end
