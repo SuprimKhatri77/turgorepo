@@ -15,6 +15,8 @@ const nextConfig: NextConfig = {
   output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
   // Workspace packages live above this folder, so tracing has to start at the root.
   outputFileTracingRoot: resolve(process.cwd(), "../.."),
+  // The Content-Security-Policy needs a nonce per request, so proxy.ts sets it.
+  // See lib/middleware/csp.ts.
   async headers() {
     return [
       {

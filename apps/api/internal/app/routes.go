@@ -44,6 +44,7 @@ func buildRouter(
 	} else {
 		r.Use(gin.Logger())
 	}
+	r.Use(middleware.SecurityHeaders(cfg))
 	r.Use(middleware.CORS(cfg))
 	r.Use(middleware.BodyLimit(maxRequestBodyBytes))
 

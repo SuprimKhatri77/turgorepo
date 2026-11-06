@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { userFromAccessToken } from "@/lib/api/auth/claims";
 import { get_api_url } from "@/utils/get-api-url";
-import { redirectForRole } from "./redirects";
+import { continueRequest, redirectForRole } from "./redirects";
 
 export function clearAuthCookies(response: NextResponse) {
   const cookieOptions = {
@@ -35,6 +35,7 @@ function forwardSetCookie(response: NextResponse, cookies: string[]): void {
 export async function attemptRefresh(
   refreshToken: string,
   req: NextRequest,
+  requestHeaders: Headers,
   requiredRoles: string[],
 ) {
   try {
@@ -82,7 +83,7 @@ export async function attemptRefresh(
       .getAll()
       .filter(({ name }) => name !== "access_token" && name !== "refresh_token")
       .map(({ name, value }) => `${name}=${value}`);
-    const headers = new Headers(req.headers);
+    const headers = new Headers(requestHeaders);
     headers.set(
       "cookie",
       [
@@ -92,7 +93,7 @@ export async function attemptRefresh(
       ].join("; "),
     );
 
-    const response = NextResponse.next({ request: { headers } });
+    const response = continueRequest(headers);
 
     forwardSetCookie(response, cookies);
     return response;
@@ -106,6 +107,7 @@ export async function attemptRefresh(
 export async function attemptRefreshForAuthRoute(
   refreshToken: string,
   req: NextRequest,
+  requestHeaders: Headers,
 ) {
   try {
     const res = await fetch(`${get_api_url()}/api/v1/auth/refresh`, {
@@ -114,7 +116,7 @@ export async function attemptRefreshForAuthRoute(
     });
 
     if (!res.ok) {
-      const response = NextResponse.next();
+      const response = continueRequest(requestHeaders);
       if (res.status === 401) {
         clearAuthCookies(response);
       }
@@ -125,7 +127,7 @@ export async function attemptRefreshForAuthRoute(
     const newAccessToken = extractTokenFromCookie(cookies.join("; "));
 
     if (!newAccessToken) {
-      const response = NextResponse.next();
+      const response = continueRequest(requestHeaders);
       clearAuthCookies(response);
       return response;
     }
@@ -133,7 +135,7 @@ export async function attemptRefreshForAuthRoute(
     const user = userFromAccessToken(newAccessToken);
 
     if (!user) {
-      const response = NextResponse.next();
+      const response = continueRequest(requestHeaders);
       clearAuthCookies(response);
       return response;
     }
@@ -144,7 +146,7 @@ export async function attemptRefreshForAuthRoute(
   } catch (error) {
     // Network/transport error: don't clear cookies
     console.error("Refresh failed in proxy:", error);
-    return NextResponse.next();
+    return continueRequest(requestHeaders);
   }
 }
 
