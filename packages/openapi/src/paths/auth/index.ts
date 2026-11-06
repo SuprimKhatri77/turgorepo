@@ -4,7 +4,9 @@ import { registerLogoutPath } from "./logout.ts";
 import { registerMePath } from "./me.ts";
 import { registerRefreshPath } from "./refresh.ts";
 import { registerRegisterPath } from "./register.ts";
+import { registerResendVerificationPath } from "./resend-verification.ts";
 import { registerResetPasswordPath } from "./reset-password.ts";
+import { registerVerifyEmailPath } from "./verify-email.ts";
 
 export function registerAuthPaths() {
   registerRegisterPath();
@@ -14,4 +16,6 @@ export function registerAuthPaths() {
   registerMePath();
   registerForgotPasswordPath();
   registerResetPasswordPath();
+  registerVerifyEmailPath();
+  registerResendVerificationPath();
 }

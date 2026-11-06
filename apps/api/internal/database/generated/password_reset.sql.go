@@ -59,9 +59,11 @@ WITH consumed AS (
   WHERE s.user_id IN (SELECT consumed.user_id FROM consumed)
     AND s.revoked_at IS NULL
 )
-UPDATE users SET password_hash = $1
+UPDATE users SET
+  password_hash = $1,
+  email_verified_at = COALESCE(users.email_verified_at, now())
 WHERE users.id IN (SELECT consumed.user_id FROM consumed)
-RETURNING id, name, email, password_hash, role, image_url, created_at, updated_at
+RETURNING id, name, email, password_hash, role, image_url, created_at, updated_at, email_verified_at
 `
 
 type ResetPasswordWithTokenParams struct {
@@ -71,6 +73,7 @@ type ResetPasswordWithTokenParams struct {
 
 // One statement, so a token can't be used without the rest of the reset happening.
 // A concurrent request waits on the token's row lock, then finds used_at set.
+// Following the emailed link proves the user owns the address.
 func (q *Queries) ResetPasswordWithToken(ctx context.Context, arg ResetPasswordWithTokenParams) (User, error) {
 	row := q.db.QueryRow(ctx, resetPasswordWithToken, arg.PasswordHash, arg.TokenHash)
 	var i User
@@ -83,6 +86,7 @@ func (q *Queries) ResetPasswordWithToken(ctx context.Context, arg ResetPasswordW
 		&i.ImageUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
 }

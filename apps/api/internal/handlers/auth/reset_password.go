@@ -30,7 +30,7 @@ type ResetPasswordRequest struct {
 
 // ResetPassword sets a new password using a token from a reset email, and logs the
 // user out everywhere, including access tokens that haven't expired yet.
-func ResetPassword(deps PasswordResetDeps) gin.HandlerFunc {
+func ResetPassword(deps AccountEmailDeps) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		req, ok := validator.BindJSON[ResetPasswordRequest](c)
 		if !ok {
@@ -96,7 +96,7 @@ func ResetPassword(deps PasswordResetDeps) gin.HandlerFunc {
 // revokeAccessTokens runs after the database commit, so a refresh can't issue a new
 // token after the cutoff. A failure doesn't fail the reset, because the password and
 // sessions have already changed, and old access tokens expire on their own soon.
-func revokeAccessTokens(c *gin.Context, deps PasswordResetDeps, user db.User) {
+func revokeAccessTokens(c *gin.Context, deps AccountEmailDeps, user db.User) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), revokeTimeout)
 	defer cancel()
 
@@ -109,7 +109,7 @@ func revokeAccessTokens(c *gin.Context, deps PasswordResetDeps, user db.User) {
 	}
 }
 
-func sendPasswordChangedEmail(ctx context.Context, deps PasswordResetDeps, user db.User) error {
+func sendPasswordChangedEmail(ctx context.Context, deps AccountEmailDeps, user db.User) error {
 	message, err := email.PasswordChangedEmail(user.Email, user.Name)
 	if err != nil {
 		return err

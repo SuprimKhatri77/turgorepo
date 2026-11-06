@@ -6,7 +6,9 @@ import {
   LoginBodySchema as LoginBodySchemaBase,
   MeResponseSchema,
   RegisterBodySchema as RegisterBodySchemaBase,
+  ResendVerificationBodySchema as ResendVerificationBodySchemaBase,
   ResetPasswordBodySchema as ResetPasswordBodySchemaBase,
+  VerifyEmailBodySchema as VerifyEmailBodySchemaBase,
 } from "@repo/types";
 
 export const RegisterBodySchema = RegisterBodySchemaBase.openapi(
@@ -45,6 +47,22 @@ export const ResetPasswordBodySchema = ResetPasswordBodySchemaBase.openapi(
     },
   },
 );
+
+export const VerifyEmailBodySchema = VerifyEmailBodySchemaBase.openapi(
+  "VerifyEmailBody",
+  {
+    example: {
+      token: "<token from the verification email>",
+    },
+  },
+);
+
+export const ResendVerificationBodySchema =
+  ResendVerificationBodySchemaBase.openapi("ResendVerificationBody", {
+    example: {
+      email: "jane@example.com",
+    },
+  });
 
 export const HealthResponse = HealthResponseSchema.openapi("HealthResponse", {
   example: {

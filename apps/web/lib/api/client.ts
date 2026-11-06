@@ -29,7 +29,9 @@ export {
   postApiV1AuthLogout,
   postApiV1AuthRefresh,
   postApiV1AuthRegister,
+  postApiV1AuthResendVerification,
   postApiV1AuthResetPassword,
+  postApiV1AuthVerifyEmail,
 } from "@repo/api-client";
 
 export type {
@@ -37,6 +39,8 @@ export type {
   LoginBody,
   MeResponse,
   RegisterBody,
+  ResendVerificationBody,
   ResetPasswordBody,
   User,
+  VerifyEmailBody,
 } from "@repo/api-client";

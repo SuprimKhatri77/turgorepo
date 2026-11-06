@@ -46,6 +46,12 @@ var (
 	ForgotPasswordPerEmail = Rule{Name: "forgot-password:email", Limit: 3, Window: time.Hour}
 	// ResetPasswordPerIP slows guessing reset tokens.
 	ResetPasswordPerIP = Rule{Name: "reset-password:ip", Limit: 20, Window: 15 * time.Minute}
+	// VerifyEmailPerIP slows guessing verification tokens.
+	VerifyEmailPerIP = Rule{Name: "verify-email:ip", Limit: 20, Window: 15 * time.Minute}
+	// ResendVerificationPerIP slows probing and bulk sending from one address.
+	ResendVerificationPerIP = Rule{Name: "resend-verification:ip", Limit: 10, Window: time.Hour}
+	// ResendVerificationPerEmail stops anyone flooding one inbox, from any number of IPs.
+	ResendVerificationPerEmail = Rule{Name: "resend-verification:email", Limit: 3, Window: time.Hour}
 )
 
 // ByIP returns middleware that applies rule to each client IP.

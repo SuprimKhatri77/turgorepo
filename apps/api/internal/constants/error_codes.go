@@ -29,4 +29,8 @@ const (
 
 	// password reset
 	InvalidResetToken = "INVALID_RESET_TOKEN"
+
+	// email verification
+	EmailNotVerified         = "EMAIL_NOT_VERIFIED"
+	InvalidVerificationToken = "INVALID_VERIFICATION_TOKEN"
 )

@@ -29,6 +29,29 @@ func TestPasswordResetEmail(t *testing.T) {
 	}
 }
 
+func TestVerificationEmail(t *testing.T) {
+	url := "https://app.example.com/auth/verify-email#token=abc-123_DEF"
+	msg, err := VerificationEmail("ada@example.com", "Ada", url, 24*time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if msg.To != "ada@example.com" || !strings.Contains(msg.Subject, "Verify") {
+		t.Errorf("to = %q, subject = %q", msg.To, msg.Subject)
+	}
+	if !strings.Contains(msg.Text, url) {
+		t.Errorf("text is missing the link: %s", msg.Text)
+	}
+	if !strings.Contains(msg.HTML, "#token=abc-123_DEF") {
+		t.Errorf("html is missing the link: %s", msg.HTML)
+	}
+	for _, body := range []string{msg.Text, msg.HTML} {
+		if !strings.Contains(body, "24 hours") {
+			t.Errorf("body is missing the expiry: %s", body)
+		}
+	}
+}
+
 func TestEmailsEscapeNamesInHTML(t *testing.T) {
 	name := `<script>alert(1)</script>`
 

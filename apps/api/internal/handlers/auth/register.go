@@ -1,17 +1,16 @@
 package auth
 
 import (
+	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgconn"
-	session "github.com/suprimkhatri77/turgorepo/api/internal/auth"
-	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 	"github.com/suprimkhatri77/turgorepo/api/internal/packages/rlog"
-	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 	"github.com/suprimkhatri77/turgorepo/api/internal/validator"
@@ -24,7 +23,9 @@ type RegisterRequest struct {
 	Password string `json:"password" label:"Password" binding:"required,not_blank,min=8,max_bytes=72" msg_required:"Password is required" msg_min:"Password must be at least 8 characters" msg_max_bytes:"Password cannot exceed 72 bytes" msg_not_blank:"Password cannot be blank"`
 }
 
-func Register(queries repository.AuthRepository, cfg *config.Config) gin.HandlerFunc {
+// Register creates an account and emails a verification link. It doesn't log
+// the user in: login is refused until the address is verified.
+func Register(deps AccountEmailDeps) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -48,7 +49,7 @@ func Register(queries repository.AuthRepository, cfg *config.Config) gin.Handler
 			return
 		}
 
-		user, err := queries.CreateUser(ctx, db.CreateUserParams{
+		user, err := deps.Queries.CreateUser(ctx, db.CreateUserParams{
 			Name:         req.Name,
 			Email:        req.Email,
 			PasswordHash: string(passwordHash),
@@ -78,23 +79,19 @@ func Register(queries repository.AuthRepository, cfg *config.Config) gin.Handler
 			return
 		}
 
-		if err := session.IssueSession(c, queries, cfg, user); err != nil {
-			rlog.Error(c, "failed to issue session", err, "user_id", user.ID)
-
-			c.JSON(http.StatusInternalServerError, types.APIResponse{
-				Success: false,
-				Message: "Something went wrong",
-				Code:    constants.InternalServerError,
-			})
-			return
-		}
-
 		rlog.Info(c, "registration successful", "user_id", user.ID)
+
+		// If sending fails, the user can ask for a new link from the login page.
+		requestID := c.GetString(constants.RequestIDKey)
+		deps.Jobs.Go("verification email", func(ctx context.Context) {
+			if err := sendVerificationEmail(ctx, deps, user); err != nil {
+				slog.Error("failed to send verification email", "request_id", requestID, "err", err)
+			}
+		})
 
 		c.JSON(http.StatusCreated, types.APIResponse{
 			Success: true,
-			Message: "Registration successful",
-			Data:    session.PublicUser(user),
+			Message: "Check your inbox for a link to verify your email",
 		})
 	}
 }

@@ -154,6 +154,37 @@
           "password": "<new password>"
         }
       },
+      "VerifyEmailBody": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "example": {
+          "token": "<token from the verification email>"
+        }
+      },
+      "ResendVerificationBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "example": {
+          "email": "jane@example.com"
+        }
+      },
       "HealthResponse": {
         "type": "object",
         "properties": {
@@ -189,7 +220,9 @@
               "FORBIDDEN",
               "USER_NOT_FOUND",
               "USER_ALREADY_EXISTS",
-              "INVALID_RESET_TOKEN"
+              "INVALID_RESET_TOKEN",
+              "EMAIL_NOT_VERIFIED",
+              "INVALID_VERIFICATION_TOKEN"
             ]
           },
           "errors": {
@@ -261,7 +294,9 @@
               "FORBIDDEN",
               "USER_NOT_FOUND",
               "USER_ALREADY_EXISTS",
-              "INVALID_RESET_TOKEN"
+              "INVALID_RESET_TOKEN",
+              "EMAIL_NOT_VERIFIED",
+              "INVALID_VERIFICATION_TOKEN"
             ]
           },
           "errors": {
@@ -374,7 +409,9 @@
               "FORBIDDEN",
               "USER_NOT_FOUND",
               "USER_ALREADY_EXISTS",
-              "INVALID_RESET_TOKEN"
+              "INVALID_RESET_TOKEN",
+              "EMAIL_NOT_VERIFIED",
+              "INVALID_VERIFICATION_TOKEN"
             ]
           },
           "errors": {
@@ -487,7 +524,9 @@
               "FORBIDDEN",
               "USER_NOT_FOUND",
               "USER_ALREADY_EXISTS",
-              "INVALID_RESET_TOKEN"
+              "INVALID_RESET_TOKEN",
+              "EMAIL_NOT_VERIFIED",
+              "INVALID_VERIFICATION_TOKEN"
             ]
           },
           "errors": {
@@ -632,7 +671,7 @@
     "/api/v1/auth/register": {
       "post": {
         "summary": "Register a new user",
-        "description": "Creates a new member account and sets access, refresh, and session cookies",
+        "description": "Creates a new member account and emails a link to verify the address. It doesn't log the user in: login is refused until the email is verified.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -644,11 +683,11 @@
         },
         "responses": {
           "201": {
-            "description": "Registration successful",
+            "description": "Account created and verification email queued",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthUserResponse"
+                  "$ref": "#/components/schemas/AuthSuccessResponse"
                 }
               }
             }
@@ -709,7 +748,7 @@
     "/api/v1/auth/login": {
       "post": {
         "summary": "Log in",
-        "description": "Authenticates a user and sets access, refresh, and session cookies",
+        "description": "Authenticates a user and sets access, refresh, and session cookies. Users who haven't verified their email get a 403 instead, but only once the password is correct.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -742,6 +781,16 @@
           },
           "401": {
             "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Email not verified (EMAIL_NOT_VERIFIED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1002,7 +1051,7 @@
     "/api/v1/auth/reset-password": {
       "post": {
         "summary": "Set a new password",
-        "description": "Sets a new password using the token from a reset email, logs the user out on all devices and clears cookies. Tokens work once and expire after 1 hour.",
+        "description": "Sets a new password using the token from a reset email, marks the email as verified, logs the user out on all devices and clears cookies. Tokens work once and expire after 1 hour.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1055,6 +1104,130 @@
           },
           "500": {
             "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/verify-email": {
+      "post": {
+        "summary": "Verify an email address",
+        "description": "Marks the email as verified using the token from a verification email. It doesn't log the user in. Tokens work once, expire after 24 hours, and only the newest one for an account works.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email verified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed, or the token is invalid or expired (INVALID_VERIFICATION_TOKEN)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request body is too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/resend-verification": {
+      "post": {
+        "summary": "Resend the verification email",
+        "description": "Emails a new verification link if the address has an account that isn't verified yet, which makes older links stop working. The response is the same either way, so it can't be used to discover accounts.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendVerificationBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Request accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request body is too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {

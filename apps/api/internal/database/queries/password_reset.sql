@@ -26,7 +26,10 @@ WITH consumed AS (
   WHERE s.user_id IN (SELECT consumed.user_id FROM consumed)
     AND s.revoked_at IS NULL
 )
-UPDATE users SET password_hash = sqlc.arg(password_hash)
+-- Following the emailed link proves the user owns the address.
+UPDATE users SET
+  password_hash = sqlc.arg(password_hash),
+  email_verified_at = COALESCE(users.email_verified_at, now())
 WHERE users.id IN (SELECT consumed.user_id FROM consumed)
 RETURNING *;
 

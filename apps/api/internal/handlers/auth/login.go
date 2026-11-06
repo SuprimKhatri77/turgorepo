@@ -97,6 +97,19 @@ func Login(
 
 		rlog.Info(c, "password verified", "user_id", user.ID)
 
+		// Checked after the password, so only someone who knows it learns that the
+		// account exists and isn't verified.
+		if !user.EmailVerifiedAt.Valid {
+			rlog.Warn(c, "login refused, email not verified", "user_id", user.ID)
+
+			c.JSON(http.StatusForbidden, types.APIResponse{
+				Success: false,
+				Message: "Verify your email before signing in. Check your inbox for the link",
+				Code:    constants.EmailNotVerified,
+			})
+			return
+		}
+
 		if err := session.IssueSession(c, queries, cfg, user); err != nil {
 			rlog.Error(c, "failed to issue session", err, "user_id", user.ID)
 

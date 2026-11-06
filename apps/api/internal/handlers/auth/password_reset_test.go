@@ -77,11 +77,11 @@ func (r *fakeRevoker) Revocations(context.Context, string, string) (session.Revo
 	return session.Revocations{}, nil
 }
 
-func resetDeps(repo *resetRepo, limiter *fakeLimiter, mailer *fakeMailer) PasswordResetDeps {
+func resetDeps(repo *resetRepo, limiter *fakeLimiter, mailer *fakeMailer) AccountEmailDeps {
 	cfg := testConfig()
 	cfg.FrontendURL = "https://app.example.com/"
 	cfg.PasswordResetTTL = time.Hour
-	return PasswordResetDeps{Queries: repo, Config: cfg, Limiter: limiter, Revoker: &fakeRevoker{}, Mailer: mailer, Jobs: inlineJobs{}}
+	return AccountEmailDeps{Queries: repo, Config: cfg, Limiter: limiter, Revoker: &fakeRevoker{}, Mailer: mailer, Jobs: inlineJobs{}}
 }
 
 func tokenFromEmail(t *testing.T, msg email.Message) string {
@@ -304,12 +304,12 @@ func TestResetPassword(t *testing.T) {
 	})
 }
 
-func TestResetTokensAreRandomAndURLSafe(t *testing.T) {
-	first, firstHash, err := session.NewResetToken()
+func TestEmailTokensAreRandomAndURLSafe(t *testing.T) {
+	first, firstHash, err := session.NewEmailToken()
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, _, err := session.NewResetToken()
+	second, _, err := session.NewEmailToken()
 	if err != nil {
 		t.Fatal(err)
 	}

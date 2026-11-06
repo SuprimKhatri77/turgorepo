@@ -13,31 +13,32 @@ import (
 
 // Config holds application configuration from environment.
 type Config struct {
-	Port                int
-	GinMode             string
-	DatabaseURL         string
-	MigrateDatabaseURL  string
-	RedisURL            string
-	JWTRefreshSecret    string
-	JWTAccessSecret     string
-	CloudinaryCloudName string
-	CloudinaryAPIKey    string
-	CloudinaryAPISecret string
-	FrontendURL         string
-	CookieDomain        string
-	OpenAPIPath         string
-	TrustedProxies      []string
-	DocsEnabled         bool
-	SMTPHost            string
-	SMTPPort            int
-	SMTPUsername        string
-	SMTPPassword        string
-	SMTPAllowPlaintext  bool
-	EmailFrom           string
-	PasswordResetTTL    time.Duration
-	AccessTokenTTL      time.Duration
-	RefreshTokenTTL     time.Duration
-	RefreshReuseWindow  time.Duration
+	Port                 int
+	GinMode              string
+	DatabaseURL          string
+	MigrateDatabaseURL   string
+	RedisURL             string
+	JWTRefreshSecret     string
+	JWTAccessSecret      string
+	CloudinaryCloudName  string
+	CloudinaryAPIKey     string
+	CloudinaryAPISecret  string
+	FrontendURL          string
+	CookieDomain         string
+	OpenAPIPath          string
+	TrustedProxies       []string
+	DocsEnabled          bool
+	SMTPHost             string
+	SMTPPort             int
+	SMTPUsername         string
+	SMTPPassword         string
+	SMTPAllowPlaintext   bool
+	EmailFrom            string
+	PasswordResetTTL     time.Duration
+	EmailVerificationTTL time.Duration
+	AccessTokenTTL       time.Duration
+	RefreshTokenTTL      time.Duration
+	RefreshReuseWindow   time.Duration
 }
 
 // Load loads .env from the current directory (if present) then reads configuration from environment variables.
@@ -69,31 +70,32 @@ func Load() (*Config, error) {
 	openapiPath := os.Getenv("OPENAPI_PATH")
 
 	return &Config{
-		Port:                port,
-		GinMode:             ginMode,
-		DatabaseURL:         dbURL,
-		MigrateDatabaseURL:  firstNonEmpty(os.Getenv("MIGRATE_DATABASE_URL"), dbURL),
-		RedisURL:            redisURL,
-		JWTRefreshSecret:    jwtRefreshSecret,
-		JWTAccessSecret:     jwtAccessSecret,
-		CloudinaryCloudName: cloudinaryCloudName,
-		CloudinaryAPIKey:    cloudinaryAPIKey,
-		CloudinaryAPISecret: cloudinaryAPISecret,
-		FrontendURL:         frontendURL,
-		CookieDomain:        cookieDomain,
-		OpenAPIPath:         openapiPath,
-		TrustedProxies:      splitList(os.Getenv("TRUSTED_PROXIES")),
-		DocsEnabled:         docsEnabled(os.Getenv("DOCS_ENABLED"), ginMode),
-		SMTPHost:            os.Getenv("SMTP_HOST"),
-		SMTPPort:            smtpPort(os.Getenv("SMTP_PORT")),
-		SMTPUsername:        os.Getenv("SMTP_USERNAME"),
-		SMTPPassword:        os.Getenv("SMTP_PASSWORD"),
-		SMTPAllowPlaintext:  smtpAllowPlaintext(os.Getenv("SMTP_ALLOW_PLAINTEXT"), ginMode),
-		EmailFrom:           os.Getenv("EMAIL_FROM"),
-		PasswordResetTTL:    time.Hour,
-		AccessTokenTTL:      15 * time.Minute,
-		RefreshTokenTTL:     30 * 24 * time.Hour,
-		RefreshReuseWindow:  5 * time.Minute,
+		Port:                 port,
+		GinMode:              ginMode,
+		DatabaseURL:          dbURL,
+		MigrateDatabaseURL:   firstNonEmpty(os.Getenv("MIGRATE_DATABASE_URL"), dbURL),
+		RedisURL:             redisURL,
+		JWTRefreshSecret:     jwtRefreshSecret,
+		JWTAccessSecret:      jwtAccessSecret,
+		CloudinaryCloudName:  cloudinaryCloudName,
+		CloudinaryAPIKey:     cloudinaryAPIKey,
+		CloudinaryAPISecret:  cloudinaryAPISecret,
+		FrontendURL:          frontendURL,
+		CookieDomain:         cookieDomain,
+		OpenAPIPath:          openapiPath,
+		TrustedProxies:       splitList(os.Getenv("TRUSTED_PROXIES")),
+		DocsEnabled:          docsEnabled(os.Getenv("DOCS_ENABLED"), ginMode),
+		SMTPHost:             os.Getenv("SMTP_HOST"),
+		SMTPPort:             smtpPort(os.Getenv("SMTP_PORT")),
+		SMTPUsername:         os.Getenv("SMTP_USERNAME"),
+		SMTPPassword:         os.Getenv("SMTP_PASSWORD"),
+		SMTPAllowPlaintext:   smtpAllowPlaintext(os.Getenv("SMTP_ALLOW_PLAINTEXT"), ginMode),
+		EmailFrom:            os.Getenv("EMAIL_FROM"),
+		PasswordResetTTL:     time.Hour,
+		EmailVerificationTTL: 24 * time.Hour,
+		AccessTokenTTL:       15 * time.Minute,
+		RefreshTokenTTL:      30 * 24 * time.Hour,
+		RefreshReuseWindow:   5 * time.Minute,
 	}, nil
 }
 

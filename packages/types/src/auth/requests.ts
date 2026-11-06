@@ -52,3 +52,17 @@ export const ResetPasswordBodySchema = z.object({
 });
 
 export type ResetPasswordBody = z.infer<typeof ResetPasswordBodySchema>;
+
+export const VerifyEmailBodySchema = z.object({
+  token: z.string().min(1).max(128),
+});
+
+export type VerifyEmailBody = z.infer<typeof VerifyEmailBodySchema>;
+
+export const ResendVerificationBodySchema = z.object({
+  email: z.email("Enter a valid email address"),
+});
+
+export type ResendVerificationBody = z.infer<
+  typeof ResendVerificationBodySchema
+>;

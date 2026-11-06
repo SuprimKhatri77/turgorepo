@@ -16,6 +16,7 @@ import { getApiError } from "@/utils/get-api-error";
 export function useLogin() {
   const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
+  const setPendingEmail = useAuthStore((state) => state.setPendingEmail);
 
   return useMutation({
     mutationFn: (body: LoginBody) =>
@@ -30,8 +31,15 @@ export function useLogin() {
       router.replace(homePathForRole(response.data.data.role));
       router.refresh();
     },
-    onError: (error) => {
-      toast.error(getApiError(error)?.message ?? "Failed to sign in");
+    onError: (error, body) => {
+      const apiError = getApiError(error);
+      // The password was right, so send them to finish verifying instead.
+      if (apiError?.code === "EMAIL_NOT_VERIFIED") {
+        setPendingEmail(body.email);
+        router.push("/auth/check-email");
+        return;
+      }
+      toast.error(apiError?.message ?? "Failed to sign in");
     },
   });
 }

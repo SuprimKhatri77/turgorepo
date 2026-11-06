@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { GetApiV1AuthMeData, GetApiV1AuthMeErrors, GetApiV1AuthMeResponses, GetApiV1HealthData, GetApiV1HealthResponses, GetApiV1ReadyData, GetApiV1ReadyErrors, GetApiV1ReadyResponses, PostApiV1AuthForgotPasswordData, PostApiV1AuthForgotPasswordErrors, PostApiV1AuthForgotPasswordResponses, PostApiV1AuthLoginData, PostApiV1AuthLoginErrors, PostApiV1AuthLoginResponses, PostApiV1AuthLogoutData, PostApiV1AuthLogoutErrors, PostApiV1AuthLogoutResponses, PostApiV1AuthRefreshData, PostApiV1AuthRefreshErrors, PostApiV1AuthRefreshResponses, PostApiV1AuthRegisterData, PostApiV1AuthRegisterErrors, PostApiV1AuthRegisterResponses, PostApiV1AuthResetPasswordData, PostApiV1AuthResetPasswordErrors, PostApiV1AuthResetPasswordResponses } from './types.gen';
+import type { GetApiV1AuthMeData, GetApiV1AuthMeErrors, GetApiV1AuthMeResponses, GetApiV1HealthData, GetApiV1HealthResponses, GetApiV1ReadyData, GetApiV1ReadyErrors, GetApiV1ReadyResponses, PostApiV1AuthForgotPasswordData, PostApiV1AuthForgotPasswordErrors, PostApiV1AuthForgotPasswordResponses, PostApiV1AuthLoginData, PostApiV1AuthLoginErrors, PostApiV1AuthLoginResponses, PostApiV1AuthLogoutData, PostApiV1AuthLogoutErrors, PostApiV1AuthLogoutResponses, PostApiV1AuthRefreshData, PostApiV1AuthRefreshErrors, PostApiV1AuthRefreshResponses, PostApiV1AuthRegisterData, PostApiV1AuthRegisterErrors, PostApiV1AuthRegisterResponses, PostApiV1AuthResendVerificationData, PostApiV1AuthResendVerificationErrors, PostApiV1AuthResendVerificationResponses, PostApiV1AuthResetPasswordData, PostApiV1AuthResetPasswordErrors, PostApiV1AuthResetPasswordResponses, PostApiV1AuthVerifyEmailData, PostApiV1AuthVerifyEmailErrors, PostApiV1AuthVerifyEmailResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -35,7 +35,7 @@ export const getApiV1Ready = <ThrowOnError extends boolean = false>(options?: Op
 /**
  * Register a new user
  *
- * Creates a new member account and sets access, refresh, and session cookies
+ * Creates a new member account and emails a link to verify the address. It doesn't log the user in: login is refused until the email is verified.
  */
 export const postApiV1AuthRegister = <ThrowOnError extends boolean = false>(options?: Options<PostApiV1AuthRegisterData, ThrowOnError>): RequestResult<PostApiV1AuthRegisterResponses, PostApiV1AuthRegisterErrors, ThrowOnError> => (options?.client ?? client).post<PostApiV1AuthRegisterResponses, PostApiV1AuthRegisterErrors, ThrowOnError>({
     url: '/api/v1/auth/register',
@@ -49,7 +49,7 @@ export const postApiV1AuthRegister = <ThrowOnError extends boolean = false>(opti
 /**
  * Log in
  *
- * Authenticates a user and sets access, refresh, and session cookies
+ * Authenticates a user and sets access, refresh, and session cookies. Users who haven't verified their email get a 403 instead, but only once the password is correct.
  */
 export const postApiV1AuthLogin = <ThrowOnError extends boolean = false>(options?: Options<PostApiV1AuthLoginData, ThrowOnError>): RequestResult<PostApiV1AuthLoginResponses, PostApiV1AuthLoginErrors, ThrowOnError> => (options?.client ?? client).post<PostApiV1AuthLoginResponses, PostApiV1AuthLoginErrors, ThrowOnError>({
     url: '/api/v1/auth/login',
@@ -122,10 +122,38 @@ export const postApiV1AuthForgotPassword = <ThrowOnError extends boolean = false
 /**
  * Set a new password
  *
- * Sets a new password using the token from a reset email, logs the user out on all devices and clears cookies. Tokens work once and expire after 1 hour.
+ * Sets a new password using the token from a reset email, marks the email as verified, logs the user out on all devices and clears cookies. Tokens work once and expire after 1 hour.
  */
 export const postApiV1AuthResetPassword = <ThrowOnError extends boolean = false>(options?: Options<PostApiV1AuthResetPasswordData, ThrowOnError>): RequestResult<PostApiV1AuthResetPasswordResponses, PostApiV1AuthResetPasswordErrors, ThrowOnError> => (options?.client ?? client).post<PostApiV1AuthResetPasswordResponses, PostApiV1AuthResetPasswordErrors, ThrowOnError>({
     url: '/api/v1/auth/reset-password',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+    }
+});
+
+/**
+ * Verify an email address
+ *
+ * Marks the email as verified using the token from a verification email. It doesn't log the user in. Tokens work once, expire after 24 hours, and only the newest one for an account works.
+ */
+export const postApiV1AuthVerifyEmail = <ThrowOnError extends boolean = false>(options?: Options<PostApiV1AuthVerifyEmailData, ThrowOnError>): RequestResult<PostApiV1AuthVerifyEmailResponses, PostApiV1AuthVerifyEmailErrors, ThrowOnError> => (options?.client ?? client).post<PostApiV1AuthVerifyEmailResponses, PostApiV1AuthVerifyEmailErrors, ThrowOnError>({
+    url: '/api/v1/auth/verify-email',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+    }
+});
+
+/**
+ * Resend the verification email
+ *
+ * Emails a new verification link if the address has an account that isn't verified yet, which makes older links stop working. The response is the same either way, so it can't be used to discover accounts.
+ */
+export const postApiV1AuthResendVerification = <ThrowOnError extends boolean = false>(options?: Options<PostApiV1AuthResendVerificationData, ThrowOnError>): RequestResult<PostApiV1AuthResendVerificationResponses, PostApiV1AuthResendVerificationErrors, ThrowOnError> => (options?.client ?? client).post<PostApiV1AuthResendVerificationResponses, PostApiV1AuthResendVerificationErrors, ThrowOnError>({
+    url: '/api/v1/auth/resend-verification',
     ...options,
     headers: {
         'Content-Type': 'application/json',

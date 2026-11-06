@@ -32,10 +32,18 @@ export type ResetPasswordBody = {
     password: string;
 };
 
+export type VerifyEmailBody = {
+    token: string;
+};
+
+export type ResendVerificationBody = {
+    email: string;
+};
+
 export type HealthResponse = {
     success: true;
     message: string;
-    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'PAYLOAD_TOO_LARGE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS' | 'INVALID_RESET_TOKEN';
+    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'PAYLOAD_TOO_LARGE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS' | 'INVALID_RESET_TOKEN' | 'EMAIL_NOT_VERIFIED' | 'INVALID_VERIFICATION_TOKEN';
     errors?: Array<{
         code: string;
         field?: string;
@@ -47,7 +55,7 @@ export type HealthResponse = {
 export type AuthUserResponse = {
     success: true;
     message: string;
-    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'PAYLOAD_TOO_LARGE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS' | 'INVALID_RESET_TOKEN';
+    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'PAYLOAD_TOO_LARGE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS' | 'INVALID_RESET_TOKEN' | 'EMAIL_NOT_VERIFIED' | 'INVALID_VERIFICATION_TOKEN';
     errors?: Array<{
         code: string;
         field?: string;
@@ -66,7 +74,7 @@ export type AuthUserResponse = {
 export type MeResponse = {
     success: true;
     message: string;
-    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'PAYLOAD_TOO_LARGE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS' | 'INVALID_RESET_TOKEN';
+    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'PAYLOAD_TOO_LARGE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS' | 'INVALID_RESET_TOKEN' | 'EMAIL_NOT_VERIFIED' | 'INVALID_VERIFICATION_TOKEN';
     errors?: Array<{
         code: string;
         field?: string;
@@ -85,7 +93,7 @@ export type MeResponse = {
 export type AuthSuccessResponse = {
     success: true;
     message: string;
-    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'PAYLOAD_TOO_LARGE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS' | 'INVALID_RESET_TOKEN';
+    code?: 'INTERNAL_SERVER_ERROR' | 'VALIDATION_FAILED' | 'UNAUTHORIZED' | 'INVALID_PAGE_PARAMETER' | 'INVALID_ID_FORMAT' | 'INVALID_QUERY_PARAM' | 'PAGE_NOT_FOUND' | 'RATE_LIMITED' | 'SERVICE_UNAVAILABLE' | 'PAYLOAD_TOO_LARGE' | 'INVALID_CREDENTIALS' | 'INVALID_EMAIL' | 'INVALID_PASSWORD' | 'INVALID_TOKEN' | 'TOKEN_EXPIRED' | 'TOKEN_NOT_PROVIDED' | 'TOKEN_INVALID' | 'FORBIDDEN' | 'USER_NOT_FOUND' | 'USER_ALREADY_EXISTS' | 'INVALID_RESET_TOKEN' | 'EMAIL_NOT_VERIFIED' | 'INVALID_VERIFICATION_TOKEN';
     errors?: Array<{
         code: string;
         field?: string;
@@ -180,9 +188,9 @@ export type PostApiV1AuthRegisterError = PostApiV1AuthRegisterErrors[keyof PostA
 
 export type PostApiV1AuthRegisterResponses = {
     /**
-     * Registration successful
+     * Account created and verification email queued
      */
-    201: AuthUserResponse;
+    201: AuthSuccessResponse;
 };
 
 export type PostApiV1AuthRegisterResponse = PostApiV1AuthRegisterResponses[keyof PostApiV1AuthRegisterResponses];
@@ -203,6 +211,10 @@ export type PostApiV1AuthLoginErrors = {
      * Invalid credentials
      */
     401: ApiErrorResponse;
+    /**
+     * Email not verified (EMAIL_NOT_VERIFIED)
+     */
+    403: ApiErrorResponse;
     /**
      * Request body is too large
      */
@@ -396,3 +408,73 @@ export type PostApiV1AuthResetPasswordResponses = {
 };
 
 export type PostApiV1AuthResetPasswordResponse = PostApiV1AuthResetPasswordResponses[keyof PostApiV1AuthResetPasswordResponses];
+
+export type PostApiV1AuthVerifyEmailData = {
+    body?: VerifyEmailBody;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/verify-email';
+};
+
+export type PostApiV1AuthVerifyEmailErrors = {
+    /**
+     * Validation failed, or the token is invalid or expired (INVALID_VERIFICATION_TOKEN)
+     */
+    400: ApiErrorResponse;
+    /**
+     * Request body is too large
+     */
+    413: ApiErrorResponse;
+    /**
+     * Too many requests
+     */
+    429: ApiErrorResponse;
+    /**
+     * Internal server error
+     */
+    500: ApiErrorResponse;
+};
+
+export type PostApiV1AuthVerifyEmailError = PostApiV1AuthVerifyEmailErrors[keyof PostApiV1AuthVerifyEmailErrors];
+
+export type PostApiV1AuthVerifyEmailResponses = {
+    /**
+     * Email verified
+     */
+    200: AuthSuccessResponse;
+};
+
+export type PostApiV1AuthVerifyEmailResponse = PostApiV1AuthVerifyEmailResponses[keyof PostApiV1AuthVerifyEmailResponses];
+
+export type PostApiV1AuthResendVerificationData = {
+    body?: ResendVerificationBody;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/resend-verification';
+};
+
+export type PostApiV1AuthResendVerificationErrors = {
+    /**
+     * Validation failed
+     */
+    400: ApiErrorResponse;
+    /**
+     * Request body is too large
+     */
+    413: ApiErrorResponse;
+    /**
+     * Too many requests
+     */
+    429: ApiErrorResponse;
+};
+
+export type PostApiV1AuthResendVerificationError = PostApiV1AuthResendVerificationErrors[keyof PostApiV1AuthResendVerificationErrors];
+
+export type PostApiV1AuthResendVerificationResponses = {
+    /**
+     * Request accepted
+     */
+    200: AuthSuccessResponse;
+};
+
+export type PostApiV1AuthResendVerificationResponse = PostApiV1AuthResendVerificationResponses[keyof PostApiV1AuthResendVerificationResponses];

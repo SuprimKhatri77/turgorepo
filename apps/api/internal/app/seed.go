@@ -117,6 +117,11 @@ func upsertSeedUser(ctx context.Context, queries *dbgen.Queries, u seedUser) err
 		return fmt.Errorf("create %s: %w", u.Email, err)
 	}
 
+	// Whoever runs the seed chose these addresses, so there's nothing to confirm.
+	if err := queries.MarkEmailVerified(ctx, created.ID); err != nil {
+		return fmt.Errorf("verify %s: %w", u.Email, err)
+	}
+
 	slog.Info("seeded user", "email", created.Email, "role", created.Role, "id", created.ID)
 	return nil
 }

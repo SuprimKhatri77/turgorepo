@@ -52,6 +52,21 @@ type fakeRepo struct {
 	rotated     bool
 	revoked     []pgtype.UUID
 	sessionsNew int
+
+	verificationToken *db.CreateEmailVerificationTokenParams
+	verificationErr   error
+	verifiedHash      string
+	verifyErr         error
+}
+
+func (r *fakeRepo) CreateEmailVerificationToken(_ context.Context, params db.CreateEmailVerificationTokenParams) error {
+	r.verificationToken = &params
+	return r.verificationErr
+}
+
+func (r *fakeRepo) VerifyEmailWithToken(_ context.Context, tokenHash string) (db.User, error) {
+	r.verifiedHash = tokenHash
+	return r.user, r.verifyErr
 }
 
 func (r *fakeRepo) GetUserByEmail(_ context.Context, email string) (db.User, error) {
@@ -139,12 +154,20 @@ func testUser(t *testing.T) db.User {
 		t.Fatal(err)
 	}
 	return db.User{
-		ID:           testUUID(1),
-		Name:         "Ada Lovelace",
-		Email:        "ada@example.com",
-		PasswordHash: string(hash),
-		Role:         constants.RoleMember,
+		ID:              testUUID(1),
+		Name:            "Ada Lovelace",
+		Email:           "ada@example.com",
+		PasswordHash:    string(hash),
+		Role:            constants.RoleMember,
+		EmailVerifiedAt: pgtype.Timestamptz{Time: time.Now().Add(-time.Hour), Valid: true},
 	}
+}
+
+func unverifiedUser(t *testing.T) db.User {
+	t.Helper()
+	user := testUser(t)
+	user.EmailVerifiedAt = pgtype.Timestamptz{}
+	return user
 }
 
 func serve(handler gin.HandlerFunc, body string, cookies ...*http.Cookie) *httptest.ResponseRecorder {
@@ -206,6 +229,29 @@ func TestLogin(t *testing.T) {
 			if _, present := res.Data[key]; present {
 				t.Errorf("response should not contain %s", key)
 			}
+		}
+	})
+
+	t.Run("refuses an unverified email without creating a session", func(t *testing.T) {
+		repo := &fakeRepo{user: unverifiedUser(t)}
+		w := serve(Login(repo, testConfig(), &fakeLimiter{}), `{"email":"ada@example.com","password":"`+testPassword+`"}`)
+
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("status = %d: %s", w.Code, w.Body)
+		}
+		if code := decode(t, w).Code; code != constants.EmailNotVerified {
+			t.Errorf("code = %q", code)
+		}
+		if repo.sessionsNew != 0 || len(setCookies(w)) != 0 {
+			t.Errorf("sessions = %d, cookies = %v", repo.sessionsNew, setCookies(w))
+		}
+	})
+
+	t.Run("an unverified account with the wrong password looks like any wrong password", func(t *testing.T) {
+		unverified := serve(Login(&fakeRepo{user: unverifiedUser(t)}, testConfig(), &fakeLimiter{}), `{"email":"ada@example.com","password":"wrong-password"}`)
+		verified := serve(Login(&fakeRepo{user: testUser(t)}, testConfig(), &fakeLimiter{}), `{"email":"ada@example.com","password":"wrong-password"}`)
+		if unverified.Code != http.StatusUnauthorized || unverified.Body.String() != verified.Body.String() {
+			t.Errorf("status = %d, body = %s", unverified.Code, unverified.Body)
 		}
 	})
 
@@ -275,7 +321,7 @@ func TestRegister(t *testing.T) {
 
 	t.Run("accepts real names", func(t *testing.T) {
 		for _, name := range []string{"José García", "O'Brien", "O’Brien", "Mary-Jane", "सुप्रिम", "सुप्रिम खत्री", "J. R. Smith", "Martin Jr."} {
-			w := serve(Register(&fakeRepo{}, testConfig()), body(name, "a@example.com", testPassword))
+			w := serve(Register(registerDeps(&fakeRepo{}, &fakeMailer{})), body(name, "a@example.com", testPassword))
 			if w.Code != http.StatusCreated {
 				t.Errorf("%q: status = %d: %s", name, w.Code, w.Body)
 			}
@@ -284,7 +330,7 @@ func TestRegister(t *testing.T) {
 
 	t.Run("rejects names that are not names", func(t *testing.T) {
 		for _, name := range []string{"12345", "<script>", "John\nDoe", "--", "   "} {
-			w := serve(Register(&fakeRepo{}, testConfig()), body(name, "a@example.com", testPassword))
+			w := serve(Register(registerDeps(&fakeRepo{}, &fakeMailer{})), body(name, "a@example.com", testPassword))
 			if w.Code != http.StatusBadRequest {
 				t.Errorf("%q: status = %d", name, w.Code)
 			}
@@ -293,7 +339,7 @@ func TestRegister(t *testing.T) {
 
 	t.Run("stores the normalized email", func(t *testing.T) {
 		repo := &fakeRepo{}
-		serve(Register(repo, testConfig()), body("Ada", "Ada.L@Example.COM", testPassword))
+		serve(Register(registerDeps(repo, &fakeMailer{})), body("Ada", "Ada.L@Example.COM", testPassword))
 		if repo.created == nil || repo.created.Email != "ada.l@example.com" {
 			t.Errorf("created = %+v", repo.created)
 		}
@@ -301,7 +347,7 @@ func TestRegister(t *testing.T) {
 
 	t.Run("password over 72 bytes is a validation error", func(t *testing.T) {
 		emoji := strings.Repeat("😀", 50) // 50 characters, 200 bytes
-		w := serve(Register(&fakeRepo{}, testConfig()), body("Ada", "a@example.com", emoji))
+		w := serve(Register(registerDeps(&fakeRepo{}, &fakeMailer{})), body("Ada", "a@example.com", emoji))
 		if w.Code != http.StatusBadRequest {
 			t.Fatalf("status = %d: %s", w.Code, w.Body)
 		}
@@ -312,7 +358,7 @@ func TestRegister(t *testing.T) {
 	})
 
 	t.Run("password of exactly 72 bytes works", func(t *testing.T) {
-		w := serve(Register(&fakeRepo{}, testConfig()), body("Ada", "a@example.com", strings.Repeat("a", 72)))
+		w := serve(Register(registerDeps(&fakeRepo{}, &fakeMailer{})), body("Ada", "a@example.com", strings.Repeat("a", 72)))
 		if w.Code != http.StatusCreated {
 			t.Errorf("status = %d: %s", w.Code, w.Body)
 		}
@@ -320,15 +366,49 @@ func TestRegister(t *testing.T) {
 
 	t.Run("duplicate email is a conflict", func(t *testing.T) {
 		repo := &fakeRepo{createErr: &pgconn.PgError{Code: "23505"}}
-		w := serve(Register(repo, testConfig()), body("Ada", "a@example.com", testPassword))
+		w := serve(Register(registerDeps(repo, &fakeMailer{})), body("Ada", "a@example.com", testPassword))
 		if w.Code != http.StatusConflict {
+			t.Errorf("status = %d", w.Code)
+		}
+	})
+
+	t.Run("emails a verification link and doesn't log the user in", func(t *testing.T) {
+		repo := &fakeRepo{}
+		mailer := &fakeMailer{}
+		w := serve(Register(registerDeps(repo, mailer)), body("Ada", "Ada@Example.com", testPassword))
+
+		if w.Code != http.StatusCreated {
+			t.Fatalf("status = %d: %s", w.Code, w.Body)
+		}
+		if len(setCookies(w)) != 0 || repo.sessionsNew != 0 {
+			t.Errorf("cookies = %v, sessions = %d", setCookies(w), repo.sessionsNew)
+		}
+		if decode(t, w).Data != nil {
+			t.Error("response should not include the user")
+		}
+		if len(mailer.sent) != 1 || mailer.sent[0].To != "ada@example.com" {
+			t.Fatalf("sent = %+v", mailer.sent)
+		}
+		token := verifyTokenFromEmail(t, mailer.sent[0])
+		stored := repo.verificationToken
+		if stored == nil || stored.TokenHash != session.HashToken(token) || stored.Email != "ada@example.com" {
+			t.Fatalf("stored = %+v", stored)
+		}
+		if remaining := time.Until(stored.ExpiresAt.Time); remaining < 23*time.Hour || remaining > 24*time.Hour {
+			t.Errorf("expires in %v", remaining)
+		}
+	})
+
+	t.Run("a failed email doesn't fail registration", func(t *testing.T) {
+		w := serve(Register(registerDeps(&fakeRepo{}, &fakeMailer{err: errors.New("smtp down")})), body("Ada", "a@example.com", testPassword))
+		if w.Code != http.StatusCreated {
 			t.Errorf("status = %d", w.Code)
 		}
 	})
 
 	t.Run("new users are always members", func(t *testing.T) {
 		repo := &fakeRepo{}
-		serve(Register(repo, testConfig()), `{"name":"Ada","email":"a@example.com","password":"`+testPassword+`","role":"admin"}`)
+		serve(Register(registerDeps(repo, &fakeMailer{})), `{"name":"Ada","email":"a@example.com","password":"`+testPassword+`","role":"admin"}`)
 		if repo.created == nil || repo.created.Role != constants.RoleMember {
 			t.Errorf("created = %+v", repo.created)
 		}

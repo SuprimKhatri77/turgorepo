@@ -17,26 +17,10 @@ import (
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 	"github.com/suprimkhatri77/turgorepo/api/internal/packages/email"
 	"github.com/suprimkhatri77/turgorepo/api/internal/ratelimit"
-	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 	"github.com/suprimkhatri77/turgorepo/api/internal/validator"
 )
-
-// JobRunner runs work after the response has been sent.
-type JobRunner interface {
-	Go(name string, job func(ctx context.Context))
-}
-
-// PasswordResetDeps are the dependencies of the password reset handlers.
-type PasswordResetDeps struct {
-	Queries repository.AuthRepository
-	Config  *config.Config
-	Limiter ratelimit.Limiter
-	Revoker session.TokenRevoker
-	Mailer  email.Mailer
-	Jobs    JobRunner
-}
 
 type ForgotPasswordRequest struct {
 	Email string `json:"email" label:"Email" binding:"required,email" msg_required:"Email is required" msg_email:"Enter a valid email address"`
@@ -45,7 +29,7 @@ type ForgotPasswordRequest struct {
 // ForgotPassword emails a reset link. Everything after validation happens in the
 // background, so the response and its timing are the same whether or not the
 // account exists, and whether or not sending works.
-func ForgotPassword(deps PasswordResetDeps) gin.HandlerFunc {
+func ForgotPassword(deps AccountEmailDeps) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		req, ok := validator.BindJSON[ForgotPasswordRequest](c)
 		if !ok {
@@ -68,7 +52,7 @@ func ForgotPassword(deps PasswordResetDeps) gin.HandlerFunc {
 	}
 }
 
-func sendPasswordResetEmail(ctx context.Context, deps PasswordResetDeps, emailAddress string) error {
+func sendPasswordResetEmail(ctx context.Context, deps AccountEmailDeps, emailAddress string) error {
 	// Limited per address across all IPs, so nobody can flood someone's inbox.
 	if !ratelimit.Allowed(ctx, deps.Limiter, ratelimit.ForgotPasswordPerEmail, ratelimit.HashEmail(emailAddress)) {
 		return nil
@@ -82,7 +66,7 @@ func sendPasswordResetEmail(ctx context.Context, deps PasswordResetDeps, emailAd
 		return err
 	}
 
-	token, tokenHash, err := session.NewResetToken()
+	token, tokenHash, err := session.NewEmailToken()
 	if err != nil {
 		return err
 	}

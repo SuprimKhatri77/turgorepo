@@ -142,8 +142,10 @@ Base path: `/api/v1`
 | --- | --- | --- |
 | `GET` | `/health` | Liveness: the process is up. Use this for load balancers |
 | `GET` | `/ready` | Readiness: the database and Redis are reachable. Use this for monitoring |
-| `POST` | `/auth/register` | Create account, set cookies |
-| `POST` | `/auth/login` | Sign in, set cookies |
+| `POST` | `/auth/register` | Create account and email a verification link. Doesn't log in |
+| `POST` | `/auth/verify-email` | Verify the email with an emailed token. Doesn't log in |
+| `POST` | `/auth/resend-verification` | Email a new verification link. Responds the same whether or not the account exists |
+| `POST` | `/auth/login` | Sign in, set cookies. Unverified accounts get a 403 `EMAIL_NOT_VERIFIED` |
 | `POST` | `/auth/forgot-password` | Email a reset link. Responds the same whether or not the account exists |
 | `POST` | `/auth/reset-password` | Set a new password with an emailed token, and log out on all devices |
 | `POST` | `/auth/logout` | End this device's session and its access token, clear cookies |
@@ -158,6 +160,28 @@ Auth uses HTTP-only cookies:
 
 User roles: `superadmin`, `admin`, `member`
 
+### Email verification
+
+Users can't log in until they verify their email. Registering creates the account and emails a link, without logging the user in. The web app then shows `/auth/check-email`, which offers to resend the link. Logging in to an unverified account returns 403 `EMAIL_NOT_VERIFIED`, but only once the password is right, so the response reveals nothing to anyone who doesn't know it. The login form then sends the user to the same page.
+
+Verification links:
+
+- expire after 24 hours (`EmailVerificationTTL`)
+- work once, and only the newest one for an account works
+- only work while the account still has the address the link was sent to
+
+Like reset links, they carry the token in the URL fragment, and only a hash is stored. `/auth/verify-email` sends the token from the browser, so email scanners that open links can't use it up. Verifying doesn't log the user in, so a link never works as a password.
+
+A password reset also marks the email as verified, since following the link proves the user owns the address. If someone registers your address and never verifies it, you can still take the account by resetting its password. Seeded users start verified. The migration marks existing accounts as verified, so adding this to a project that already has users doesn't lock anyone out.
+
+To let unverified users log in instead:
+
+1. Remove the `EMAIL_NOT_VERIFIED` check in `internal/handlers/auth/login.go`.
+2. Call `session.IssueSession` in `register.go`.
+3. Send the user to their home page in `apps/web/modules/auth/hooks/mutations/use-register.ts`.
+
+`email_verified_at` is still recorded, so you can require it for particular actions later.
+
 ### Password reset
 
 Reset links expire after 1 hour and work once, and requesting a new one cancels the old one. Only a hash of the token is stored. The link carries the token in its URL fragment (`#token=...`), which browsers don't send to servers, so it stays out of access logs.
@@ -166,7 +190,7 @@ A reset logs the user out everywhere straight away. Sessions are revoked in the 
 
 Logging out ends that device's session straight away, including its access token, and the user's other devices stay logged in. Each access token carries its session ID (`sid`), and logout sets a Redis marker for that session that `RequireAuth` checks alongside the cutoff, in the same round trip. The marker also removes itself after 15 minutes. Reusing an old refresh token outside the grace window, which suggests it was stolen, ends the session the same way.
 
-To read reset emails locally, open Mailpit at <http://localhost:8025>.
+To read verification and reset emails locally, open Mailpit at <http://localhost:8025>.
 
 ### API docs
 

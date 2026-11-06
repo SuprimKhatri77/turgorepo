@@ -20,4 +20,7 @@ type AuthRepository interface {
 
 	CreatePasswordResetToken(ctx context.Context, params db.CreatePasswordResetTokenParams) error
 	ResetPasswordWithToken(ctx context.Context, params db.ResetPasswordWithTokenParams) (db.User, error)
+
+	CreateEmailVerificationToken(ctx context.Context, params db.CreateEmailVerificationTokenParams) error
+	VerifyEmailWithToken(ctx context.Context, tokenHash string) (db.User, error)
 }

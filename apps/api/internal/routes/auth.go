@@ -14,12 +14,7 @@ func setupAuthRoutes(router *gin.RouterGroup, cfg config.Config) {
 		ratelimit.ByIP(cfg.Redis, ratelimit.LoginPerIP),
 		authHandler.Login(cfg.Queries, cfg.Config, cfg.Redis),
 	)
-	auth.POST("/register",
-		ratelimit.ByIP(cfg.Redis, ratelimit.RegisterPerIP),
-		authHandler.Register(cfg.Queries, cfg.Config),
-	)
-
-	passwordReset := authHandler.PasswordResetDeps{
+	accountEmail := authHandler.AccountEmailDeps{
 		Queries: cfg.Queries,
 		Config:  cfg.Config,
 		Limiter: cfg.Redis,
@@ -27,13 +22,25 @@ func setupAuthRoutes(router *gin.RouterGroup, cfg config.Config) {
 		Mailer:  cfg.Mailer,
 		Jobs:    cfg.Jobs,
 	}
+	auth.POST("/register",
+		ratelimit.ByIP(cfg.Redis, ratelimit.RegisterPerIP),
+		authHandler.Register(accountEmail),
+	)
+	auth.POST("/verify-email",
+		ratelimit.ByIP(cfg.Redis, ratelimit.VerifyEmailPerIP),
+		authHandler.VerifyEmail(accountEmail),
+	)
+	auth.POST("/resend-verification",
+		ratelimit.ByIP(cfg.Redis, ratelimit.ResendVerificationPerIP),
+		authHandler.ResendVerification(accountEmail),
+	)
 	auth.POST("/forgot-password",
 		ratelimit.ByIP(cfg.Redis, ratelimit.ForgotPasswordPerIP),
-		authHandler.ForgotPassword(passwordReset),
+		authHandler.ForgotPassword(accountEmail),
 	)
 	auth.POST("/reset-password",
 		ratelimit.ByIP(cfg.Redis, ratelimit.ResetPasswordPerIP),
-		authHandler.ResetPassword(passwordReset),
+		authHandler.ResetPassword(accountEmail),
 	)
 
 	auth.POST("/logout", authHandler.Logout(cfg.Queries, cfg.Config, cfg.Redis))
