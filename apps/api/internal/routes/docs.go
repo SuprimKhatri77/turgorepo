@@ -1,6 +1,8 @@
 package routes
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"net/http"
 	"os"
 	"strings"
@@ -27,10 +29,42 @@ func setupDocsRoutes(r *gin.RouterGroup, cfg config.Config) {
 		c.Redirect(http.StatusMovedPermanently, r.BasePath()+"/docs/")
 	})
 	r.GET("/docs/", func(c *gin.Context) {
-		c.Header("Content-Type", "text/html; charset=utf-8")
+		nonce, err := newNonce()
+		if err != nil {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
 		html := strings.Replace(scalarHTML, `data-url="/openapi.json"`, `data-url="`+r.BasePath()+`/openapi.json"`, 1)
+		html = strings.ReplaceAll(html, "{{nonce}}", nonce)
+
+		c.Header("Content-Security-Policy", docsContentSecurityPolicy(nonce))
+		c.Header("Content-Type", "text/html; charset=utf-8")
 		c.String(http.StatusOK, html)
 	})
+}
+
+// docsContentSecurityPolicy replaces the API's default policy, which allows
+// nothing, with what the Scalar page needs.
+func docsContentSecurityPolicy(nonce string) string {
+	return strings.Join([]string{
+		"default-src 'none'",
+		"script-src 'nonce-" + nonce + "' 'strict-dynamic'",
+		"style-src 'unsafe-inline' https://fonts.scalar.com",
+		"font-src https://fonts.scalar.com data:",
+		"img-src 'self' data: https:",
+		"connect-src 'self'",
+		"base-uri 'none'",
+		"form-action 'none'",
+		"frame-ancestors 'none'",
+	}, "; ")
+}
+
+func newNonce() (string, error) {
+	raw := make([]byte, 16)
+	if _, err := rand.Read(raw); err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(raw), nil
 }
 
 // scalarHTML is the Scalar API docs page that loads /openapi.json.
@@ -42,8 +76,8 @@ const scalarHTML = `<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 </head>
 <body>
-  <script id="api-reference" data-url="/openapi.json"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.77.0"></script>
+  <script id="api-reference" data-url="/openapi.json" nonce="{{nonce}}"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.77.0" nonce="{{nonce}}"></script>
 </body>
 </html>
 `
