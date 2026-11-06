@@ -9,13 +9,12 @@ import {
   postApiV1AuthRegister,
   type RegisterBody,
 } from "@/lib/api/client";
-import { homePathForRole } from "@/lib/middleware/config";
 import { useAuthStore } from "@/store/auth";
 import { getApiError } from "@/utils/get-api-error";
 
 export function useRegister() {
   const router = useRouter();
-  const setUser = useAuthStore((state) => state.setUser);
+  const setPendingEmail = useAuthStore((state) => state.setPendingEmail);
 
   return useMutation({
     mutationFn: (body: RegisterBody) =>
@@ -24,11 +23,10 @@ export function useRegister() {
         body,
         throwOnError: true,
       }),
-    onSuccess: (response) => {
-      setUser(response.data.data);
-      toast.success(response.data.message);
-      router.replace(homePathForRole(response.data.data.role));
-      router.refresh();
+    // Registering doesn't log the user in. They sign in after verifying.
+    onSuccess: (_response, body) => {
+      setPendingEmail(body.email);
+      router.push("/auth/check-email");
     },
     onError: (error) => {
       toast.error(getApiError(error)?.message ?? "Failed to create account");

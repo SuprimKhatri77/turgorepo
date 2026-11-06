@@ -8,7 +8,7 @@ export function registerRegisterPath() {
     path: "/api/v1/auth/register",
     summary: "Register a new user",
     description:
-      "Creates a new member account and sets access, refresh, and session cookies",
+      "Creates a new member account and emails a link to verify the address. It doesn't log the user in: login is refused until the email is verified.",
     request: {
       body: {
         content: {
@@ -18,9 +18,9 @@ export function registerRegisterPath() {
     },
     responses: {
       201: {
-        description: "Registration successful",
+        description: "Account created and verification email queued",
         content: {
-          "application/json": { schema: schemas.AuthUserResponse },
+          "application/json": { schema: schemas.AuthSuccessResponse },
         },
       },
       400: errorResponse("Validation failed"),

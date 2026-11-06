@@ -21,11 +21,18 @@ var passwordChangedHTML = template.Must(template.New("password_changed").Parse(`
 <p>If this wasn't you, reset your password right away and contact support.</p>
 `))
 
+var verificationHTML = template.Must(template.New("email_verification").Parse(`<p>Hi {{.Name}},</p>
+<p>Confirm this is your email address to finish setting up your {{.AppName}} account.</p>
+<p><a href="{{.URL}}">Verify your email</a></p>
+<p>This link expires in {{.Hours}} hours. If you didn't create an account, you can ignore this email.</p>
+`))
+
 type templateData struct {
 	AppName string
 	Name    string
 	URL     string
 	Minutes int
+	Hours   int
 }
 
 // PasswordResetEmail builds the email containing a reset link.
@@ -59,6 +66,25 @@ func PasswordChangedEmail(to, name string) (Message, error) {
 		Text: fmt.Sprintf(
 			"Hi %s,\n\nYour %s password was just changed, and you've been logged out on all devices.\n\nIf this wasn't you, reset your password right away and contact support.\n",
 			name, AppName,
+		),
+		HTML: html,
+	}, nil
+}
+
+// VerificationEmail builds the email containing a link that confirms the
+// address belongs to the person who registered.
+func VerificationEmail(to, name, verifyURL string, validFor time.Duration) (Message, error) {
+	hours := int(validFor.Hours())
+	html, err := render(verificationHTML, templateData{AppName: AppName, Name: name, URL: verifyURL, Hours: hours})
+	if err != nil {
+		return Message{}, err
+	}
+	return Message{
+		To:      to,
+		Subject: fmt.Sprintf("Verify your email for %s", AppName),
+		Text: fmt.Sprintf(
+			"Hi %s,\n\nConfirm this is your email address to finish setting up your %s account. Open this link:\n\n%s\n\nThis link expires in %d hours. If you didn't create an account, you can ignore this email.\n",
+			name, AppName, verifyURL, hours,
 		),
 		HTML: html,
 	}, nil

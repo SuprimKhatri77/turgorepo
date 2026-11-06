@@ -31,6 +31,11 @@ export function registerSchemas() {
   registry.register("LoginBody", schemas.LoginBodySchema);
   registry.register("ForgotPasswordBody", schemas.ForgotPasswordBodySchema);
   registry.register("ResetPasswordBody", schemas.ResetPasswordBodySchema);
+  registry.register("VerifyEmailBody", schemas.VerifyEmailBodySchema);
+  registry.register(
+    "ResendVerificationBody",
+    schemas.ResendVerificationBodySchema,
+  );
   registry.register("HealthResponse", schemas.HealthResponse);
   registry.register("AuthUserResponse", schemas.AuthUserResponse);
   registry.register("MeResponse", schemas.MeResponse);

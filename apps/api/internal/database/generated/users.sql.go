@@ -48,7 +48,7 @@ INSERT INTO users (
 ) VALUES (
   $1, $2, $3, $4, $5
 )
-RETURNING id, name, email, password_hash, role, image_url, created_at, updated_at
+RETURNING id, name, email, password_hash, role, image_url, created_at, updated_at, email_verified_at
 `
 
 type CreateUserParams struct {
@@ -77,6 +77,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.ImageUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
 }
@@ -91,7 +92,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id pgtype.UUID) (pgconn.Comman
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, name, email, password_hash, role, image_url, created_at, updated_at FROM users
+SELECT id, name, email, password_hash, role, image_url, created_at, updated_at, email_verified_at FROM users
 WHERE email = $1
 `
 
@@ -107,12 +108,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.ImageUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, name, email, password_hash, role, image_url, created_at, updated_at FROM users
+SELECT id, name, email, password_hash, role, image_url, created_at, updated_at, email_verified_at FROM users
 WHERE id = $1
 `
 
@@ -128,6 +130,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 		&i.ImageUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
 }
@@ -208,7 +211,7 @@ UPDATE users SET
   role      = COALESCE($4::TEXT,      role),
   image_url = COALESCE($5::TEXT, image_url)
 WHERE id = $1
-RETURNING id, name, email, password_hash, role, image_url, created_at, updated_at
+RETURNING id, name, email, password_hash, role, image_url, created_at, updated_at, email_verified_at
 `
 
 type UpdateUserParams struct {
@@ -237,6 +240,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.ImageUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EmailVerifiedAt,
 	)
 	return i, err
 }

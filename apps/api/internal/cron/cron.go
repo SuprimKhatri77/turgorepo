@@ -16,6 +16,7 @@ const cleanupTimeout = time.Minute
 type Store interface {
 	DeleteExpiredSessions(ctx context.Context) (pgconn.CommandTag, error)
 	DeleteExpiredPasswordResetTokens(ctx context.Context) (pgconn.CommandTag, error)
+	DeleteExpiredEmailVerificationTokens(ctx context.Context) (pgconn.CommandTag, error)
 }
 
 // Start schedules the jobs and returns the running scheduler. Every API container
@@ -41,9 +42,10 @@ func cleanupExpired(store Store) {
 	}{
 		{"sessions", store.DeleteExpiredSessions},
 		{"password reset tokens", store.DeleteExpiredPasswordResetTokens},
+		{"email verification tokens", store.DeleteExpiredEmailVerificationTokens},
 	}
 
-	// One failing doesn't stop the other.
+	// One failing doesn't stop the others.
 	for _, job := range jobs {
 		result, err := job.run(ctx)
 		if err != nil {

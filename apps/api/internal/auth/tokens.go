@@ -28,12 +28,13 @@ func HashToken(token string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// NewResetToken returns a random password reset token and its hash. Only the hash
-// is stored, so a database leak doesn't expose usable links.
-func NewResetToken() (token, hash string, err error) {
+// NewEmailToken returns a random token for a link sent by email, such as a
+// password reset, and its hash. Only the hash is stored, so a database leak
+// doesn't expose usable links.
+func NewEmailToken() (token, hash string, err error) {
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
-		return "", "", fmt.Errorf("generate reset token: %w", err)
+		return "", "", fmt.Errorf("generate email token: %w", err)
 	}
 	token = base64.RawURLEncoding.EncodeToString(raw)
 	return token, HashToken(token), nil

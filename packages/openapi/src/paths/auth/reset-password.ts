@@ -8,7 +8,7 @@ export function registerResetPasswordPath() {
     path: "/api/v1/auth/reset-password",
     summary: "Set a new password",
     description:
-      "Sets a new password using the token from a reset email, logs the user out on all devices and clears cookies. Tokens work once and expire after 1 hour.",
+      "Sets a new password using the token from a reset email, marks the email as verified, logs the user out on all devices and clears cookies. Tokens work once and expire after 1 hour.",
     request: {
       body: {
         content: {

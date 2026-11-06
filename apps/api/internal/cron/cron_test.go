@@ -9,8 +9,8 @@ import (
 )
 
 type fakeStore struct {
-	sessionCalls, tokenCalls int
-	sessionErr               error
+	sessionCalls, tokenCalls, verificationCalls int
+	sessionErr                                  error
 }
 
 func (s *fakeStore) DeleteExpiredSessions(context.Context) (pgconn.CommandTag, error) {
@@ -23,10 +23,15 @@ func (s *fakeStore) DeleteExpiredPasswordResetTokens(context.Context) (pgconn.Co
 	return pgconn.NewCommandTag("DELETE 1"), nil
 }
 
+func (s *fakeStore) DeleteExpiredEmailVerificationTokens(context.Context) (pgconn.CommandTag, error) {
+	s.verificationCalls++
+	return pgconn.NewCommandTag("DELETE 3"), nil
+}
+
 func TestCleanupExpired(t *testing.T) {
 	store := &fakeStore{}
 	cleanupExpired(store)
-	if store.sessionCalls != 1 || store.tokenCalls != 1 {
+	if store.sessionCalls != 1 || store.tokenCalls != 1 || store.verificationCalls != 1 {
 		t.Errorf("calls = %+v", store)
 	}
 }
@@ -34,8 +39,8 @@ func TestCleanupExpired(t *testing.T) {
 func TestCleanupContinuesAfterAnError(t *testing.T) {
 	store := &fakeStore{sessionErr: errors.New("down")}
 	cleanupExpired(store)
-	if store.tokenCalls != 1 {
-		t.Error("a failed job stopped the next one")
+	if store.tokenCalls != 1 || store.verificationCalls != 1 {
+		t.Error("a failed job stopped the next ones")
 	}
 }
 

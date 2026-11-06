@@ -115,7 +115,7 @@ jobs:
         working-directory: apps/api
         run: |
           go run ./cmd/migrate up
-          go run ./cmd/migrate down 4
+          go run ./cmd/migrate down 5
           go run ./cmd/migrate up
 
   images:
