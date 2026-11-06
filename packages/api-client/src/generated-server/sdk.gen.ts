@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { GetApiV1AuthMeData, GetApiV1AuthMeErrors, GetApiV1AuthMeResponses, GetApiV1HealthData, GetApiV1HealthResponses, GetApiV1ReadyData, GetApiV1ReadyErrors, GetApiV1ReadyResponses, PostApiV1AuthForgotPasswordData, PostApiV1AuthForgotPasswordErrors, PostApiV1AuthForgotPasswordResponses, PostApiV1AuthLoginData, PostApiV1AuthLoginErrors, PostApiV1AuthLoginResponses, PostApiV1AuthLogoutData, PostApiV1AuthLogoutErrors, PostApiV1AuthLogoutResponses, PostApiV1AuthRefreshData, PostApiV1AuthRefreshErrors, PostApiV1AuthRefreshResponses, PostApiV1AuthRegisterData, PostApiV1AuthRegisterErrors, PostApiV1AuthRegisterResponses, PostApiV1AuthResendVerificationData, PostApiV1AuthResendVerificationErrors, PostApiV1AuthResendVerificationResponses, PostApiV1AuthResetPasswordData, PostApiV1AuthResetPasswordErrors, PostApiV1AuthResetPasswordResponses, PostApiV1AuthVerifyEmailData, PostApiV1AuthVerifyEmailErrors, PostApiV1AuthVerifyEmailResponses } from './types.gen';
+import type { GetApiV1AuthMeData, GetApiV1AuthMeErrors, GetApiV1AuthMeResponses, GetApiV1HealthData, GetApiV1HealthResponses, GetApiV1ReadyData, GetApiV1ReadyErrors, GetApiV1ReadyResponses, PostApiV1AuthForgotPasswordData, PostApiV1AuthForgotPasswordErrors, PostApiV1AuthForgotPasswordResponses, PostApiV1AuthLoginData, PostApiV1AuthLoginErrors, PostApiV1AuthLoginResponses, PostApiV1AuthLogoutAllData, PostApiV1AuthLogoutAllErrors, PostApiV1AuthLogoutAllResponses, PostApiV1AuthLogoutData, PostApiV1AuthLogoutErrors, PostApiV1AuthLogoutResponses, PostApiV1AuthRefreshData, PostApiV1AuthRefreshErrors, PostApiV1AuthRefreshResponses, PostApiV1AuthRegisterData, PostApiV1AuthRegisterErrors, PostApiV1AuthRegisterResponses, PostApiV1AuthResendVerificationData, PostApiV1AuthResendVerificationErrors, PostApiV1AuthResendVerificationResponses, PostApiV1AuthResetPasswordData, PostApiV1AuthResetPasswordErrors, PostApiV1AuthResetPasswordResponses, PostApiV1AuthVerifyEmailData, PostApiV1AuthVerifyEmailErrors, PostApiV1AuthVerifyEmailResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -72,6 +72,21 @@ export const postApiV1AuthLogout = <ThrowOnError extends boolean = false>(option
             type: 'apiKey'
         }],
     url: '/api/v1/auth/logout',
+    ...options
+});
+
+/**
+ * Log out on all devices
+ *
+ * Ends every one of the user's sessions, including this one, so their access tokens stop working straight away and none can be refreshed. Clears auth cookies
+ */
+export const postApiV1AuthLogoutAll = <ThrowOnError extends boolean = false>(options?: Options<PostApiV1AuthLogoutAllData, ThrowOnError>): RequestResult<PostApiV1AuthLogoutAllResponses, PostApiV1AuthLogoutAllErrors, ThrowOnError> => (options?.client ?? client).post<PostApiV1AuthLogoutAllResponses, PostApiV1AuthLogoutAllErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'access_token',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/auth/logout-all',
     ...options
 });
 

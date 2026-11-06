@@ -1,5 +1,6 @@
 import { registerForgotPasswordPath } from "./forgot-password.ts";
 import { registerLoginPath } from "./login.ts";
+import { registerLogoutAllPath } from "./logout-all.ts";
 import { registerLogoutPath } from "./logout.ts";
 import { registerMePath } from "./me.ts";
 import { registerRefreshPath } from "./refresh.ts";
@@ -12,6 +13,7 @@ export function registerAuthPaths() {
   registerRegisterPath();
   registerLoginPath();
   registerLogoutPath();
+  registerLogoutAllPath();
   registerRefreshPath();
   registerMePath();
   registerForgotPasswordPath();
