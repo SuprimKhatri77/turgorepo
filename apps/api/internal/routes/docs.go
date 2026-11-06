@@ -44,7 +44,9 @@ func setupDocsRoutes(r *gin.RouterGroup, cfg config.Config) {
 }
 
 // docsContentSecurityPolicy replaces the API's default policy, which allows
-// nothing, with what the Scalar page needs.
+// nothing, with what the Scalar page needs. The browser console reports one
+// blocked eval: Scalar's bundled Zod checks whether eval is allowed and works
+// without it, so the policy doesn't allow it.
 func docsContentSecurityPolicy(nonce string) string {
 	return strings.Join([]string{
 		"default-src 'none'",

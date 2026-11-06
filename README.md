@@ -203,8 +203,6 @@ Next.js app with cookie-based auth, axios interceptors for token refresh, and ro
 
 ### Proxy middleware (`proxy.ts`)
 
-It handles:
-
 It runs on every page, and handles:
 
 - `/auth/*` — redirect authenticated users away from login/register
@@ -212,6 +210,19 @@ It runs on every page, and handles:
 - `/dashboard/*` — require any logged-in user
 
 To protect a new page, add it to `ROLE_RULES` in `apps/web/lib/middleware/config.ts`. The proxy only decodes tokens, so call `requireUser()` in the page as well, which verifies the session with the API. `apps/web/app/admin/page.tsx` is an example.
+
+### Security headers
+
+The proxy also sends a Content-Security-Policy with a new nonce on each request (`apps/web/lib/middleware/csp.ts`). Next adds the nonce to its own scripts, so only scripts the app rendered can run, plus whatever they load. Inline styles are allowed, and connections go only to the site itself and `NEXT_PUBLIC_API_URL`. Every page is already rendered per request, because the root layout reads cookies, so the nonce costs nothing extra. `next.config.ts` sets the fixed headers: `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy` and HSTS.
+
+To add something from another site:
+
+- **A script:** render it with `next/script` and pass the nonce from the `x-nonce` request header (`(await headers()).get("x-nonce")`).
+- **An API, or images from another host:** add its origin to `connect-src` or `img-src` in `csp.ts`.
+
+Development adds `'unsafe-eval'`, which React needs for debugging. Production doesn't, which is why Zod's eval-based speedup is turned off in `lib/zod-config.ts`. If something works in `bun dev` but not in the production image, check the browser console for a CSP violation.
+
+The API sends `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` and a policy that allows nothing, because it only serves JSON. It adds HSTS in release mode. The Scalar docs page sets its own policy in `internal/routes/docs.go`.
 
 ### Shared types
 
