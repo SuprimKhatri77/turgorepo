@@ -73,7 +73,7 @@ export const postApiV1AuthLogin = <ThrowOnError extends boolean = false>(options
 /**
  * Log out
  *
- * Revokes the current refresh token when present and always clears auth cookies
+ * Ends this device's session, found from the refresh token or else the access token, so its access token stops working straight away. Other devices stay logged in. Always clears auth cookies
  */
 export const postApiV1AuthLogout = <ThrowOnError extends boolean = false>(options?: Options<PostApiV1AuthLogoutData, ThrowOnError>): RequestResult<PostApiV1AuthLogoutResponses, PostApiV1AuthLogoutErrors, ThrowOnError> => (options?.client ?? client).post<PostApiV1AuthLogoutResponses, PostApiV1AuthLogoutErrors, ThrowOnError>({
     responseType: 'json',

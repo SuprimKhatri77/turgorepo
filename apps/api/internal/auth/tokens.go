@@ -42,7 +42,7 @@ func NewResetToken() (token, hash string, err error) {
 func NewTokens(cfg *config.Config, user db.User, familyID pgtype.UUID) (*Tokens, error) {
 	jti := uuid.New()
 
-	accessToken, err := SignAccess(cfg, user, jti)
+	accessToken, err := SignAccess(cfg, user, jti, familyID)
 	if err != nil {
 		return nil, err
 	}
@@ -58,22 +58,30 @@ func NewTokens(cfg *config.Config, user db.User, familyID pgtype.UUID) (*Tokens,
 	}, nil
 }
 
-func NewAccessToken(cfg *config.Config, user db.User) (string, error) {
-	return SignAccess(cfg, user, uuid.New())
+func NewAccessToken(cfg *config.Config, user db.User, sessionID pgtype.UUID) (string, error) {
+	return SignAccess(cfg, user, uuid.New(), sessionID)
 }
 
-func SignAccess(cfg *config.Config, user db.User, jti uuid.UUID) (string, error) {
+// SignAccess signs an access token for one session. The session ID lets logout
+// revoke this device's tokens without touching the user's other sessions.
+func SignAccess(cfg *config.Config, user db.User, jti uuid.UUID, sessionID pgtype.UUID) (string, error) {
 	userID, err := utils.UUIDString(user.ID)
 	if err != nil {
 		return "", err
 	}
 
+	sessionIDStr, err := utils.UUIDString(sessionID)
+	if err != nil {
+		return "", err
+	}
+
 	claims := AccessClaims{
-		UserID:   userID,
-		Role:     user.Role,
-		Email:    user.Email,
-		Name:     user.Name,
-		ImageURL: textValue(user.ImageUrl),
+		UserID:    userID,
+		SessionID: sessionIDStr,
+		Role:      user.Role,
+		Email:     user.Email,
+		Name:      user.Name,
+		ImageURL:  textValue(user.ImageUrl),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        jti.String(),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -127,6 +135,11 @@ func ParseAccess(tokenString, secret string) (*AccessClaims, error) {
 	}
 	if parsed.UserID == "" {
 		return nil, fmt.Errorf("missing user_id")
+	}
+	// Every token must be revocable, so tokens from before session IDs are refused.
+	// The client then refreshes and gets one that has it.
+	if parsed.SessionID == "" {
+		return nil, fmt.Errorf("missing sid")
 	}
 	return parsed, nil
 }

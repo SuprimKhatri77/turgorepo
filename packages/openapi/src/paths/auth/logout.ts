@@ -8,7 +8,7 @@ export function registerLogoutPath() {
     path: "/api/v1/auth/logout",
     summary: "Log out",
     description:
-      "Revokes the current refresh token when present and always clears auth cookies",
+      "Ends this device's session, found from the refresh token or else the access token, so its access token stops working straight away. Other devices stay logged in. Always clears auth cookies",
     security: [{ refreshTokenCookie: [] }],
     responses: {
       200: {

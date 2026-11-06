@@ -146,7 +146,7 @@ Base path: `/api/v1`
 | `POST` | `/auth/login` | Sign in, set cookies |
 | `POST` | `/auth/forgot-password` | Email a reset link. Responds the same whether or not the account exists |
 | `POST` | `/auth/reset-password` | Set a new password with an emailed token, and log out on all devices |
-| `POST` | `/auth/logout` | Revoke session, clear cookies |
+| `POST` | `/auth/logout` | End this device's session and its access token, clear cookies |
 | `POST` | `/auth/refresh` | Refresh access token and rotate the refresh token. The previous token keeps working for 5 minutes for concurrent requests, but only gets a new access token |
 | `GET` | `/auth/me` | Current user (requires auth) |
 
@@ -164,7 +164,7 @@ Reset links expire after 1 hour and work once, and requesting a new one cancels 
 
 A reset logs the user out everywhere straight away. Sessions are revoked in the database, and Redis holds a cutoff time that makes `RequireAuth` reject older access tokens. The cutoff removes itself after 15 minutes, when those tokens would have expired anyway. If Redis is down, requests are allowed and the error is logged, so old access tokens can keep working until they expire.
 
-Logging out only ends that device's session. Its access token keeps working until it expires, up to 15 minutes.
+Logging out ends that device's session straight away, including its access token, and the user's other devices stay logged in. Each access token carries its session ID (`sid`), and logout sets a Redis marker for that session that `RequireAuth` checks alongside the cutoff, in the same round trip. The marker also removes itself after 15 minutes. Reusing an old refresh token outside the grace window, which suggests it was stolen, ends the session the same way.
 
 To read reset emails locally, open Mailpit at <http://localhost:8025>.
 

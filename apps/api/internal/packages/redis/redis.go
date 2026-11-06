@@ -2,12 +2,13 @@ package redis
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"time"
 
 	goredis "github.com/redis/go-redis/v9"
+	"github.com/suprimkhatri77/turgorepo/api/internal/auth"
 )
 
 // Client wraps a go-redis client.
@@ -107,19 +108,40 @@ func tokenCutoffKey(userID string) string {
 	return "auth:tokens_valid_after:" + userID
 }
 
+func revokedSessionKey(sessionID string) string {
+	return "auth:session_revoked:" + sessionID
+}
+
 // RevokeTokensBefore implements auth.TokenRevoker.
 func (c *Client) RevokeTokensBefore(ctx context.Context, userID string, cutoff time.Time, ttl time.Duration) error {
 	return c.rdb.Set(ctx, tokenCutoffKey(userID), cutoff.Unix(), ttl).Err()
 }
 
-// TokensValidAfter implements auth.TokenRevoker.
-func (c *Client) TokensValidAfter(ctx context.Context, userID string) (time.Time, bool, error) {
-	seconds, err := c.rdb.Get(ctx, tokenCutoffKey(userID)).Int64()
-	if errors.Is(err, goredis.Nil) {
-		return time.Time{}, false, nil
-	}
+// RevokeSession implements auth.TokenRevoker.
+func (c *Client) RevokeSession(ctx context.Context, sessionID string, ttl time.Duration) error {
+	return c.rdb.Set(ctx, revokedSessionKey(sessionID), 1, ttl).Err()
+}
+
+// Revocations implements auth.TokenRevoker. Both markers are read in one round
+// trip, because this runs on every authenticated request.
+func (c *Client) Revocations(ctx context.Context, userID, sessionID string) (auth.Revocations, error) {
+	values, err := c.rdb.MGet(ctx, tokenCutoffKey(userID), revokedSessionKey(sessionID)).Result()
 	if err != nil {
-		return time.Time{}, false, err
+		return auth.Revocations{}, err
 	}
-	return time.Unix(seconds, 0), true, nil
+	if len(values) != 2 {
+		return auth.Revocations{}, fmt.Errorf("revocation lookup returned %d values", len(values))
+	}
+
+	var revocations auth.Revocations
+	if raw, ok := values[0].(string); ok {
+		seconds, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil {
+			return auth.Revocations{}, fmt.Errorf("parse token cutoff: %w", err)
+		}
+		revocations.Cutoff = time.Unix(seconds, 0)
+		revocations.HasCutoff = true
+	}
+	revocations.SessionRevoked = values[1] != nil
+	return revocations, nil
 }

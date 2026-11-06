@@ -351,6 +351,9 @@ func refreshFixture(t *testing.T) (db.User, string, db.Session) {
 	}
 }
 
+// testSessionID is the string form of testUUID(2), the session refreshFixture uses.
+const testSessionID = "02020202-0202-0202-0202-020202020202"
+
 func refreshCookie(token string) *http.Cookie {
 	return &http.Cookie{Name: "refresh_token", Value: token}
 }
@@ -359,7 +362,7 @@ func TestRefresh(t *testing.T) {
 	t.Run("current token rotates", func(t *testing.T) {
 		user, token, sess := refreshFixture(t)
 		repo := &fakeRepo{user: user, sessions: []db.Session{sess}}
-		w := serve(Refresh(repo, testConfig()), "", refreshCookie(token))
+		w := serve(Refresh(repo, testConfig(), &fakeRevoker{}), "", refreshCookie(token))
 
 		if w.Code != http.StatusOK || !repo.rotated {
 			t.Fatalf("status = %d, rotated = %v", w.Code, repo.rotated)
@@ -376,7 +379,7 @@ func TestRefresh(t *testing.T) {
 		sess.PreviousRotatedAt = pgtype.Timestamptz{Time: time.Now().Add(-time.Minute), Valid: true}
 		sess.CurrentTokenHash = "hash-of-newer-token"
 		repo := &fakeRepo{user: user, sessions: []db.Session{sess}}
-		w := serve(Refresh(repo, testConfig()), "", refreshCookie(token))
+		w := serve(Refresh(repo, testConfig(), &fakeRevoker{}), "", refreshCookie(token))
 
 		if w.Code != http.StatusOK || repo.rotated {
 			t.Fatalf("status = %d, rotated = %v", w.Code, repo.rotated)
@@ -396,16 +399,21 @@ func TestRefresh(t *testing.T) {
 		sess.PreviousRotatedAt = pgtype.Timestamptz{Time: time.Now().Add(-time.Hour), Valid: true}
 		sess.CurrentTokenHash = "hash-of-newer-token"
 		repo := &fakeRepo{user: user, sessions: []db.Session{sess}}
-		w := serve(Refresh(repo, testConfig()), "", refreshCookie(token))
+		revoker := &fakeRevoker{}
+		w := serve(Refresh(repo, testConfig(), revoker), "", refreshCookie(token))
 
 		if w.Code != http.StatusUnauthorized || len(repo.revoked) != 1 {
 			t.Errorf("status = %d, revoked = %v", w.Code, repo.revoked)
+		}
+		// Whoever holds a stolen refresh token loses its access tokens too.
+		if len(revoker.sessions) != 1 || revoker.sessions[0] != testSessionID {
+			t.Errorf("revoked session tokens = %v", revoker.sessions)
 		}
 	})
 
 	t.Run("expired or revoked session clears cookies", func(t *testing.T) {
 		user, token, _ := refreshFixture(t)
-		w := serve(Refresh(&fakeRepo{user: user, sessionErr: pgx.ErrNoRows}, testConfig()), "", refreshCookie(token))
+		w := serve(Refresh(&fakeRepo{user: user, sessionErr: pgx.ErrNoRows}, testConfig(), &fakeRevoker{}), "", refreshCookie(token))
 
 		if w.Code != http.StatusUnauthorized {
 			t.Fatalf("status = %d", w.Code)
@@ -417,7 +425,7 @@ func TestRefresh(t *testing.T) {
 
 	t.Run("database outage keeps the user logged in", func(t *testing.T) {
 		user, token, _ := refreshFixture(t)
-		w := serve(Refresh(&fakeRepo{user: user, sessionErr: errDB}, testConfig()), "", refreshCookie(token))
+		w := serve(Refresh(&fakeRepo{user: user, sessionErr: errDB}, testConfig(), &fakeRevoker{}), "", refreshCookie(token))
 
 		if w.Code != http.StatusServiceUnavailable {
 			t.Fatalf("status = %d", w.Code)
@@ -437,7 +445,7 @@ func TestRefresh(t *testing.T) {
 		reloaded.PreviousRotatedAt = pgtype.Timestamptz{Time: time.Now(), Valid: true}
 		reloaded.CurrentTokenHash = "hash-of-winner"
 		repo := &fakeRepo{user: user, sessions: []db.Session{sess, reloaded}, rotateErr: pgx.ErrNoRows}
-		w := serve(Refresh(repo, testConfig()), "", refreshCookie(token))
+		w := serve(Refresh(repo, testConfig(), &fakeRevoker{}), "", refreshCookie(token))
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("status = %d: %s", w.Code, w.Body)
@@ -448,38 +456,79 @@ func TestRefresh(t *testing.T) {
 	})
 
 	t.Run("missing and invalid cookies are rejected", func(t *testing.T) {
-		if w := serve(Refresh(&fakeRepo{}, testConfig()), ""); w.Code != http.StatusUnauthorized {
+		if w := serve(Refresh(&fakeRepo{}, testConfig(), &fakeRevoker{}), ""); w.Code != http.StatusUnauthorized {
 			t.Errorf("missing: status = %d", w.Code)
 		}
-		if w := serve(Refresh(&fakeRepo{}, testConfig()), "", refreshCookie("not-a-jwt")); w.Code != http.StatusUnauthorized {
+		if w := serve(Refresh(&fakeRepo{}, testConfig(), &fakeRevoker{}), "", refreshCookie("not-a-jwt")); w.Code != http.StatusUnauthorized {
 			t.Errorf("invalid: status = %d", w.Code)
 		}
 	})
 }
 
 func TestLogout(t *testing.T) {
-	t.Run("revokes the session and clears cookies", func(t *testing.T) {
+	t.Run("revokes the session and its access tokens, and clears cookies", func(t *testing.T) {
 		_, token, _ := refreshFixture(t)
 		repo := &fakeRepo{}
-		w := serve(Logout(repo, testConfig()), "", refreshCookie(token))
+		revoker := &fakeRevoker{}
+		w := serve(Logout(repo, testConfig(), revoker), "", refreshCookie(token))
 
 		if w.Code != http.StatusOK || len(repo.revoked) != 1 || repo.revoked[0] != testUUID(2) {
 			t.Fatalf("status = %d, revoked = %v", w.Code, repo.revoked)
+		}
+		if len(revoker.sessions) != 1 || revoker.sessions[0] != testSessionID {
+			t.Errorf("revoked session tokens = %v", revoker.sessions)
+		}
+		if revoker.ttl != testConfig().AccessTokenTTL {
+			t.Errorf("ttl = %v", revoker.ttl)
 		}
 		if value, set := setCookies(w)["access_token"]; !set || value != "" {
 			t.Errorf("access cookie should be cleared, got %q (set=%v)", value, set)
 		}
 	})
 
+	t.Run("falls back to the access token without a refresh token", func(t *testing.T) {
+		tokens, err := session.NewTokens(testConfig(), testUser(t), testUUID(2))
+		if err != nil {
+			t.Fatal(err)
+		}
+		access := &http.Cookie{Name: "access_token", Value: tokens.AccessToken}
+		for _, cookies := range [][]*http.Cookie{{access}, {access, refreshCookie("not-a-jwt")}} {
+			repo := &fakeRepo{}
+			revoker := &fakeRevoker{}
+			w := serve(Logout(repo, testConfig(), revoker), "", cookies...)
+
+			if w.Code != http.StatusOK || len(repo.revoked) != 1 || repo.revoked[0] != testUUID(2) {
+				t.Errorf("status = %d, revoked = %v", w.Code, repo.revoked)
+			}
+			if len(revoker.sessions) != 1 || revoker.sessions[0] != testSessionID {
+				t.Errorf("revoked session tokens = %v", revoker.sessions)
+			}
+		}
+	})
+
+	t.Run("a Redis failure still logs out", func(t *testing.T) {
+		_, token, _ := refreshFixture(t)
+		repo := &fakeRepo{}
+		w := serve(Logout(repo, testConfig(), &fakeRevoker{err: errors.New("redis down")}), "", refreshCookie(token))
+
+		if w.Code != http.StatusOK || len(repo.revoked) != 1 {
+			t.Errorf("status = %d, revoked = %v", w.Code, repo.revoked)
+		}
+		if value, set := setCookies(w)["refresh_token"]; !set || value != "" {
+			t.Errorf("refresh cookie should be cleared, got %q (set=%v)", value, set)
+		}
+	})
+
 	t.Run("works without a session", func(t *testing.T) {
 		repo := &fakeRepo{}
+		revoker := &fakeRevoker{}
 		for _, cookies := range [][]*http.Cookie{nil, {refreshCookie("not-a-jwt")}} {
-			if w := serve(Logout(repo, testConfig()), "", cookies...); w.Code != http.StatusOK {
+			if w := serve(Logout(repo, testConfig(), revoker), "", cookies...); w.Code != http.StatusOK {
 				t.Errorf("status = %d", w.Code)
 			}
 		}
-		if len(repo.revoked) != 0 {
-			t.Errorf("revoked = %v", repo.revoked)
+		if len(repo.revoked) != 0 || len(revoker.sessions) != 0 {
+			t.Errorf("revoked = %v, session tokens = %v", repo.revoked, revoker.sessions)
 		}
 	})
 }

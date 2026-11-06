@@ -36,7 +36,7 @@ func setupAuthRoutes(router *gin.RouterGroup, cfg config.Config) {
 		authHandler.ResetPassword(passwordReset),
 	)
 
-	auth.POST("/logout", authHandler.Logout(cfg.Queries, cfg.Config))
-	auth.POST("/refresh", authHandler.Refresh(cfg.Queries, cfg.Config))
+	auth.POST("/logout", authHandler.Logout(cfg.Queries, cfg.Config, cfg.Redis))
+	auth.POST("/refresh", authHandler.Refresh(cfg.Queries, cfg.Config, cfg.Redis))
 	auth.GET("/me", middleware.RequireAuth(cfg.Config, cfg.Redis), authHandler.Me(cfg.Queries))
 }
