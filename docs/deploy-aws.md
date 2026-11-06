@@ -116,14 +116,14 @@ The default pool is the larger of 4 connections or the number of CPUs, per conta
 
 ## Email
 
-Password reset emails go over SMTP, so any provider works. TLS is required in production. These steps are for Amazon SES:
+Verification and password reset emails go over SMTP, so any provider works. New users can't log in until they verify their email, so working email is required before anyone can sign up. TLS is required in production. These steps are for Amazon SES:
 
 1. Verify your domain in the SES console, and add the DNS records it gives you. This also sets up DKIM.
 2. Request production access. New SES accounts are in a sandbox that can only send to verified addresses.
 3. Create SMTP credentials in the SES console, under **SMTP settings**. They aren't the same as your AWS access keys.
 4. Set `SMTP_HOST` to the endpoint for your region, `SMTP_PORT=587`, and `EMAIL_FROM` to an address on the verified domain.
 
-API tasks need outbound access to the SMTP endpoint on port 587, through a NAT gateway or VPC endpoint if they run in private subnets. If email can't be sent, the API logs the error and `forgot-password` still returns its normal response, so set an alert on `failed to send password reset email`.
+API tasks need outbound access to the SMTP endpoint on port 587, through a NAT gateway or VPC endpoint if they run in private subnets. If email can't be sent, the API logs the error and still returns its normal response, so set an alert on the failures, described below.
 
 This setup hasn't been tested against real SES yet.
 
@@ -134,13 +134,13 @@ Users see the same "check your email" message even when sending fails, so nothin
 ```sh
 aws logs put-metric-filter \
   --log-group-name "$API_LOG_GROUP" \
-  --filter-name password-email-failures \
-  --filter-pattern '{ $.msg = "failed to send password*" }' \
-  --metric-transformations metricName=PasswordEmailFailures,metricNamespace=MyApp,metricValue=1,defaultValue=0
+  --filter-name account-email-failures \
+  --filter-pattern '{ ($.msg = "failed to send password*") || ($.msg = "failed to send verification*") }' \
+  --metric-transformations metricName=AccountEmailFailures,metricNamespace=MyApp,metricValue=1,defaultValue=0
 
 aws cloudwatch put-metric-alarm \
-  --alarm-name password-email-failures \
-  --namespace MyApp --metric-name PasswordEmailFailures \
+  --alarm-name account-email-failures \
+  --namespace MyApp --metric-name AccountEmailFailures \
   --statistic Sum --period 300 --evaluation-periods 1 --threshold 1 \
   --comparison-operator GreaterThanOrEqualToThreshold \
   --treat-missing-data notBreaching \
