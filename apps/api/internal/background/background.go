@@ -19,9 +19,8 @@ type Runner struct {
 
 // Go runs job in the background. A panic is logged rather than crashing the API.
 func (r *Runner) Go(name string, job func(ctx context.Context)) {
-	r.wg.Add(1)
-	go func() {
-		defer r.wg.Done()
+	// WaitGroup.Go requires that its function not panic, so recover stays inside it.
+	r.wg.Go(func() {
 		defer func() {
 			if err := recover(); err != nil {
 				slog.Error("background job panicked", "job", name, "err", err, "stack", string(debug.Stack()))
@@ -31,7 +30,7 @@ func (r *Runner) Go(name string, job func(ctx context.Context)) {
 		ctx, cancel := context.WithTimeout(context.Background(), jobTimeout)
 		defer cancel()
 		job(ctx)
-	}()
+	})
 }
 
 // Wait blocks until all jobs finish or ctx ends, and reports whether they finished.
