@@ -93,20 +93,15 @@ func ResetPassword(deps AccountEmailDeps) gin.HandlerFunc {
 	}
 }
 
-// revokeAccessTokens runs after the database commit, so a refresh can't issue a new
-// token after the cutoff. A failure doesn't fail the reset, because the password and
-// sessions have already changed, and old access tokens expire on their own soon.
+// revokeAccessTokens runs after the database commit. A failure doesn't fail the
+// reset, because the password and sessions have already changed.
 func revokeAccessTokens(c *gin.Context, deps AccountEmailDeps, user db.User) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), revokeTimeout)
-	defer cancel()
-
 	userID, err := utils.UUIDString(user.ID)
-	if err == nil {
-		err = deps.Revoker.RevokeTokensBefore(ctx, userID, time.Now(), deps.Config.AccessTokenTTL)
-	}
 	if err != nil {
 		rlog.Error(c, "failed to revoke access tokens after password reset", err, "user_id", user.ID)
+		return
 	}
+	revokeUserTokens(c, deps.Revoker, deps.Config, userID)
 }
 
 func sendPasswordChangedEmail(ctx context.Context, deps AccountEmailDeps, user db.User) error {

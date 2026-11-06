@@ -27,6 +27,7 @@ export {
   postApiV1AuthForgotPassword,
   postApiV1AuthLogin,
   postApiV1AuthLogout,
+  postApiV1AuthLogoutAll,
   postApiV1AuthRefresh,
   postApiV1AuthRegister,
   postApiV1AuthResendVerification,

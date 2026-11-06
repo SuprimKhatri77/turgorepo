@@ -865,6 +865,59 @@
         }
       }
     },
+    "/api/v1/auth/logout-all": {
+      "post": {
+        "summary": "Log out on all devices",
+        "description": "Ends every one of the user's sessions, including this one, so their access tokens stop working straight away and none can be refreshed. Clears auth cookies",
+        "security": [
+          {
+            "accessTokenCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logged out on all devices",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid user ID format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Sessions could not be revoked, so nothing changed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/refresh": {
       "post": {
         "summary": "Refresh access token",

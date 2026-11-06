@@ -265,6 +265,39 @@ export type PostApiV1AuthLogoutResponses = {
 
 export type PostApiV1AuthLogoutResponse = PostApiV1AuthLogoutResponses[keyof PostApiV1AuthLogoutResponses];
 
+export type PostApiV1AuthLogoutAllData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/logout-all';
+};
+
+export type PostApiV1AuthLogoutAllErrors = {
+    /**
+     * Invalid user ID format
+     */
+    400: ApiErrorResponse;
+    /**
+     * Missing or invalid access token
+     */
+    401: ApiErrorResponse;
+    /**
+     * Sessions could not be revoked, so nothing changed
+     */
+    500: ApiErrorResponse;
+};
+
+export type PostApiV1AuthLogoutAllError = PostApiV1AuthLogoutAllErrors[keyof PostApiV1AuthLogoutAllErrors];
+
+export type PostApiV1AuthLogoutAllResponses = {
+    /**
+     * Logged out on all devices
+     */
+    200: AuthSuccessResponse;
+};
+
+export type PostApiV1AuthLogoutAllResponse = PostApiV1AuthLogoutAllResponses[keyof PostApiV1AuthLogoutAllResponses];
+
 export type PostApiV1AuthRefreshData = {
     body?: never;
     path?: never;

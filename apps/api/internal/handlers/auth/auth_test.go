@@ -53,6 +53,9 @@ type fakeRepo struct {
 	revoked     []pgtype.UUID
 	sessionsNew int
 
+	revokedUsers []pgtype.UUID
+	revokeAllErr error
+
 	verificationToken *db.CreateEmailVerificationTokenParams
 	verificationErr   error
 	verifiedHash      string
@@ -111,6 +114,11 @@ func (r *fakeRepo) RotateSessionToken(context.Context, db.RotateSessionTokenPara
 func (r *fakeRepo) RevokeSession(_ context.Context, id pgtype.UUID) error {
 	r.revoked = append(r.revoked, id)
 	return nil
+}
+
+func (r *fakeRepo) RevokeAllUserSessions(_ context.Context, userID pgtype.UUID) error {
+	r.revokedUsers = append(r.revokedUsers, userID)
+	return r.revokeAllErr
 }
 
 type fakeLimiter struct {
@@ -609,6 +617,71 @@ func TestLogout(t *testing.T) {
 		}
 		if len(repo.revoked) != 0 || len(revoker.sessions) != 0 {
 			t.Errorf("revoked = %v, session tokens = %v", repo.revoked, revoker.sessions)
+		}
+	})
+}
+
+// serveAs runs handler as RequireAuth would after accepting userID's token.
+func serveAs(handler gin.HandlerFunc, userID string) *httptest.ResponseRecorder {
+	r := gin.New()
+	r.POST("/", func(c *gin.Context) {
+		c.Set(constants.UserIDKey, userID)
+		c.Next()
+	}, handler)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/", nil))
+	return w
+}
+
+func TestLogoutAll(t *testing.T) {
+	const userID = "01010101-0101-0101-0101-010101010101"
+
+	t.Run("revokes every session and access token, and clears cookies", func(t *testing.T) {
+		repo := &fakeRepo{}
+		revoker := &fakeRevoker{}
+		before := time.Now()
+		w := serveAs(LogoutAll(repo, testConfig(), revoker), userID)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("status = %d: %s", w.Code, w.Body)
+		}
+		if len(repo.revokedUsers) != 1 || repo.revokedUsers[0] != testUUID(1) {
+			t.Errorf("revoked sessions of %v", repo.revokedUsers)
+		}
+		if len(revoker.userIDs) != 1 || revoker.userIDs[0] != userID {
+			t.Errorf("cutoff for %v", revoker.userIDs)
+		}
+		if revoker.cutoff.Before(before) || revoker.cutoff.After(time.Now()) || revoker.ttl != testConfig().AccessTokenTTL {
+			t.Errorf("cutoff = %v, ttl = %v", revoker.cutoff, revoker.ttl)
+		}
+		for _, name := range []string{"access_token", "refresh_token", "is_logged_in"} {
+			if value, set := setCookies(w)[name]; !set || value != "" {
+				t.Errorf("cookie %s should be cleared, got %q (set=%v)", name, value, set)
+			}
+		}
+	})
+
+	t.Run("a database error changes nothing", func(t *testing.T) {
+		revoker := &fakeRevoker{}
+		w := serveAs(LogoutAll(&fakeRepo{revokeAllErr: errDB}, testConfig(), revoker), userID)
+
+		if w.Code != http.StatusInternalServerError {
+			t.Fatalf("status = %d", w.Code)
+		}
+		if len(revoker.userIDs) != 0 || len(setCookies(w)) != 0 {
+			t.Errorf("cutoff = %v, cookies = %v", revoker.userIDs, setCookies(w))
+		}
+	})
+
+	t.Run("a Redis failure still logs out", func(t *testing.T) {
+		repo := &fakeRepo{}
+		w := serveAs(LogoutAll(repo, testConfig(), &fakeRevoker{err: errors.New("redis down")}), userID)
+
+		if w.Code != http.StatusOK || len(repo.revokedUsers) != 1 {
+			t.Errorf("status = %d, revoked = %v", w.Code, repo.revokedUsers)
+		}
+		if value, set := setCookies(w)["refresh_token"]; !set || value != "" {
+			t.Errorf("refresh cookie should be cleared, got %q (set=%v)", value, set)
 		}
 	})
 }
