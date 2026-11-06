@@ -1,0 +1,8 @@
+version: 2
+
+secret:
+  # Local development defaults, such as postgres:postgres on localhost. Real values
+  # belong in .env.local and .env.production, which git ignores.
+  ignored_paths:
+    - ".env.example"
+    - ".env.production.example"
