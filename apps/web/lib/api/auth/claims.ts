@@ -3,6 +3,7 @@ import { jwtDecode } from "jwt-decode";
 
 type AccessTokenClaims = Omit<User, "id"> & {
   user_id: string;
+  sid?: string;
   exp: number;
 };
 
@@ -12,9 +13,12 @@ type AccessTokenClaims = Omit<User, "id"> & {
  */
 export function userFromAccessToken(token: string): User | null {
   try {
-    const { user_id, name, email, role, image_url, exp } =
+    const { user_id, sid, name, email, role, image_url, exp } =
       jwtDecode<AccessTokenClaims>(token);
     if (exp * 1000 < Date.now()) return null;
+    // The API refuses tokens without a session ID, so treat one as expired and
+    // let the proxy refresh it instead of the page failing.
+    if (!sid) return null;
     return { id: user_id, name, email, role, image_url };
   } catch {
     return null;
