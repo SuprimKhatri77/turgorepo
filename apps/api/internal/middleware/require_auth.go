@@ -57,7 +57,7 @@ func RequireAuth(cfg *config.Config, revoker session.TokenRevoker) gin.HandlerFu
 		}
 
 		if tokenRevoked(c, revoker, claims) {
-			rlog.Warn(c, "revoked access token", "user_id", claims.UserID)
+			rlog.Warn(c, "revoked access token", "user_id", claims.UserID, "session_id", claims.SessionID)
 
 			c.JSON(http.StatusUnauthorized, types.APIResponse{
 				Success: false,
@@ -77,17 +77,17 @@ func RequireAuth(cfg *config.Config, revoker session.TokenRevoker) gin.HandlerFu
 	}
 }
 
-// tokenRevoked checks for a revocation such as a password reset. If Redis fails it
-// logs the error and allows the request: an outage shouldn't log out every user, and
-// tokens still expire on their own within minutes.
+// tokenRevoked checks for a revocation such as a logout or a password reset. If
+// Redis fails it logs the error and allows the request: an outage shouldn't log out
+// every user, and tokens still expire on their own within minutes.
 func tokenRevoked(c *gin.Context, revoker session.TokenRevoker, claims *session.AccessClaims) bool {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), revocationCheckTimeout)
 	defer cancel()
 
-	cutoff, found, err := revoker.TokensValidAfter(ctx, claims.UserID)
+	revocations, err := revoker.Revocations(ctx, claims.UserID, claims.SessionID)
 	if err != nil {
 		rlog.Error(c, "token revocation check failed, allowing request", err, "user_id", claims.UserID)
 		return false
 	}
-	return found && claims.IssuedAtOrBefore(cutoff)
+	return revocations.Rejects(claims)
 }

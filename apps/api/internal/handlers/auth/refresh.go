@@ -18,7 +18,7 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 )
 
-func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerFunc {
+func Refresh(queries repository.AuthRepository, cfg *config.Config, revoker session.TokenRevoker) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -88,7 +88,7 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 		}
 
 		issueGraceAccess := func() {
-			accessToken, err := session.NewAccessToken(cfg, user)
+			accessToken, err := session.NewAccessToken(cfg, user, familyID)
 			if err != nil {
 				rlog.Error(c, "failed to sign access token", err, "user_id", user.ID)
 				c.JSON(http.StatusInternalServerError, types.APIResponse{
@@ -186,10 +186,13 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config) gin.HandlerF
 			issueGraceAccess()
 
 		default:
+			// A reused refresh token may have been stolen, so end the session, including
+			// access tokens already issued for it, whoever holds them.
 			rlog.Warn(c, "stale or reused token outside grace window", "user_id", user.ID)
 			if err := queries.RevokeSession(ctx, sess.ID); err != nil {
 				rlog.Error(c, "failed to revoke session after stale token", err)
 			}
+			revokeSessionTokens(c, revoker, cfg, claims.FamilyID)
 			utils.ClearAuthCookies(c, cfg)
 			c.JSON(http.StatusUnauthorized, types.APIResponse{
 				Success: false,

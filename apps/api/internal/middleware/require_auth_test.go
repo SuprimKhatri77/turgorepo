@@ -17,29 +17,48 @@ import (
 
 const testAccessSecret = "access-secret"
 
+const testSessionID = "session-1"
+
 type fakeRevoker struct {
-	cutoff time.Time
-	found  bool
-	err    error
-	calls  int
-	userID string
+	cutoff         time.Time
+	found          bool
+	revokedSession string
+	err            error
+	calls          int
+	userID         string
+	sessionID      string
 }
 
 func (r *fakeRevoker) RevokeTokensBefore(context.Context, string, time.Time, time.Duration) error {
 	return nil
 }
 
-func (r *fakeRevoker) TokensValidAfter(_ context.Context, userID string) (time.Time, bool, error) {
+func (r *fakeRevoker) RevokeSession(context.Context, string, time.Duration) error {
+	return nil
+}
+
+func (r *fakeRevoker) Revocations(_ context.Context, userID, sessionID string) (session.Revocations, error) {
 	r.calls++
 	r.userID = userID
-	return r.cutoff, r.found, r.err
+	r.sessionID = sessionID
+	return session.Revocations{
+		Cutoff:         r.cutoff,
+		HasCutoff:      r.found,
+		SessionRevoked: r.revokedSession != "" && r.revokedSession == sessionID,
+	}, r.err
 }
 
 func signToken(t *testing.T, secret string, issuedAt *jwt.NumericDate) string {
 	t.Helper()
+	return signSessionToken(t, secret, testSessionID, issuedAt)
+}
+
+func signSessionToken(t *testing.T, secret, sessionID string, issuedAt *jwt.NumericDate) string {
+	t.Helper()
 	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, session.AccessClaims{
-		UserID: "user-1",
-		Role:   constants.RoleMember,
+		UserID:    "user-1",
+		SessionID: sessionID,
+		Role:      constants.RoleMember,
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  issuedAt,
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
@@ -96,10 +115,38 @@ func TestRequireAuthRevocation(t *testing.T) {
 			if reached != (tt.want == http.StatusOK) {
 				t.Errorf("handler reached = %v", reached)
 			}
-			if tt.revoker.userID != "user-1" {
-				t.Errorf("checked user %q", tt.revoker.userID)
+			if tt.revoker.userID != "user-1" || tt.revoker.sessionID != testSessionID {
+				t.Errorf("checked user %q, session %q", tt.revoker.userID, tt.revoker.sessionID)
 			}
 		})
+	}
+}
+
+func TestRequireAuthSessionRevocation(t *testing.T) {
+	now := jwt.NewNumericDate(time.Now())
+	revoker := &fakeRevoker{revokedSession: "session-logged-out"}
+
+	w, reached := serveAuthed(revoker, signSessionToken(t, testAccessSecret, "session-logged-out", now))
+	if w.Code != http.StatusUnauthorized || reached {
+		t.Errorf("revoked session: status = %d, reached = %v", w.Code, reached)
+	}
+
+	// The same user's other sessions keep working.
+	w, reached = serveAuthed(revoker, signSessionToken(t, testAccessSecret, "session-other-device", now))
+	if w.Code != http.StatusOK || !reached {
+		t.Errorf("other session: status = %d, reached = %v", w.Code, reached)
+	}
+}
+
+func TestRequireAuthRejectsTokenWithoutSession(t *testing.T) {
+	revoker := &fakeRevoker{}
+	w, reached := serveAuthed(revoker, signSessionToken(t, testAccessSecret, "", jwt.NewNumericDate(time.Now())))
+
+	if w.Code != http.StatusUnauthorized || reached {
+		t.Errorf("status = %d, reached = %v", w.Code, reached)
+	}
+	if revoker.calls != 0 {
+		t.Error("a token without a session reached Redis")
 	}
 }
 

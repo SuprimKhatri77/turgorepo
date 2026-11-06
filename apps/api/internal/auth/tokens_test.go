@@ -41,7 +41,7 @@ func TestSignAndParseAccess(t *testing.T) {
 	cfg := testConfig()
 	user := testUser()
 
-	token, err := SignAccess(cfg, user, uuid.New())
+	token, err := SignAccess(cfg, user, uuid.New(), testFamilyID())
 	if err != nil {
 		t.Fatalf("SignAccess: %v", err)
 	}
@@ -60,13 +60,35 @@ func TestSignAndParseAccess(t *testing.T) {
 	if claims.Email != user.Email {
 		t.Fatalf("email = %q", claims.Email)
 	}
+	if claims.SessionID != "22222222-2222-2222-2222-222222222222" {
+		t.Fatalf("sid = %q", claims.SessionID)
+	}
+}
+
+func TestParseAccessRejectsMissingSessionID(t *testing.T) {
+	cfg := testConfig()
+	claims := AccessClaims{
+		UserID: "11111111-1111-1111-1111-111111111111",
+		Role:   constants.RoleMember,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
+		},
+	}
+	signed, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(cfg.JWTAccessSecret))
+	if err != nil {
+		t.Fatalf("sign: %v", err)
+	}
+
+	if _, err := ParseAccess(signed, cfg.JWTAccessSecret); err == nil {
+		t.Fatal("expected a token without sid to fail")
+	}
 }
 
 func TestSignAccessSetsIssuedAt(t *testing.T) {
 	cfg := testConfig()
 	before := time.Now().Truncate(time.Second)
 
-	token, err := SignAccess(cfg, testUser(), uuid.New())
+	token, err := SignAccess(cfg, testUser(), uuid.New(), testFamilyID())
 	if err != nil {
 		t.Fatalf("SignAccess: %v", err)
 	}
@@ -150,7 +172,7 @@ func TestNewAccessToken(t *testing.T) {
 	cfg := testConfig()
 	user := testUser()
 
-	token, err := NewAccessToken(cfg, user)
+	token, err := NewAccessToken(cfg, user, testFamilyID())
 	if err != nil {
 		t.Fatalf("NewAccessToken: %v", err)
 	}
@@ -186,7 +208,7 @@ func TestParseRefreshRejectsMissingFamilyID(t *testing.T) {
 
 func TestParseAccessRejectsWrongSecret(t *testing.T) {
 	cfg := testConfig()
-	token, err := SignAccess(cfg, testUser(), uuid.New())
+	token, err := SignAccess(cfg, testUser(), uuid.New(), testFamilyID())
 	if err != nil {
 		t.Fatalf("SignAccess: %v", err)
 	}
@@ -198,8 +220,9 @@ func TestParseAccessRejectsWrongSecret(t *testing.T) {
 
 func TestParseAccessRejectsWrongAlg(t *testing.T) {
 	claims := AccessClaims{
-		UserID: "11111111-1111-1111-1111-111111111111",
-		Role:   constants.RoleMember,
+		UserID:    "11111111-1111-1111-1111-111111111111",
+		SessionID: "22222222-2222-2222-2222-222222222222",
+		Role:      constants.RoleMember,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
 		},
@@ -217,7 +240,7 @@ func TestParseAccessRejectsWrongAlg(t *testing.T) {
 
 func TestParseRefreshRejectsAccessToken(t *testing.T) {
 	cfg := testConfig()
-	access, err := SignAccess(cfg, testUser(), uuid.New())
+	access, err := SignAccess(cfg, testUser(), uuid.New(), testFamilyID())
 	if err != nil {
 		t.Fatalf("SignAccess: %v", err)
 	}

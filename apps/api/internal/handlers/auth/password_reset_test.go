@@ -51,12 +51,13 @@ type inlineJobs struct{}
 
 func (inlineJobs) Go(_ string, job func(ctx context.Context)) { job(context.Background()) }
 
-// fakeRevoker records the cutoffs it's asked to set.
+// fakeRevoker records the cutoffs and session revocations it's asked to set.
 type fakeRevoker struct {
-	userIDs []string
-	cutoff  time.Time
-	ttl     time.Duration
-	err     error
+	userIDs  []string
+	cutoff   time.Time
+	ttl      time.Duration
+	sessions []string
+	err      error
 }
 
 func (r *fakeRevoker) RevokeTokensBefore(_ context.Context, userID string, cutoff time.Time, ttl time.Duration) error {
@@ -66,8 +67,14 @@ func (r *fakeRevoker) RevokeTokensBefore(_ context.Context, userID string, cutof
 	return r.err
 }
 
-func (r *fakeRevoker) TokensValidAfter(context.Context, string) (time.Time, bool, error) {
-	return time.Time{}, false, nil
+func (r *fakeRevoker) RevokeSession(_ context.Context, sessionID string, ttl time.Duration) error {
+	r.sessions = append(r.sessions, sessionID)
+	r.ttl = ttl
+	return r.err
+}
+
+func (r *fakeRevoker) Revocations(context.Context, string, string) (session.Revocations, error) {
+	return session.Revocations{}, nil
 }
 
 func resetDeps(repo *resetRepo, limiter *fakeLimiter, mailer *fakeMailer) PasswordResetDeps {
