@@ -30,7 +30,7 @@ func RequireAuth(cfg *config.Config, revoker session.TokenRevoker) gin.HandlerFu
 		if err != nil {
 			rlog.Warn(c, "invalid access token", "error", err)
 
-			response.Abort(c, http.StatusUnauthorized, constants.TokenInvalid, "Invalid access token")
+			response.Abort(c, http.StatusUnauthorized, constants.InvalidToken, "Invalid access token")
 			return
 		}
 
@@ -44,7 +44,7 @@ func RequireAuth(cfg *config.Config, revoker session.TokenRevoker) gin.HandlerFu
 		if tokenRevoked(c, revoker, claims) {
 			rlog.Warn(c, "revoked access token", "user_id", claims.UserID, "session_id", claims.SessionID)
 
-			response.Abort(c, http.StatusUnauthorized, constants.TokenInvalid, "Invalid access token")
+			response.Abort(c, http.StatusUnauthorized, constants.InvalidToken, "Invalid access token")
 			return
 		}
 

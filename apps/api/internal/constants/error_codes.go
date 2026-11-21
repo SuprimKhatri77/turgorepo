@@ -24,7 +24,6 @@ const (
 	InvalidToken       = "INVALID_TOKEN"
 	TokenExpired       = "TOKEN_EXPIRED" // starter
 	TokenNotProvided   = "TOKEN_NOT_PROVIDED"
-	TokenInvalid       = "TOKEN_INVALID"
 	Forbidden          = "FORBIDDEN"
 
 	// user

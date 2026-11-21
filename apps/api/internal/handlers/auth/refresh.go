@@ -36,7 +36,7 @@ func (h *Handler) Refresh(c *gin.Context) {
 	claims, err := session.ParseRefresh(refreshTokenString, h.Config.JWTRefreshSecret)
 	if err != nil {
 		rlog.Warn(c, "invalid refresh token", "error", err)
-		rejectSession(c, h.Config, constants.TokenInvalid, "Invalid refresh token")
+		rejectSession(c, h.Config, constants.InvalidToken, "Invalid refresh token")
 		return
 	}
 
@@ -54,7 +54,7 @@ func (h *Handler) Refresh(c *gin.Context) {
 			return
 		}
 		rlog.Warn(c, "session not found or expired", "family_id", claims.FamilyID)
-		rejectSession(c, h.Config, constants.TokenInvalid, "Session expired")
+		rejectSession(c, h.Config, constants.InvalidToken, "Session expired")
 		return
 	}
 
@@ -117,7 +117,7 @@ func (h *Handler) handleLostRace(c *gin.Context, user db.User, familyID pgtype.U
 	reloaded, err := h.Store.GetActiveSessionByID(c.Request.Context(), familyID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		rlog.Warn(c, "session gone after lost rotation race")
-		rejectSession(c, h.Config, constants.TokenInvalid, "Session expired")
+		rejectSession(c, h.Config, constants.InvalidToken, "Session expired")
 		return
 	}
 	if err != nil {
@@ -127,7 +127,7 @@ func (h *Handler) handleLostRace(c *gin.Context, user db.User, familyID pgtype.U
 
 	if !withinGrace(reloaded, presentedHash, h.Config.RefreshReuseWindow, time.Now()) {
 		rlog.Warn(c, "lost rotation race but grace window missed", "user_id", user.ID)
-		rejectSession(c, h.Config, constants.TokenInvalid, "Session invalid, please log in again")
+		rejectSession(c, h.Config, constants.InvalidToken, "Session invalid, please log in again")
 		return
 	}
 	h.issueGraceAccess(c, user, familyID)
@@ -157,7 +157,7 @@ func (h *Handler) endReusedSession(c *gin.Context, user db.User, sess db.Session
 		rlog.Error(c, "failed to revoke session after stale token", err)
 	}
 	h.revokeSessionTokens(c, sessionID)
-	rejectSession(c, h.Config, constants.TokenInvalid, "Session invalid, please log in again")
+	rejectSession(c, h.Config, constants.InvalidToken, "Session invalid, please log in again")
 }
 
 // withinGrace reports whether presentedHash is the session's previous token and

@@ -20,7 +20,6 @@ export const ErrorCodeSchema = z.enum([
   "INVALID_TOKEN",
   "TOKEN_EXPIRED", // starter
   "TOKEN_NOT_PROVIDED",
-  "TOKEN_INVALID",
   "FORBIDDEN",
   "USER_NOT_FOUND",
   "USER_ALREADY_EXISTS",
