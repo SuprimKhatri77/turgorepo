@@ -468,22 +468,91 @@ Every response includes `X-Request-ID` (reuses the incoming header or mints a UU
 
 ### Transactions
 
-When several queries must succeed or fail together, run them through `database.InTx`. It commits when the callback returns nil and rolls back on an error or a panic, so nobody writes begin, commit or rollback by hand:
+When several queries must succeed or fail together, run them through `database.InTx` (`internal/database/tx.go`). It takes one connection from the pool, runs `BEGIN`, and hands your callback a `q` tied to that connection. It commits when the callback returns nil and rolls back on an error or a panic, so nobody writes begin, commit or rollback by hand.
 
-```go
-err := database.InTx(ctx, s.pool, func(q *db.Queries) error {
-	user, err := q.CreateUser(ctx, params)
-	if err != nil {
-		return err
-	}
-	return q.CreateWorkspace(ctx, user.ID)
-})
+No feature uses it yet. Below is how the first one should, with a made-up rule: registering creates the user and their personal workspace, both or neither. The pieces:
+
+```
+POST /auth/register
+  → h.Register(c)                          handler: HTTP, validation, hashing, email
+      → h.Store.CreateUserWithWorkspace()  store method: one transaction
+          → q.CreateUser()                 sqlc query
+          → q.CreateWorkspace()            sqlc query
 ```
 
-- Put it in a method on the feature's store (e.g. `CreateUserWithWorkspace`), so the handler calls one method and its tests fake that one method.
-- Run every query through `q`. Queries on the pool run outside the transaction.
-- Keep slow work out of the callback: hash passwords before it, and send emails or upload files after it commits.
-- One SQL statement is atomic on its own; use `InTx` only when Go code has to run between queries.
+**1. Write each query in SQL as usual.** sqlc generates one Go method per statement (`CreateUser` already exists in `queries/users.sql`; `CreateWorkspace` would go in a new `queries/workspaces.sql`). sqlc can't generate "run these two together", so that part is hand-written in the next step.
+
+**2. Add a store struct in the feature's `store.go`.** It embeds the sqlc queries, so every generated method keeps working, and holds the pool for transactions:
+
+```go
+// PgStore is the real Store. The single queries come from the embedded
+// *db.Queries; methods that need a transaction use the pool.
+type PgStore struct {
+	*db.Queries
+	pool *pgxpool.Pool
+}
+
+func NewStore(pool *pgxpool.Pool) *PgStore {
+	return &PgStore{Queries: db.New(pool), pool: pool}
+}
+
+func (s *PgStore) CreateUserWithWorkspace(ctx context.Context, params db.CreateUserParams) (db.User, error) {
+	var user db.User
+	err := database.InTx(ctx, s.pool, func(q *db.Queries) error {
+		var err error
+		user, err = q.CreateUser(ctx, params)
+		if err != nil {
+			return err // rollback
+		}
+		_, err = q.CreateWorkspace(ctx, db.CreateWorkspaceParams{OwnerID: user.ID, Name: "Personal"})
+		return err // nil commits, an error rolls back
+	})
+	return user, err
+}
+```
+
+Then add `CreateUserWithWorkspace` to the `Store` interface and change the compile-time check to `var _ Store = (*PgStore)(nil)`.
+
+**3. Wire it once, in `routes/auth.go`.** The pool already reaches the routes as `deps.Pool` (from `app.go`):
+
+```go
+h := &auth.Handler{
+	Store: auth.NewStore(deps.Pool), // was deps.Queries
+	// Config, Limiter, Revoker, Mailer, Jobs unchanged
+}
+```
+
+**4. Call it from the handler like any other store method.** The handler keeps everything that isn't a database write:
+
+```go
+hash, err := bcrypt.GenerateFromPassword(...)            // slow work before the transaction
+
+user, err := h.Store.CreateUserWithWorkspace(ctx, params)
+if err != nil {
+	// database.IsUniqueViolation(err) → 409, otherwise 500
+}
+
+h.sendInBackground(c, "verification email", ...)         // email after the commit
+```
+
+**5. Fake it in the handler tests.** `fakeRepo` gets one plain method, so handler tests still need no database:
+
+```go
+func (r *fakeRepo) CreateUserWithWorkspace(_ context.Context, params db.CreateUserParams) (db.User, error) {
+	r.created = &params
+	return r.user, r.createErr
+}
+```
+
+The real `PgStore` method gets its own test against Postgres, like `internal/database/tx_test.go`.
+
+Rules:
+
+- **Run every query through `q`.** Inside the callback, `s.CreateUser(...)` also compiles, but it goes through the pool, outside the transaction, and is not rolled back.
+- **Keep slow and external work out of the callback.** Hash passwords before it; send emails, upload files and write to Redis after it commits. None of those can be rolled back, and a slow callback holds a connection and row locks.
+- **Keep the transaction in the store, not the handler.** The store can't reach the mailer or Redis, so they can't end up inside it, and the handler tests stay fake.
+- **Pass values in, not dependencies.** If the transaction needs a setting, the handler computes it (e.g. `ExpiresAt: time.Now().Add(h.Config.SomeTTL)`) and passes it as a parameter.
+- **One SQL statement is atomic on its own;** use `InTx` only when Go code has to run between queries.
 
 Tests that need a real database read `TEST_DATABASE_URL` and skip without it (see `internal/database/tx_test.go`). They run in CI's migrations job. To run them locally against your dev database:
 
