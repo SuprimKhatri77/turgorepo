@@ -8,8 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
+	"github.com/suprimkhatri77/turgorepo/api/internal/response"
 	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
-	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 )
 
 // BindJSON decodes the request body into T, trims its string fields (see
@@ -27,17 +27,13 @@ func BindJSON[T any](c *gin.Context) (*T, bool) {
 		var tooLarge *http.MaxBytesError
 		if errors.As(err, &tooLarge) {
 			rlog.Warn(c, "request body too large", "limit", tooLarge.Limit)
-			c.JSON(http.StatusRequestEntityTooLarge, types.APIResponse{
-				Success: false,
-				Message: "Request body is too large",
-				Code:    constants.PayloadTooLarge,
-			})
+			response.Error(c, http.StatusRequestEntityTooLarge, constants.PayloadTooLarge, "Request body is too large")
 			return nil, false
 		}
 
 		rlog.Warn(c, "invalid request payload", "error", err)
 
-		c.JSON(http.StatusBadRequest, types.APIResponse{
+		c.JSON(http.StatusBadRequest, response.Body{
 			Success: false,
 			Message: "Invalid request body",
 			Code:    constants.ValidationFailed,

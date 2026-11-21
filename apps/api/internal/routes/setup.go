@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
+	"github.com/suprimkhatri77/turgorepo/api/internal/response"
 	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
-	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 )
 
 const readyTimeout = 2 * time.Second
@@ -29,10 +29,7 @@ func Setup(r *gin.Engine, deps Deps) {
 	// Liveness: the process is up. Load balancers should use this one, so a brief
 	// database problem doesn't make them replace every container.
 	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, types.APIResponse{
-			Success: true,
-			Message: "Server is up and running",
-		})
+		response.OK(c, http.StatusOK, "Server is up and running", nil)
 	})
 
 	router.GET("/ready", ready(deps.Pool, deps.Redis))
@@ -58,18 +55,11 @@ func ready(dependencies ...Pinger) gin.HandlerFunc {
 		for _, dependency := range dependencies {
 			if err := dependency.Ping(ctx); err != nil {
 				rlog.Error(c, "readiness check failed", err)
-				c.JSON(http.StatusServiceUnavailable, types.APIResponse{
-					Success: false,
-					Message: "Service is not ready",
-					Code:    constants.ServiceUnavailable,
-				})
+				response.Error(c, http.StatusServiceUnavailable, constants.ServiceUnavailable, "Service is not ready")
 				return
 			}
 		}
 
-		c.JSON(http.StatusOK, types.APIResponse{
-			Success: true,
-			Message: "Service is ready",
-		})
+		response.OK(c, http.StatusOK, "Service is ready", nil)
 	}
 }

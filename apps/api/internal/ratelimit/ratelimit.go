@@ -13,8 +13,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
+	"github.com/suprimkhatri77/turgorepo/api/internal/response"
 	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
-	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 )
 
 // checkTimeout keeps a slow Redis from delaying auth requests.
@@ -123,10 +123,6 @@ func Check(c *gin.Context, limiter Limiter, rule Rule, key string) bool {
 
 	rlog.Warn(c, "rate limit exceeded", "rule", rule.Name)
 	c.Header("Retry-After", strconv.Itoa(int(math.Ceil(retryAfter.Seconds()))))
-	c.JSON(http.StatusTooManyRequests, types.APIResponse{
-		Success: false,
-		Message: "Too many attempts, please try again later",
-		Code:    constants.RateLimited,
-	})
+	response.Error(c, http.StatusTooManyRequests, constants.RateLimited, "Too many attempts, please try again later")
 	return false
 }

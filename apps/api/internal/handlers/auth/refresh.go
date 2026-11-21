@@ -11,9 +11,9 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
+	"github.com/suprimkhatri77/turgorepo/api/internal/response"
 	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/session"
-	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 )
 
@@ -25,11 +25,7 @@ func Refresh(queries Store, cfg *config.Config, revoker session.TokenRevoker) gi
 		if err != nil {
 			rlog.Warn(c, "missing refresh token cookie")
 			session.ClearCookies(c, cfg)
-			c.JSON(http.StatusUnauthorized, types.APIResponse{
-				Success: false,
-				Message: "Missing refresh token",
-				Code:    constants.TokenNotProvided,
-			})
+			response.Error(c, http.StatusUnauthorized, constants.TokenNotProvided, "Missing refresh token")
 			return
 		}
 
@@ -37,11 +33,7 @@ func Refresh(queries Store, cfg *config.Config, revoker session.TokenRevoker) gi
 		if err != nil {
 			rlog.Warn(c, "invalid refresh token", "error", err)
 			session.ClearCookies(c, cfg)
-			c.JSON(http.StatusUnauthorized, types.APIResponse{
-				Success: false,
-				Message: "Invalid refresh token",
-				Code:    constants.TokenInvalid,
-			})
+			response.Error(c, http.StatusUnauthorized, constants.TokenInvalid, "Invalid refresh token")
 			return
 		}
 
@@ -49,11 +41,7 @@ func Refresh(queries Store, cfg *config.Config, revoker session.TokenRevoker) gi
 		if err != nil {
 			rlog.Warn(c, "invalid family_id in refresh token", "error", err)
 			session.ClearCookies(c, cfg)
-			c.JSON(http.StatusUnauthorized, types.APIResponse{
-				Success: false,
-				Message: "Invalid token claims",
-				Code:    constants.InvalidToken,
-			})
+			response.Error(c, http.StatusUnauthorized, constants.InvalidToken, "Invalid token claims")
 			return
 		}
 
@@ -65,11 +53,7 @@ func Refresh(queries Store, cfg *config.Config, revoker session.TokenRevoker) gi
 			}
 			rlog.Warn(c, "session not found or expired", "family_id", claims.FamilyID)
 			session.ClearCookies(c, cfg)
-			c.JSON(http.StatusUnauthorized, types.APIResponse{
-				Success: false,
-				Message: "Session expired",
-				Code:    constants.TokenInvalid,
-			})
+			response.Error(c, http.StatusUnauthorized, constants.TokenInvalid, "Session expired")
 			return
 		}
 
@@ -78,11 +62,7 @@ func Refresh(queries Store, cfg *config.Config, revoker session.TokenRevoker) gi
 		user, err := queries.GetUserByID(ctx, sess.UserID)
 		if err != nil {
 			rlog.Error(c, "failed to fetch user", err, "user_id", sess.UserID)
-			c.JSON(http.StatusInternalServerError, types.APIResponse{
-				Success: false,
-				Message: "Something went wrong",
-				Code:    constants.InternalServerError,
-			})
+			response.Internal(c)
 			return
 		}
 
@@ -90,20 +70,13 @@ func Refresh(queries Store, cfg *config.Config, revoker session.TokenRevoker) gi
 			accessToken, err := session.NewAccessToken(cfg, user, familyID)
 			if err != nil {
 				rlog.Error(c, "failed to sign access token", err, "user_id", user.ID)
-				c.JSON(http.StatusInternalServerError, types.APIResponse{
-					Success: false,
-					Message: "Failed to process request",
-					Code:    constants.InternalServerError,
-				})
+				response.Internal(c)
 				return
 			}
 
 			session.SetAccessCookie(c, cfg, accessToken)
 			rlog.Info(c, "grace-window refresh (previous token reuse)", "user_id", user.ID)
-			c.JSON(http.StatusOK, types.APIResponse{
-				Success: true,
-				Message: "Tokens refreshed",
-			})
+			response.OK(c, http.StatusOK, "Tokens refreshed", nil)
 		}
 
 		withinGrace := func(s db.Session) bool {
@@ -118,11 +91,7 @@ func Refresh(queries Store, cfg *config.Config, revoker session.TokenRevoker) gi
 			tokens, err := session.NewTokens(cfg, user, familyID)
 			if err != nil {
 				rlog.Error(c, "failed to sign tokens", err, "user_id", user.ID)
-				c.JSON(http.StatusInternalServerError, types.APIResponse{
-					Success: false,
-					Message: "Failed to process request",
-					Code:    constants.InternalServerError,
-				})
+				response.Internal(c)
 				return
 			}
 
@@ -144,11 +113,7 @@ func Refresh(queries Store, cfg *config.Config, revoker session.TokenRevoker) gi
 						}
 						rlog.Warn(c, "session gone after lost rotation race")
 						session.ClearCookies(c, cfg)
-						c.JSON(http.StatusUnauthorized, types.APIResponse{
-							Success: false,
-							Message: "Session expired",
-							Code:    constants.TokenInvalid,
-						})
+						response.Error(c, http.StatusUnauthorized, constants.TokenInvalid, "Session expired")
 						return
 					}
 					if withinGrace(reloaded) {
@@ -157,29 +122,18 @@ func Refresh(queries Store, cfg *config.Config, revoker session.TokenRevoker) gi
 					}
 					rlog.Warn(c, "lost rotation race but grace window missed", "user_id", user.ID)
 					session.ClearCookies(c, cfg)
-					c.JSON(http.StatusUnauthorized, types.APIResponse{
-						Success: false,
-						Message: "Session invalid, please log in again",
-						Code:    constants.TokenInvalid,
-					})
+					response.Error(c, http.StatusUnauthorized, constants.TokenInvalid, "Session invalid, please log in again")
 					return
 				}
 
 				rlog.Error(c, "failed to rotate session token", err, "user_id", user.ID)
-				c.JSON(http.StatusInternalServerError, types.APIResponse{
-					Success: false,
-					Message: "Failed to process request",
-					Code:    constants.InternalServerError,
-				})
+				response.Internal(c)
 				return
 			}
 
 			session.SetCookies(c, cfg, tokens.AccessToken, tokens.RefreshToken)
 			rlog.Info(c, "tokens rotated successfully", "user_id", user.ID)
-			c.JSON(http.StatusOK, types.APIResponse{
-				Success: true,
-				Message: "Tokens refreshed",
-			})
+			response.OK(c, http.StatusOK, "Tokens refreshed", nil)
 
 		case withinGrace(sess):
 			issueGraceAccess()
@@ -193,11 +147,7 @@ func Refresh(queries Store, cfg *config.Config, revoker session.TokenRevoker) gi
 			}
 			revokeSessionTokens(c, revoker, cfg, claims.FamilyID)
 			session.ClearCookies(c, cfg)
-			c.JSON(http.StatusUnauthorized, types.APIResponse{
-				Success: false,
-				Message: "Session invalid, please log in again",
-				Code:    constants.TokenInvalid,
-			})
+			response.Error(c, http.StatusUnauthorized, constants.TokenInvalid, "Session invalid, please log in again")
 		}
 	}
 }
@@ -206,9 +156,5 @@ func Refresh(queries Store, cfg *config.Config, revoker session.TokenRevoker) gi
 // the session may still be valid, so an outage must not log the user out.
 func respondSessionLookupFailed(c *gin.Context, err error) {
 	rlog.Error(c, "failed to look up session", err)
-	c.JSON(http.StatusServiceUnavailable, types.APIResponse{
-		Success: false,
-		Message: "Service temporarily unavailable",
-		Code:    constants.ServiceUnavailable,
-	})
+	response.Error(c, http.StatusServiceUnavailable, constants.ServiceUnavailable, "Service temporarily unavailable")
 }

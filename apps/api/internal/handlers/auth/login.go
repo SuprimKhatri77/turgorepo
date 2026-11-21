@@ -10,9 +10,9 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	"github.com/suprimkhatri77/turgorepo/api/internal/ratelimit"
+	"github.com/suprimkhatri77/turgorepo/api/internal/response"
 	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/session"
-	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 	"github.com/suprimkhatri77/turgorepo/api/internal/validator"
 	"golang.org/x/crypto/bcrypt"
@@ -60,21 +60,13 @@ func Login(
 				_ = bcrypt.CompareHashAndPassword(dummyPasswordHash(), []byte(req.Password))
 				rlog.Warn(c, "invalid credentials (user not found)")
 
-				c.JSON(http.StatusUnauthorized, types.APIResponse{
-					Success: false,
-					Message: "Invalid credentials",
-					Code:    constants.InvalidCredentials,
-				})
+				response.Error(c, http.StatusUnauthorized, constants.InvalidCredentials, "Invalid credentials")
 				return
 			}
 
 			rlog.Error(c, "failed to fetch user", err)
 
-			c.JSON(http.StatusInternalServerError, types.APIResponse{
-				Success: false,
-				Message: "Something went wrong",
-				Code:    constants.InternalServerError,
-			})
+			response.Internal(c)
 			return
 		}
 
@@ -85,11 +77,7 @@ func Login(
 		if err != nil {
 			rlog.Warn(c, "invalid credentials (password mismatch)", "user_id", user.ID)
 
-			c.JSON(http.StatusUnauthorized, types.APIResponse{
-				Success: false,
-				Message: "Invalid credentials",
-				Code:    constants.InvalidCredentials,
-			})
+			response.Error(c, http.StatusUnauthorized, constants.InvalidCredentials, "Invalid credentials")
 			return
 		}
 
@@ -100,31 +88,19 @@ func Login(
 		if !user.EmailVerifiedAt.Valid {
 			rlog.Warn(c, "login refused, email not verified", "user_id", user.ID)
 
-			c.JSON(http.StatusForbidden, types.APIResponse{
-				Success: false,
-				Message: "Verify your email before signing in. Check your inbox for the link",
-				Code:    constants.EmailNotVerified,
-			})
+			response.Error(c, http.StatusForbidden, constants.EmailNotVerified, "Verify your email before signing in. Check your inbox for the link")
 			return
 		}
 
 		if err := session.Issue(c, queries, cfg, user); err != nil {
 			rlog.Error(c, "failed to issue session", err, "user_id", user.ID)
 
-			c.JSON(http.StatusInternalServerError, types.APIResponse{
-				Success: false,
-				Message: "Something went wrong",
-				Code:    constants.InternalServerError,
-			})
+			response.Internal(c)
 			return
 		}
 
 		rlog.Info(c, "login successful", "user_id", user.ID)
 
-		c.JSON(http.StatusOK, types.APIResponse{
-			Success: true,
-			Message: "logged in successfully",
-			Data:    newUserResponse(user),
-		})
+		response.OK(c, http.StatusOK, "logged in successfully", newUserResponse(user))
 	}
 }

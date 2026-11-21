@@ -8,9 +8,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
+	"github.com/suprimkhatri77/turgorepo/api/internal/response"
 	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/session"
-	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 )
 
 // revocationCheckTimeout keeps a slow Redis from delaying every authenticated request.
@@ -22,12 +22,7 @@ func RequireAuth(cfg *config.Config, revoker session.TokenRevoker) gin.HandlerFu
 		if err != nil {
 			rlog.Warn(c, "missing access token")
 
-			c.JSON(http.StatusUnauthorized, types.APIResponse{
-				Success: false,
-				Message: "Missing access token",
-				Code:    constants.TokenNotProvided,
-			})
-			c.Abort()
+			response.Abort(c, http.StatusUnauthorized, constants.TokenNotProvided, "Missing access token")
 			return
 		}
 
@@ -35,36 +30,21 @@ func RequireAuth(cfg *config.Config, revoker session.TokenRevoker) gin.HandlerFu
 		if err != nil {
 			rlog.Warn(c, "invalid access token", "error", err)
 
-			c.JSON(http.StatusUnauthorized, types.APIResponse{
-				Success: false,
-				Message: "Invalid access token",
-				Code:    constants.TokenInvalid,
-			})
-			c.Abort()
+			response.Abort(c, http.StatusUnauthorized, constants.TokenInvalid, "Invalid access token")
 			return
 		}
 
 		if !constants.IsValidRole(claims.Role) {
 			rlog.Warn(c, "invalid role in claims", "user_id", claims.UserID, "role", claims.Role)
 
-			c.JSON(http.StatusUnauthorized, types.APIResponse{
-				Success: false,
-				Message: "Invalid token claims",
-				Code:    constants.Unauthorized,
-			})
-			c.Abort()
+			response.Abort(c, http.StatusUnauthorized, constants.Unauthorized, "Invalid token claims")
 			return
 		}
 
 		if tokenRevoked(c, revoker, claims) {
 			rlog.Warn(c, "revoked access token", "user_id", claims.UserID, "session_id", claims.SessionID)
 
-			c.JSON(http.StatusUnauthorized, types.APIResponse{
-				Success: false,
-				Message: "Invalid access token",
-				Code:    constants.TokenInvalid,
-			})
-			c.Abort()
+			response.Abort(c, http.StatusUnauthorized, constants.TokenInvalid, "Invalid access token")
 			return
 		}
 
