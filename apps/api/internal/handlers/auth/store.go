@@ -1,4 +1,4 @@
-package repository
+package auth
 
 import (
 	"context"
@@ -7,7 +7,9 @@ import (
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 )
 
-type AuthRepository interface {
+// Store is the database access the auth handlers need. *db.Queries implements
+// it, and tests use fakes.
+type Store interface {
 	GetUserByEmail(ctx context.Context, email string) (db.User, error)
 	CreateUser(ctx context.Context, params db.CreateUserParams) (db.User, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (db.User, error)
@@ -24,3 +26,5 @@ type AuthRepository interface {
 	CreateEmailVerificationToken(ctx context.Context, params db.CreateEmailVerificationTokenParams) error
 	VerifyEmailWithToken(ctx context.Context, tokenHash string) (db.User, error)
 }
+
+var _ Store = (*db.Queries)(nil)

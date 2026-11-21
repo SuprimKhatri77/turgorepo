@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
-	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
 	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/session"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
@@ -14,7 +13,7 @@ import (
 
 // Logout ends this device's session, including its access token, which would
 // otherwise keep working until it expires. The user's other sessions stay.
-func Logout(queries repository.AuthRepository, cfg *config.Config, revoker session.TokenRevoker) gin.HandlerFunc {
+func Logout(queries Store, cfg *config.Config, revoker session.TokenRevoker) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		sessionID, userID, found := sessionFromCookies(c, cfg)
 		session.ClearCookies(c, cfg)

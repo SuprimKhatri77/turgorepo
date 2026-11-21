@@ -1,6 +1,7 @@
 package session
 
 import (
+	"context"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -8,10 +9,14 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
-	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
 )
 
-func Issue(c *gin.Context, queries repository.AuthRepository, cfg *config.Config, user db.User) error {
+// SessionCreator stores a new session. *db.Queries implements it.
+type SessionCreator interface {
+	CreateSession(ctx context.Context, params db.CreateSessionParams) (db.Session, error)
+}
+
+func Issue(c *gin.Context, queries SessionCreator, cfg *config.Config, user db.User) error {
 	sessionID := uuid.New()
 	familyID := pgtype.UUID{Bytes: sessionID, Valid: true}
 

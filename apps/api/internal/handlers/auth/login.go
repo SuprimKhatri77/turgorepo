@@ -10,7 +10,6 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	"github.com/suprimkhatri77/turgorepo/api/internal/ratelimit"
-	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
 	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/session"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
@@ -35,7 +34,7 @@ var dummyPasswordHash = sync.OnceValue(func() []byte {
 })
 
 func Login(
-	queries repository.AuthRepository,
+	queries Store,
 	cfg *config.Config,
 	limiter ratelimit.Limiter,
 ) gin.HandlerFunc {

@@ -8,13 +8,12 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 	"github.com/suprimkhatri77/turgorepo/api/internal/email"
-	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
 	"github.com/suprimkhatri77/turgorepo/api/internal/session"
 )
 
 // fakeRepo embeds the interface, so a call the test didn't expect panics.
 type fakeRepo struct {
-	repository.AuthRepository
+	Store
 
 	user        db.User
 	getUserErr  error
