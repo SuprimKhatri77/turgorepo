@@ -7,7 +7,7 @@ import {
   postApiV1AuthForgotPassword,
   type ForgotPasswordBody,
 } from "@/lib/api/client";
-import { getApiError } from "@/utils/get-api-error";
+import { getApiError } from "@/lib/api/errors";
 
 export function useForgotPassword() {
   return useMutation({

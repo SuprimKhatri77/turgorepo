@@ -7,7 +7,7 @@ import {
   postApiV1AuthResendVerification,
   type ResendVerificationBody,
 } from "@/lib/api/client";
-import { getApiError } from "@/utils/get-api-error";
+import { getApiError } from "@/lib/api/errors";
 
 export function useResendVerification() {
   return useMutation({

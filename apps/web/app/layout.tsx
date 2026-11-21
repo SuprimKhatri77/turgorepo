@@ -3,7 +3,7 @@ import { Geist, Geist_Mono, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ReactQueryProvider } from "@/providers/react-query-provider";
 import { cn } from "@/lib/utils";
-import { getCurrentUser } from "@/lib/api/auth/auth";
+import { getCurrentUser } from "@/lib/auth/current-user";
 import { AuthProvider } from "@/providers/auth-provider";
 import { Toaster } from "@/components/ui/sonner";
 

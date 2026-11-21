@@ -3,16 +3,16 @@ import {
   createConfig,
   type Client,
 } from "@repo/api-client/server";
-import { get_api_url } from "@/utils/get-api-url";
-import { getAllCookies } from "@/utils/get-all-cookies";
+import { cookies } from "next/headers";
+import { getApiUrl } from "@/lib/api/url";
 
 /**
  * Per-request server client: forwards Next cookies and uses INTERNAL_API_URL
- * inside Docker via get_api_url(). No refresh interceptor — proxy handles that
+ * inside Docker via getApiUrl(). No refresh interceptor — proxy handles that
  * on guarded routes; expired access simply returns 401.
  */
 export async function createServerApiClient(): Promise<Client> {
-  const baseUrl = get_api_url();
+  const baseUrl = getApiUrl();
   if (!baseUrl) {
     throw new Error(
       "API URL is not configured. Set NEXT_PUBLIC_API_URL (and INTERNAL_API_URL in Docker).",
@@ -47,3 +47,13 @@ export type {
   ResetPasswordBody,
   User,
 } from "@repo/api-client/server";
+
+async function getAllCookies() {
+  const cookieStore = await cookies();
+  const allCookies = cookieStore
+    .getAll()
+    .map((cookie) => `${cookie.name}=${cookie.value}`)
+    .join("; ");
+
+  return allCookies;
+}

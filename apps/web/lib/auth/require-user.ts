@@ -1,7 +1,7 @@
 import type { User } from "@repo/types";
 import { redirect } from "next/navigation";
-import { SESSION_EXPIRED_PATH } from "@/lib/middleware/config";
-import { fetchCurrentUser } from "./fetch-current-user";
+import { SESSION_EXPIRED_PATH } from "@/lib/auth/routes";
+import { fetchCurrentUser } from "./current-user";
 
 /**
  * Loads the user for a protected page. proxy.ts only decodes tokens, so this is

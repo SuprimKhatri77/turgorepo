@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { AppShell } from "@/components/layout/app-shell";
-import { requireUser } from "@/lib/api/auth/require-user";
-import { ROLE_RULES } from "@/lib/middleware/config";
+import { requireUser } from "@/lib/auth/require-user";
+import { ROLE_RULES } from "@/lib/auth/routes";
 
 export const metadata: Metadata = {
   title: "Admin | Turgorepo",

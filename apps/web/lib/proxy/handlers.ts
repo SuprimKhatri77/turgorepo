@@ -1,5 +1,5 @@
 import type { NextRequest, NextResponse } from "next/server";
-import { userFromAccessToken } from "@/lib/api/auth/claims";
+import { userFromAccessToken } from "@/lib/auth/claims";
 import {
   attemptRefresh,
   attemptRefreshForAuthRoute,

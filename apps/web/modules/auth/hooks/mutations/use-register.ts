@@ -10,7 +10,7 @@ import {
   type RegisterBody,
 } from "@/lib/api/client";
 import { useAuthStore } from "@/store/auth";
-import { getApiError } from "@/utils/get-api-error";
+import { getApiError } from "@/lib/api/errors";
 
 export function useRegister() {
   const router = useRouter();

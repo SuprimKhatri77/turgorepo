@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { homePathForRole } from "./config";
+import { homePathForRole } from "@/lib/auth/routes";
 
 /**
  * Lets the request through with the given headers, which carry the CSP nonce

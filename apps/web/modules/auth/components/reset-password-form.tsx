@@ -10,8 +10,8 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
-import { getApiError } from "@/utils/get-api-error";
-import { mapFieldErrors } from "@/utils/map-field-errors";
+import { getApiError } from "@/lib/api/errors";
+import { mapFieldErrors } from "@/modules/auth/lib/form-errors";
 import { inputClassName, toFieldErrors } from "./auth-form";
 import { useResetPassword } from "../hooks/mutations/use-reset-password";
 

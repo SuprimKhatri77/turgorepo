@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { getApiError } from "@/utils/get-api-error";
+import { getApiError } from "@/lib/api/errors";
 import { ResendVerification } from "./resend-verification";
 import { useVerifyEmail } from "../hooks/mutations/use-verify-email";
 

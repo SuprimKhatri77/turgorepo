@@ -9,8 +9,8 @@ import {
   type RegisterBody,
 } from "@repo/types";
 
-import { getApiError } from "@/utils/get-api-error";
-import { mapFieldErrors } from "@/utils/map-field-errors";
+import { getApiError } from "@/lib/api/errors";
+import { mapFieldErrors } from "@/modules/auth/lib/form-errors";
 import { Button } from "@/components/ui/button";
 import {
   Field,

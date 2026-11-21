@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { userFromAccessToken } from "@/lib/api/auth/claims";
-import { get_api_url } from "@/utils/get-api-url";
+import { userFromAccessToken } from "@/lib/auth/claims";
+import { getApiUrl } from "@/lib/api/url";
 import { continueRequest, redirectForRole } from "./redirects";
 
 export function clearAuthCookies(response: NextResponse) {
@@ -39,7 +39,7 @@ export async function attemptRefresh(
   requiredRoles: string[],
 ) {
   try {
-    const res = await fetch(`${get_api_url()}/api/v1/auth/refresh`, {
+    const res = await fetch(`${getApiUrl()}/api/v1/auth/refresh`, {
       method: "POST",
       headers: { Cookie: `refresh_token=${refreshToken}` },
     });
@@ -110,7 +110,7 @@ export async function attemptRefreshForAuthRoute(
   requestHeaders: Headers,
 ) {
   try {
-    const res = await fetch(`${get_api_url()}/api/v1/auth/refresh`, {
+    const res = await fetch(`${getApiUrl()}/api/v1/auth/refresh`, {
       method: "POST",
       headers: { Cookie: `refresh_token=${refreshToken}` },
     });

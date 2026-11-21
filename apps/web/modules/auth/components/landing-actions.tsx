@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { User } from "@repo/types";
-import { homePathForRole } from "@/lib/middleware/config";
+import { homePathForRole } from "@/lib/auth/routes";
 import { useAuthStore } from "@/store/auth";
 import { LogoutButton } from "./logout-button";
 

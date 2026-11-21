@@ -1,4 +1,4 @@
-import { getCurrentUser } from "@/lib/api/auth/auth";
+import { getCurrentUser } from "@/lib/auth/current-user";
 import { createServerApiClient, getApiV1Health } from "@/lib/api/server-client";
 import { LandingActions } from "@/modules/auth/components/landing-actions";
 
