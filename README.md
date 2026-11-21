@@ -407,7 +407,7 @@ PRs and pushes to `main` run `.github/workflows/ci.yml`:
 - `check-types`
 - `lint` (JS/TS)
 - `lint:go` (golangci-lint)
-- `go test`
+- `go test`, and again against Postgres in the migrations job, which runs the tests that need a database
 - `govulncheck` (Go dependency and standard library vulnerabilities)
 - `build`
 
@@ -465,6 +465,31 @@ rlog.Error(c, "failed to fetch user", err)
 ```
 
 Every response includes `X-Request-ID` (reuses the incoming header or mints a UUID). Pass the same header from the client when debugging.
+
+### Transactions
+
+When several queries must succeed or fail together, run them through `database.InTx`. It commits when the callback returns nil and rolls back on an error or a panic, so nobody writes begin, commit or rollback by hand:
+
+```go
+err := database.InTx(ctx, s.pool, func(q *db.Queries) error {
+	user, err := q.CreateUser(ctx, params)
+	if err != nil {
+		return err
+	}
+	return q.CreateWorkspace(ctx, user.ID)
+})
+```
+
+- Put it in a method on the feature's store (e.g. `CreateUserWithWorkspace`), so the handler calls one method and its tests fake that one method.
+- Run every query through `q`. Queries on the pool run outside the transaction.
+- Keep slow work out of the callback: hash passwords before it, and send emails or upload files after it commits.
+- One SQL statement is atomic on its own; use `InTx` only when Go code has to run between queries.
+
+Tests that need a real database read `TEST_DATABASE_URL` and skip without it (see `internal/database/tx_test.go`). They run in CI's migrations job. To run them locally against your dev database:
+
+```sh
+TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/turgorepo?sslmode=disable bun run test:go
+```
 
 ### Database seed
 
