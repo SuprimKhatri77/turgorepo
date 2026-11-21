@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 )
 
 type fakePinger struct{ err error }
@@ -33,9 +34,7 @@ func TestReady(t *testing.T) {
 			r.GET("/", ready(tt.dependencies...))
 			w := httptest.NewRecorder()
 			r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/", nil))
-			if w.Code != tt.want {
-				t.Errorf("status = %d, want %d", w.Code, tt.want)
-			}
+			assert.Equal(t, tt.want, w.Code)
 		})
 	}
 }

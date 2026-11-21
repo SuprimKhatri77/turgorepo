@@ -17,6 +17,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	session "github.com/suprimkhatri77/turgorepo/api/internal/auth"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
@@ -158,9 +160,7 @@ func testConfig() *config.Config {
 func testUser(t *testing.T) db.User {
 	t.Helper()
 	hash, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.MinCost)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return db.User{
 		ID:              testUUID(1),
 		Name:            "Ada Lovelace",
@@ -194,9 +194,7 @@ func serve(handler gin.HandlerFunc, body string, cookies ...*http.Cookie) *httpt
 func decode(t *testing.T, w *httptest.ResponseRecorder) types.APIResponse {
 	t.Helper()
 	var res types.APIResponse
-	if err := json.Unmarshal(w.Body.Bytes(), &res); err != nil {
-		t.Fatalf("decode %q: %v", w.Body.String(), err)
-	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res), "decode %q", w.Body.String())
 	return res
 }
 
@@ -214,29 +212,19 @@ func TestLogin(t *testing.T) {
 		repo := &fakeRepo{user: testUser(t)}
 		w := serve(Login(repo, testConfig(), &fakeLimiter{}), `{"email":"ada@example.com","password":"`+testPassword+`"}`)
 
-		if w.Code != http.StatusOK {
-			t.Fatalf("status = %d: %s", w.Code, w.Body)
-		}
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 		cookies := setCookies(w)
 		for _, name := range []string{"access_token", "refresh_token", "is_logged_in"} {
-			if cookies[name] == "" {
-				t.Errorf("cookie %s not set", name)
-			}
+			assert.NotEmpty(t, cookies[name], "cookie %s not set", name)
 		}
 
 		var res struct {
 			Data map[string]any `json:"data"`
 		}
-		if err := json.Unmarshal(w.Body.Bytes(), &res); err != nil {
-			t.Fatal(err)
-		}
-		if res.Data["id"] != "01010101-0101-0101-0101-010101010101" {
-			t.Errorf("id = %v", res.Data["id"])
-		}
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
+		assert.Equal(t, "01010101-0101-0101-0101-010101010101", res.Data["id"])
 		for _, key := range []string{"created_at", "updated_at", "image_url", "password_hash"} {
-			if _, present := res.Data[key]; present {
-				t.Errorf("response should not contain %s", key)
-			}
+			assert.NotContains(t, res.Data, key)
 		}
 	})
 
@@ -244,64 +232,45 @@ func TestLogin(t *testing.T) {
 		repo := &fakeRepo{user: unverifiedUser(t)}
 		w := serve(Login(repo, testConfig(), &fakeLimiter{}), `{"email":"ada@example.com","password":"`+testPassword+`"}`)
 
-		if w.Code != http.StatusForbidden {
-			t.Fatalf("status = %d: %s", w.Code, w.Body)
-		}
-		if code := decode(t, w).Code; code != constants.EmailNotVerified {
-			t.Errorf("code = %q", code)
-		}
-		if repo.sessionsNew != 0 || len(setCookies(w)) != 0 {
-			t.Errorf("sessions = %d, cookies = %v", repo.sessionsNew, setCookies(w))
-		}
+		require.Equal(t, http.StatusForbidden, w.Code, w.Body.String())
+		assert.Equal(t, constants.EmailNotVerified, decode(t, w).Code)
+		assert.Zero(t, repo.sessionsNew)
+		assert.Empty(t, setCookies(w))
 	})
 
 	t.Run("an unverified account with the wrong password looks like any wrong password", func(t *testing.T) {
 		unverified := serve(Login(&fakeRepo{user: unverifiedUser(t)}, testConfig(), &fakeLimiter{}), `{"email":"ada@example.com","password":"wrong-password"}`)
 		verified := serve(Login(&fakeRepo{user: testUser(t)}, testConfig(), &fakeLimiter{}), `{"email":"ada@example.com","password":"wrong-password"}`)
-		if unverified.Code != http.StatusUnauthorized || unverified.Body.String() != verified.Body.String() {
-			t.Errorf("status = %d, body = %s", unverified.Code, unverified.Body)
-		}
+		assert.Equal(t, http.StatusUnauthorized, unverified.Code)
+		assert.Equal(t, verified.Body.String(), unverified.Body.String())
 	})
 
 	t.Run("looks up the normalized email", func(t *testing.T) {
 		repo := &fakeRepo{user: testUser(t)}
 		serve(Login(repo, testConfig(), &fakeLimiter{}), `{"email":"Ada@Example.COM","password":"`+testPassword+`"}`)
-		if repo.lookedUp != "ada@example.com" {
-			t.Errorf("looked up %q", repo.lookedUp)
-		}
+		assert.Equal(t, "ada@example.com", repo.lookedUp)
 	})
 
 	t.Run("wrong password and unknown email respond the same", func(t *testing.T) {
 		wrong := serve(Login(&fakeRepo{user: testUser(t)}, testConfig(), &fakeLimiter{}), `{"email":"ada@example.com","password":"wrong-password"}`)
 		unknown := serve(Login(&fakeRepo{getUserErr: pgx.ErrNoRows}, testConfig(), &fakeLimiter{}), `{"email":"no@example.com","password":"wrong-password"}`)
 
-		if wrong.Code != http.StatusUnauthorized || unknown.Code != http.StatusUnauthorized {
-			t.Fatalf("status = %d and %d", wrong.Code, unknown.Code)
-		}
-		if wrong.Body.String() != unknown.Body.String() {
-			t.Errorf("bodies differ: %s vs %s", wrong.Body, unknown.Body)
-		}
+		require.Equal(t, http.StatusUnauthorized, wrong.Code, "wrong password")
+		require.Equal(t, http.StatusUnauthorized, unknown.Code, "unknown email")
+		assert.Equal(t, wrong.Body.String(), unknown.Body.String())
 	})
 
 	t.Run("database error is a 500, not invalid credentials", func(t *testing.T) {
 		w := serve(Login(&fakeRepo{getUserErr: errDB}, testConfig(), &fakeLimiter{}), `{"email":"ada@example.com","password":"`+testPassword+`"}`)
-		if w.Code != http.StatusInternalServerError {
-			t.Errorf("status = %d", w.Code)
-		}
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 
 	t.Run("account limit blocks before checking the password", func(t *testing.T) {
 		repo := &fakeRepo{user: testUser(t)}
 		w := serve(Login(repo, testConfig(), &fakeLimiter{blocked: true}), `{"email":"ada@example.com","password":"`+testPassword+`"}`)
-		if w.Code != http.StatusTooManyRequests {
-			t.Fatalf("status = %d", w.Code)
-		}
-		if repo.lookedUp != "" {
-			t.Error("user was looked up despite the limit")
-		}
-		if code := decode(t, w).Code; code != constants.RateLimited {
-			t.Errorf("code = %q", code)
-		}
+		require.Equal(t, http.StatusTooManyRequests, w.Code)
+		assert.Empty(t, repo.lookedUp, "user was looked up despite the limit")
+		assert.Equal(t, constants.RateLimited, decode(t, w).Code)
 	})
 
 	t.Run("account limit treats email case variants as one account", func(t *testing.T) {
@@ -309,75 +278,61 @@ func TestLogin(t *testing.T) {
 		user := testUser(t)
 		serve(Login(&fakeRepo{user: user}, testConfig(), limiter), `{"email":"ada@example.com","password":"`+testPassword+`"}`)
 		serve(Login(&fakeRepo{user: user}, testConfig(), limiter), `{"email":"ADA@example.com","password":"`+testPassword+`"}`)
-		if len(limiter.keys) != 2 || limiter.keys[0] != limiter.keys[1] {
-			t.Errorf("keys = %v", limiter.keys)
+		if assert.Len(t, limiter.keys, 2) {
+			assert.Equal(t, limiter.keys[0], limiter.keys[1])
 		}
-		if strings.Contains(limiter.keys[0], "ada@example.com") {
-			t.Error("key contains the raw email")
-		}
+		assert.NotContains(t, limiter.keys[0], "ada@example.com", "key contains the raw email")
 	})
 }
 
 func TestRegister(t *testing.T) {
 	body := func(name, email, password string) string {
 		b, err := json.Marshal(map[string]string{"name": name, "email": email, "password": password})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		return string(b)
 	}
 
 	t.Run("accepts real names", func(t *testing.T) {
 		for _, name := range []string{"José García", "O'Brien", "O’Brien", "Mary-Jane", "सुप्रिम", "सुप्रिम खत्री", "J. R. Smith", "Martin Jr."} {
 			w := serve(Register(registerDeps(&fakeRepo{}, &fakeMailer{})), body(name, "a@example.com", testPassword))
-			if w.Code != http.StatusCreated {
-				t.Errorf("%q: status = %d: %s", name, w.Code, w.Body)
-			}
+			assert.Equal(t, http.StatusCreated, w.Code, "%q: %s", name, w.Body)
 		}
 	})
 
 	t.Run("rejects names that are not names", func(t *testing.T) {
 		for _, name := range []string{"12345", "<script>", "John\nDoe", "--", "   "} {
 			w := serve(Register(registerDeps(&fakeRepo{}, &fakeMailer{})), body(name, "a@example.com", testPassword))
-			if w.Code != http.StatusBadRequest {
-				t.Errorf("%q: status = %d", name, w.Code)
-			}
+			assert.Equal(t, http.StatusBadRequest, w.Code, "%q", name)
 		}
 	})
 
 	t.Run("stores the normalized email", func(t *testing.T) {
 		repo := &fakeRepo{}
 		serve(Register(registerDeps(repo, &fakeMailer{})), body("Ada", "Ada.L@Example.COM", testPassword))
-		if repo.created == nil || repo.created.Email != "ada.l@example.com" {
-			t.Errorf("created = %+v", repo.created)
+		if assert.NotNil(t, repo.created) {
+			assert.Equal(t, "ada.l@example.com", repo.created.Email)
 		}
 	})
 
 	t.Run("password over 72 bytes is a validation error", func(t *testing.T) {
 		emoji := strings.Repeat("😀", 50) // 50 characters, 200 bytes
 		w := serve(Register(registerDeps(&fakeRepo{}, &fakeMailer{})), body("Ada", "a@example.com", emoji))
-		if w.Code != http.StatusBadRequest {
-			t.Fatalf("status = %d: %s", w.Code, w.Body)
-		}
+		require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
 		errs := decode(t, w).Errors
-		if len(errs) != 1 || errs[0].Field != "password" {
-			t.Errorf("errors = %+v", errs)
+		if assert.Len(t, errs, 1) {
+			assert.Equal(t, "password", errs[0].Field)
 		}
 	})
 
 	t.Run("password of exactly 72 bytes works", func(t *testing.T) {
 		w := serve(Register(registerDeps(&fakeRepo{}, &fakeMailer{})), body("Ada", "a@example.com", strings.Repeat("a", 72)))
-		if w.Code != http.StatusCreated {
-			t.Errorf("status = %d: %s", w.Code, w.Body)
-		}
+		assert.Equal(t, http.StatusCreated, w.Code, w.Body.String())
 	})
 
 	t.Run("duplicate email is a conflict", func(t *testing.T) {
 		repo := &fakeRepo{createErr: &pgconn.PgError{Code: "23505"}}
 		w := serve(Register(registerDeps(repo, &fakeMailer{})), body("Ada", "a@example.com", testPassword))
-		if w.Code != http.StatusConflict {
-			t.Errorf("status = %d", w.Code)
-		}
+		assert.Equal(t, http.StatusConflict, w.Code)
 	})
 
 	t.Run("emails a verification link and doesn't log the user in", func(t *testing.T) {
@@ -385,40 +340,30 @@ func TestRegister(t *testing.T) {
 		mailer := &fakeMailer{}
 		w := serve(Register(registerDeps(repo, mailer)), body("Ada", "Ada@Example.com", testPassword))
 
-		if w.Code != http.StatusCreated {
-			t.Fatalf("status = %d: %s", w.Code, w.Body)
-		}
-		if len(setCookies(w)) != 0 || repo.sessionsNew != 0 {
-			t.Errorf("cookies = %v, sessions = %d", setCookies(w), repo.sessionsNew)
-		}
-		if decode(t, w).Data != nil {
-			t.Error("response should not include the user")
-		}
-		if len(mailer.sent) != 1 || mailer.sent[0].To != "ada@example.com" {
-			t.Fatalf("sent = %+v", mailer.sent)
-		}
+		require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+		assert.Empty(t, setCookies(w))
+		assert.Zero(t, repo.sessionsNew)
+		assert.Nil(t, decode(t, w).Data, "response should not include the user")
+		require.Len(t, mailer.sent, 1)
+		require.Equal(t, "ada@example.com", mailer.sent[0].To)
 		token := verifyTokenFromEmail(t, mailer.sent[0])
 		stored := repo.verificationToken
-		if stored == nil || stored.TokenHash != session.HashToken(token) || stored.Email != "ada@example.com" {
-			t.Fatalf("stored = %+v", stored)
-		}
-		if remaining := time.Until(stored.ExpiresAt.Time); remaining < 23*time.Hour || remaining > 24*time.Hour {
-			t.Errorf("expires in %v", remaining)
-		}
+		require.NotNil(t, stored)
+		require.Equal(t, session.HashToken(token), stored.TokenHash)
+		require.Equal(t, "ada@example.com", stored.Email)
+		assert.WithinRange(t, stored.ExpiresAt.Time, time.Now().Add(23*time.Hour), time.Now().Add(24*time.Hour))
 	})
 
 	t.Run("a failed email doesn't fail registration", func(t *testing.T) {
 		w := serve(Register(registerDeps(&fakeRepo{}, &fakeMailer{err: errors.New("smtp down")})), body("Ada", "a@example.com", testPassword))
-		if w.Code != http.StatusCreated {
-			t.Errorf("status = %d", w.Code)
-		}
+		assert.Equal(t, http.StatusCreated, w.Code)
 	})
 
 	t.Run("new users are always members", func(t *testing.T) {
 		repo := &fakeRepo{}
 		serve(Register(registerDeps(repo, &fakeMailer{})), `{"name":"Ada","email":"a@example.com","password":"`+testPassword+`","role":"admin"}`)
-		if repo.created == nil || repo.created.Role != constants.RoleMember {
-			t.Errorf("created = %+v", repo.created)
+		if assert.NotNil(t, repo.created) {
+			assert.Equal(t, constants.RoleMember, repo.created.Role)
 		}
 	})
 }
@@ -429,9 +374,7 @@ func refreshFixture(t *testing.T) (db.User, string, db.Session) {
 	cfg := testConfig()
 	user := testUser(t)
 	tokens, err := session.NewTokens(cfg, user, testUUID(2))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return user, tokens.RefreshToken, db.Session{
 		ID:               testUUID(2),
 		UserID:           user.ID,
@@ -452,13 +395,11 @@ func TestRefresh(t *testing.T) {
 		repo := &fakeRepo{user: user, sessions: []db.Session{sess}}
 		w := serve(Refresh(repo, testConfig(), &fakeRevoker{}), "", refreshCookie(token))
 
-		if w.Code != http.StatusOK || !repo.rotated {
-			t.Fatalf("status = %d, rotated = %v", w.Code, repo.rotated)
-		}
+		require.Equal(t, http.StatusOK, w.Code)
+		require.True(t, repo.rotated, "rotated")
 		cookies := setCookies(w)
-		if cookies["access_token"] == "" || cookies["refresh_token"] == "" {
-			t.Errorf("cookies = %v", cookies)
-		}
+		assert.NotEmpty(t, cookies["access_token"], "access token not set")
+		assert.NotEmpty(t, cookies["refresh_token"], "refresh token not set")
 	})
 
 	t.Run("previous token in the grace window only gets an access token", func(t *testing.T) {
@@ -469,16 +410,11 @@ func TestRefresh(t *testing.T) {
 		repo := &fakeRepo{user: user, sessions: []db.Session{sess}}
 		w := serve(Refresh(repo, testConfig(), &fakeRevoker{}), "", refreshCookie(token))
 
-		if w.Code != http.StatusOK || repo.rotated {
-			t.Fatalf("status = %d, rotated = %v", w.Code, repo.rotated)
-		}
+		require.Equal(t, http.StatusOK, w.Code)
+		require.False(t, repo.rotated, "rotated")
 		cookies := setCookies(w)
-		if cookies["access_token"] == "" {
-			t.Error("access token not set")
-		}
-		if _, set := cookies["refresh_token"]; set {
-			t.Error("refresh token should not change")
-		}
+		assert.NotEmpty(t, cookies["access_token"], "access token not set")
+		assert.NotContains(t, cookies, "refresh_token", "refresh token should not change")
 	})
 
 	t.Run("previous token after the grace window revokes the session", func(t *testing.T) {
@@ -490,40 +426,28 @@ func TestRefresh(t *testing.T) {
 		revoker := &fakeRevoker{}
 		w := serve(Refresh(repo, testConfig(), revoker), "", refreshCookie(token))
 
-		if w.Code != http.StatusUnauthorized || len(repo.revoked) != 1 {
-			t.Errorf("status = %d, revoked = %v", w.Code, repo.revoked)
-		}
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		assert.Len(t, repo.revoked, 1)
 		// Whoever holds a stolen refresh token loses its access tokens too.
-		if len(revoker.sessions) != 1 || revoker.sessions[0] != testSessionID {
-			t.Errorf("revoked session tokens = %v", revoker.sessions)
-		}
+		assert.Equal(t, []string{testSessionID}, revoker.sessions, "revoked session tokens")
 	})
 
 	t.Run("expired or revoked session clears cookies", func(t *testing.T) {
 		user, token, _ := refreshFixture(t)
 		w := serve(Refresh(&fakeRepo{user: user, sessionErr: pgx.ErrNoRows}, testConfig(), &fakeRevoker{}), "", refreshCookie(token))
 
-		if w.Code != http.StatusUnauthorized {
-			t.Fatalf("status = %d", w.Code)
-		}
-		if value, set := setCookies(w)["refresh_token"]; !set || value != "" {
-			t.Errorf("refresh cookie should be cleared, got %q (set=%v)", value, set)
-		}
+		require.Equal(t, http.StatusUnauthorized, w.Code)
+		assert.Contains(t, setCookies(w), "refresh_token", "refresh cookie should be cleared")
+		assert.Empty(t, setCookies(w)["refresh_token"], "refresh cookie should be cleared")
 	})
 
 	t.Run("database outage keeps the user logged in", func(t *testing.T) {
 		user, token, _ := refreshFixture(t)
 		w := serve(Refresh(&fakeRepo{user: user, sessionErr: errDB}, testConfig(), &fakeRevoker{}), "", refreshCookie(token))
 
-		if w.Code != http.StatusServiceUnavailable {
-			t.Fatalf("status = %d", w.Code)
-		}
-		if cookies := setCookies(w); len(cookies) != 0 {
-			t.Errorf("cookies should be untouched, got %v", cookies)
-		}
-		if code := decode(t, w).Code; code != constants.ServiceUnavailable {
-			t.Errorf("code = %q", code)
-		}
+		require.Equal(t, http.StatusServiceUnavailable, w.Code)
+		assert.Empty(t, setCookies(w), "cookies should be untouched")
+		assert.Equal(t, constants.ServiceUnavailable, decode(t, w).Code)
 	})
 
 	t.Run("losing the rotation race falls back to the grace path", func(t *testing.T) {
@@ -535,21 +459,13 @@ func TestRefresh(t *testing.T) {
 		repo := &fakeRepo{user: user, sessions: []db.Session{sess, reloaded}, rotateErr: pgx.ErrNoRows}
 		w := serve(Refresh(repo, testConfig(), &fakeRevoker{}), "", refreshCookie(token))
 
-		if w.Code != http.StatusOK {
-			t.Fatalf("status = %d: %s", w.Code, w.Body)
-		}
-		if _, set := setCookies(w)["refresh_token"]; set {
-			t.Error("the losing request must not set a refresh token")
-		}
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		assert.NotContains(t, setCookies(w), "refresh_token", "the losing request must not set a refresh token")
 	})
 
 	t.Run("missing and invalid cookies are rejected", func(t *testing.T) {
-		if w := serve(Refresh(&fakeRepo{}, testConfig(), &fakeRevoker{}), ""); w.Code != http.StatusUnauthorized {
-			t.Errorf("missing: status = %d", w.Code)
-		}
-		if w := serve(Refresh(&fakeRepo{}, testConfig(), &fakeRevoker{}), "", refreshCookie("not-a-jwt")); w.Code != http.StatusUnauthorized {
-			t.Errorf("invalid: status = %d", w.Code)
-		}
+		assert.Equal(t, http.StatusUnauthorized, serve(Refresh(&fakeRepo{}, testConfig(), &fakeRevoker{}), "").Code, "missing")
+		assert.Equal(t, http.StatusUnauthorized, serve(Refresh(&fakeRepo{}, testConfig(), &fakeRevoker{}), "", refreshCookie("not-a-jwt")).Code, "invalid")
 	})
 }
 
@@ -560,37 +476,26 @@ func TestLogout(t *testing.T) {
 		revoker := &fakeRevoker{}
 		w := serve(Logout(repo, testConfig(), revoker), "", refreshCookie(token))
 
-		if w.Code != http.StatusOK || len(repo.revoked) != 1 || repo.revoked[0] != testUUID(2) {
-			t.Fatalf("status = %d, revoked = %v", w.Code, repo.revoked)
-		}
-		if len(revoker.sessions) != 1 || revoker.sessions[0] != testSessionID {
-			t.Errorf("revoked session tokens = %v", revoker.sessions)
-		}
-		if revoker.ttl != testConfig().AccessTokenTTL {
-			t.Errorf("ttl = %v", revoker.ttl)
-		}
-		if value, set := setCookies(w)["access_token"]; !set || value != "" {
-			t.Errorf("access cookie should be cleared, got %q (set=%v)", value, set)
-		}
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, []pgtype.UUID{testUUID(2)}, repo.revoked)
+		assert.Equal(t, []string{testSessionID}, revoker.sessions, "revoked session tokens")
+		assert.Equal(t, testConfig().AccessTokenTTL, revoker.ttl)
+		assert.Contains(t, setCookies(w), "access_token", "access cookie should be cleared")
+		assert.Empty(t, setCookies(w)["access_token"], "access cookie should be cleared")
 	})
 
 	t.Run("falls back to the access token without a refresh token", func(t *testing.T) {
 		tokens, err := session.NewTokens(testConfig(), testUser(t), testUUID(2))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		access := &http.Cookie{Name: "access_token", Value: tokens.AccessToken}
 		for _, cookies := range [][]*http.Cookie{{access}, {access, refreshCookie("not-a-jwt")}} {
 			repo := &fakeRepo{}
 			revoker := &fakeRevoker{}
 			w := serve(Logout(repo, testConfig(), revoker), "", cookies...)
 
-			if w.Code != http.StatusOK || len(repo.revoked) != 1 || repo.revoked[0] != testUUID(2) {
-				t.Errorf("status = %d, revoked = %v", w.Code, repo.revoked)
-			}
-			if len(revoker.sessions) != 1 || revoker.sessions[0] != testSessionID {
-				t.Errorf("revoked session tokens = %v", revoker.sessions)
-			}
+			assert.Equal(t, http.StatusOK, w.Code)
+			assert.Equal(t, []pgtype.UUID{testUUID(2)}, repo.revoked)
+			assert.Equal(t, []string{testSessionID}, revoker.sessions, "revoked session tokens")
 		}
 	})
 
@@ -599,25 +504,20 @@ func TestLogout(t *testing.T) {
 		repo := &fakeRepo{}
 		w := serve(Logout(repo, testConfig(), &fakeRevoker{err: errors.New("redis down")}), "", refreshCookie(token))
 
-		if w.Code != http.StatusOK || len(repo.revoked) != 1 {
-			t.Errorf("status = %d, revoked = %v", w.Code, repo.revoked)
-		}
-		if value, set := setCookies(w)["refresh_token"]; !set || value != "" {
-			t.Errorf("refresh cookie should be cleared, got %q (set=%v)", value, set)
-		}
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Len(t, repo.revoked, 1)
+		assert.Contains(t, setCookies(w), "refresh_token", "refresh cookie should be cleared")
+		assert.Empty(t, setCookies(w)["refresh_token"], "refresh cookie should be cleared")
 	})
 
 	t.Run("works without a session", func(t *testing.T) {
 		repo := &fakeRepo{}
 		revoker := &fakeRevoker{}
 		for _, cookies := range [][]*http.Cookie{nil, {refreshCookie("not-a-jwt")}} {
-			if w := serve(Logout(repo, testConfig(), revoker), "", cookies...); w.Code != http.StatusOK {
-				t.Errorf("status = %d", w.Code)
-			}
+			assert.Equal(t, http.StatusOK, serve(Logout(repo, testConfig(), revoker), "", cookies...).Code)
 		}
-		if len(repo.revoked) != 0 || len(revoker.sessions) != 0 {
-			t.Errorf("revoked = %v, session tokens = %v", repo.revoked, revoker.sessions)
-		}
+		assert.Empty(t, repo.revoked)
+		assert.Empty(t, revoker.sessions)
 	})
 }
 
@@ -642,22 +542,14 @@ func TestLogoutAll(t *testing.T) {
 		before := time.Now()
 		w := serveAs(LogoutAll(repo, testConfig(), revoker), userID)
 
-		if w.Code != http.StatusOK {
-			t.Fatalf("status = %d: %s", w.Code, w.Body)
-		}
-		if len(repo.revokedUsers) != 1 || repo.revokedUsers[0] != testUUID(1) {
-			t.Errorf("revoked sessions of %v", repo.revokedUsers)
-		}
-		if len(revoker.userIDs) != 1 || revoker.userIDs[0] != userID {
-			t.Errorf("cutoff for %v", revoker.userIDs)
-		}
-		if revoker.cutoff.Before(before) || revoker.cutoff.After(time.Now()) || revoker.ttl != testConfig().AccessTokenTTL {
-			t.Errorf("cutoff = %v, ttl = %v", revoker.cutoff, revoker.ttl)
-		}
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		assert.Equal(t, []pgtype.UUID{testUUID(1)}, repo.revokedUsers)
+		assert.Equal(t, []string{userID}, revoker.userIDs)
+		assert.WithinRange(t, revoker.cutoff, before, time.Now())
+		assert.Equal(t, testConfig().AccessTokenTTL, revoker.ttl)
 		for _, name := range []string{"access_token", "refresh_token", "is_logged_in"} {
-			if value, set := setCookies(w)[name]; !set || value != "" {
-				t.Errorf("cookie %s should be cleared, got %q (set=%v)", name, value, set)
-			}
+			assert.Contains(t, setCookies(w), name, "cookie %s should be cleared", name)
+			assert.Empty(t, setCookies(w)[name], "cookie %s should be cleared", name)
 		}
 	})
 
@@ -665,23 +557,18 @@ func TestLogoutAll(t *testing.T) {
 		revoker := &fakeRevoker{}
 		w := serveAs(LogoutAll(&fakeRepo{revokeAllErr: errDB}, testConfig(), revoker), userID)
 
-		if w.Code != http.StatusInternalServerError {
-			t.Fatalf("status = %d", w.Code)
-		}
-		if len(revoker.userIDs) != 0 || len(setCookies(w)) != 0 {
-			t.Errorf("cutoff = %v, cookies = %v", revoker.userIDs, setCookies(w))
-		}
+		require.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Empty(t, revoker.userIDs)
+		assert.Empty(t, setCookies(w))
 	})
 
 	t.Run("a Redis failure still logs out", func(t *testing.T) {
 		repo := &fakeRepo{}
 		w := serveAs(LogoutAll(repo, testConfig(), &fakeRevoker{err: errors.New("redis down")}), userID)
 
-		if w.Code != http.StatusOK || len(repo.revokedUsers) != 1 {
-			t.Errorf("status = %d, revoked = %v", w.Code, repo.revokedUsers)
-		}
-		if value, set := setCookies(w)["refresh_token"]; !set || value != "" {
-			t.Errorf("refresh cookie should be cleared, got %q (set=%v)", value, set)
-		}
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Len(t, repo.revokedUsers, 1)
+		assert.Contains(t, setCookies(w), "refresh_token", "refresh cookie should be cleared")
+		assert.Empty(t, setCookies(w)["refresh_token"], "refresh cookie should be cleared")
 	})
 }

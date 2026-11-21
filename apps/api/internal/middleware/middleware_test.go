@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 )
@@ -32,25 +34,23 @@ func TestBodyLimit(t *testing.T) {
 
 	t.Run("allows a body within the limit", func(t *testing.T) {
 		w, reached, readErr := serve(httptest.NewRequest(http.MethodPost, "/", strings.NewReader("short")))
-		if w.Code != http.StatusOK || !*reached || *readErr != nil {
-			t.Errorf("status = %d, reached = %v, err = %v", w.Code, *reached, *readErr)
-		}
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.True(t, *reached, "handler reached")
+		assert.NoError(t, *readErr)
 	})
 
 	t.Run("refuses a declared oversized body without reading it", func(t *testing.T) {
 		w, reached, _ := serve(httptest.NewRequest(http.MethodPost, "/", strings.NewReader(strings.Repeat("x", 11))))
-		if w.Code != http.StatusRequestEntityTooLarge || *reached {
-			t.Errorf("status = %d, reached = %v", w.Code, *reached)
-		}
+		assert.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
+		assert.False(t, *reached, "handler reached")
 	})
 
 	t.Run("stops reading a body that hides its size", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(strings.Repeat("x", 11)))
 		req.ContentLength = -1
 		_, reached, readErr := serve(req)
-		if !*reached || *readErr == nil {
-			t.Errorf("reached = %v, err = %v", *reached, *readErr)
-		}
+		assert.True(t, *reached, "handler reached")
+		assert.Error(t, *readErr)
 	})
 }
 
@@ -78,25 +78,17 @@ func TestRequestID(t *testing.T) {
 			r.ServeHTTP(w, req)
 
 			got := w.Header().Get(constants.RequestIDHeader)
-			if got == "" {
-				t.Fatal("no request id on the response")
-			}
-			if (got == tt.incoming) != tt.reused {
-				t.Errorf("got %q, incoming %q, want reused = %v", got, tt.incoming, tt.reused)
-			}
+			require.NotEmpty(t, got, "no request id on the response")
+			assert.Equal(t, tt.reused, got == tt.incoming, "reused: got %q, incoming %q", got, tt.incoming)
 		})
 	}
 }
 
 func TestAllowedOrigins(t *testing.T) {
 	got := allowedOrigins(&config.Config{GinMode: "release", FrontendURL: "https://app.example.com"})
-	if len(got) != 1 || got[0] != "https://app.example.com" {
-		t.Errorf("configured origin: got %v", got)
-	}
+	assert.Equal(t, []string{"https://app.example.com"}, got, "configured origin")
 	got = allowedOrigins(&config.Config{})
-	if len(got) != 1 || got[0] != "http://localhost:3000" {
-		t.Errorf("default origin: got %v", got)
-	}
+	assert.Equal(t, []string{"http://localhost:3000"}, got, "default origin")
 }
 
 func TestRecoveryReturns500(t *testing.T) {
@@ -107,10 +99,6 @@ func TestRecoveryReturns500(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/", nil))
 
-	if w.Code != http.StatusInternalServerError {
-		t.Errorf("status = %d", w.Code)
-	}
-	if strings.Contains(w.Body.String(), "boom") {
-		t.Errorf("response leaks the panic: %s", w.Body)
-	}
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.NotContains(t, w.Body.String(), "boom", "response leaks the panic")
 }

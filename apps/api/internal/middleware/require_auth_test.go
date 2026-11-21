@@ -10,6 +10,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	session "github.com/suprimkhatri77/turgorepo/api/internal/auth"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
@@ -64,9 +66,7 @@ func signSessionToken(t *testing.T, secret, sessionID string, issuedAt *jwt.Nume
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 		},
 	}).SignedString([]byte(secret))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return token
 }
 
@@ -109,15 +109,10 @@ func TestRequireAuthRevocation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w, reached := serveAuthed(tt.revoker, signToken(t, testAccessSecret, tt.issuedAt))
-			if w.Code != tt.want {
-				t.Errorf("status = %d, want %d", w.Code, tt.want)
-			}
-			if reached != (tt.want == http.StatusOK) {
-				t.Errorf("handler reached = %v", reached)
-			}
-			if tt.revoker.userID != "user-1" || tt.revoker.sessionID != testSessionID {
-				t.Errorf("checked user %q, session %q", tt.revoker.userID, tt.revoker.sessionID)
-			}
+			assert.Equal(t, tt.want, w.Code)
+			assert.Equal(t, tt.want == http.StatusOK, reached, "handler reached")
+			assert.Equal(t, "user-1", tt.revoker.userID, "checked user")
+			assert.Equal(t, testSessionID, tt.revoker.sessionID, "checked session")
 		})
 	}
 }
@@ -127,37 +122,28 @@ func TestRequireAuthSessionRevocation(t *testing.T) {
 	revoker := &fakeRevoker{revokedSession: "session-logged-out"}
 
 	w, reached := serveAuthed(revoker, signSessionToken(t, testAccessSecret, "session-logged-out", now))
-	if w.Code != http.StatusUnauthorized || reached {
-		t.Errorf("revoked session: status = %d, reached = %v", w.Code, reached)
-	}
+	assert.Equal(t, http.StatusUnauthorized, w.Code, "revoked session")
+	assert.False(t, reached, "revoked session reached the handler")
 
 	// The same user's other sessions keep working.
 	w, reached = serveAuthed(revoker, signSessionToken(t, testAccessSecret, "session-other-device", now))
-	if w.Code != http.StatusOK || !reached {
-		t.Errorf("other session: status = %d, reached = %v", w.Code, reached)
-	}
+	assert.Equal(t, http.StatusOK, w.Code, "other session")
+	assert.True(t, reached, "other session reached the handler")
 }
 
 func TestRequireAuthRejectsTokenWithoutSession(t *testing.T) {
 	revoker := &fakeRevoker{}
 	w, reached := serveAuthed(revoker, signSessionToken(t, testAccessSecret, "", jwt.NewNumericDate(time.Now())))
 
-	if w.Code != http.StatusUnauthorized || reached {
-		t.Errorf("status = %d, reached = %v", w.Code, reached)
-	}
-	if revoker.calls != 0 {
-		t.Error("a token without a session reached Redis")
-	}
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assert.False(t, reached, "handler reached")
+	assert.Zero(t, revoker.calls, "a token without a session reached Redis")
 }
 
 func TestRequireAuthChecksSignatureBeforeRedis(t *testing.T) {
 	revoker := &fakeRevoker{}
 	w, _ := serveAuthed(revoker, signToken(t, "wrong-secret", jwt.NewNumericDate(time.Now())))
 
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("status = %d", w.Code)
-	}
-	if revoker.calls != 0 {
-		t.Error("an invalid token reached Redis")
-	}
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assert.Zero(t, revoker.calls, "an invalid token reached Redis")
 }
