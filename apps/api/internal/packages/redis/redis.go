@@ -8,7 +8,7 @@ import (
 	"time"
 
 	goredis "github.com/redis/go-redis/v9"
-	"github.com/suprimkhatri77/turgorepo/api/internal/auth"
+	"github.com/suprimkhatri77/turgorepo/api/internal/session"
 )
 
 // Client wraps a go-redis client.
@@ -112,32 +112,32 @@ func revokedSessionKey(sessionID string) string {
 	return "auth:session_revoked:" + sessionID
 }
 
-// RevokeTokensBefore implements auth.TokenRevoker.
+// RevokeTokensBefore implements session.TokenRevoker.
 func (c *Client) RevokeTokensBefore(ctx context.Context, userID string, cutoff time.Time, ttl time.Duration) error {
 	return c.rdb.Set(ctx, tokenCutoffKey(userID), cutoff.Unix(), ttl).Err()
 }
 
-// RevokeSession implements auth.TokenRevoker.
+// RevokeSession implements session.TokenRevoker.
 func (c *Client) RevokeSession(ctx context.Context, sessionID string, ttl time.Duration) error {
 	return c.rdb.Set(ctx, revokedSessionKey(sessionID), 1, ttl).Err()
 }
 
-// Revocations implements auth.TokenRevoker. Both markers are read in one round
+// Revocations implements session.TokenRevoker. Both markers are read in one round
 // trip, because this runs on every authenticated request.
-func (c *Client) Revocations(ctx context.Context, userID, sessionID string) (auth.Revocations, error) {
+func (c *Client) Revocations(ctx context.Context, userID, sessionID string) (session.Revocations, error) {
 	values, err := c.rdb.MGet(ctx, tokenCutoffKey(userID), revokedSessionKey(sessionID)).Result()
 	if err != nil {
-		return auth.Revocations{}, err
+		return session.Revocations{}, err
 	}
 	if len(values) != 2 {
-		return auth.Revocations{}, fmt.Errorf("revocation lookup returned %d values", len(values))
+		return session.Revocations{}, fmt.Errorf("revocation lookup returned %d values", len(values))
 	}
 
-	var revocations auth.Revocations
+	var revocations session.Revocations
 	if raw, ok := values[0].(string); ok {
 		seconds, err := strconv.ParseInt(raw, 10, 64)
 		if err != nil {
-			return auth.Revocations{}, fmt.Errorf("parse token cutoff: %w", err)
+			return session.Revocations{}, fmt.Errorf("parse token cutoff: %w", err)
 		}
 		revocations.Cutoff = time.Unix(seconds, 0)
 		revocations.HasCutoff = true

@@ -7,12 +7,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
-	session "github.com/suprimkhatri77/turgorepo/api/internal/auth"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	"github.com/suprimkhatri77/turgorepo/api/internal/packages/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/ratelimit"
 	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
+	"github.com/suprimkhatri77/turgorepo/api/internal/session"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 	"github.com/suprimkhatri77/turgorepo/api/internal/validator"
@@ -109,7 +109,7 @@ func Login(
 			return
 		}
 
-		if err := session.IssueSession(c, queries, cfg, user); err != nil {
+		if err := session.Issue(c, queries, cfg, user); err != nil {
 			rlog.Error(c, "failed to issue session", err, "user_id", user.ID)
 
 			c.JSON(http.StatusInternalServerError, types.APIResponse{

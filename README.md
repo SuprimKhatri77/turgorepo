@@ -178,7 +178,7 @@ A password reset also marks the email as verified, since following the link prov
 To let unverified users log in instead:
 
 1. Remove the `EMAIL_NOT_VERIFIED` check in `internal/handlers/auth/login.go`.
-2. Call `session.IssueSession` in `register.go`.
+2. Call `session.Issue` in `register.go`.
 3. Send the user to their home page in `apps/web/modules/auth/hooks/mutations/use-register.ts`.
 
 `email_verified_at` is still recorded, so you can require it for particular actions later.

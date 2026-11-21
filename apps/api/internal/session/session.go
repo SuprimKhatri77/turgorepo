@@ -1,4 +1,4 @@
-package auth
+package session
 
 import (
 	"time"
@@ -12,7 +12,7 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 )
 
-func IssueSession(c *gin.Context, queries repository.AuthRepository, cfg *config.Config, user db.User) error {
+func Issue(c *gin.Context, queries repository.AuthRepository, cfg *config.Config, user db.User) error {
 	sessionID := uuid.New()
 	familyID := pgtype.UUID{Bytes: sessionID, Valid: true}
 

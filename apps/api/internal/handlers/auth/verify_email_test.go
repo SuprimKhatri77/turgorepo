@@ -9,8 +9,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	session "github.com/suprimkhatri77/turgorepo/api/internal/auth"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
+	"github.com/suprimkhatri77/turgorepo/api/internal/session"
 )
 
 func TestVerifyEmail(t *testing.T) {
