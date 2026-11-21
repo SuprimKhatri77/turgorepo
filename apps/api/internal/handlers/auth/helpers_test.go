@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -37,11 +38,14 @@ func testUUID(b byte) pgtype.UUID {
 
 func testConfig() *config.Config {
 	return &config.Config{
-		JWTAccessSecret:    "access-secret",
-		JWTRefreshSecret:   "refresh-secret",
-		AccessTokenTTL:     15 * time.Minute,
-		RefreshTokenTTL:    time.Hour,
-		RefreshReuseWindow: 5 * time.Minute,
+		JWTAccessSecret:      "access-secret",
+		JWTRefreshSecret:     "refresh-secret",
+		AccessTokenTTL:       15 * time.Minute,
+		RefreshTokenTTL:      time.Hour,
+		RefreshReuseWindow:   5 * time.Minute,
+		FrontendURL:          "https://app.example.com/",
+		EmailVerificationTTL: 24 * time.Hour,
+		PasswordResetTTL:     time.Hour,
 	}
 }
 
@@ -95,22 +99,31 @@ func setCookies(w *httptest.ResponseRecorder) map[string]string {
 	return found
 }
 
-func registerDeps(repo *fakeRepo, mailer *fakeMailer) AccountEmailDeps {
-	return verifyDeps(repo, &fakeLimiter{}, mailer)
-}
-
-func verifyDeps(repo *fakeRepo, limiter *fakeLimiter, mailer *fakeMailer) AccountEmailDeps {
-	cfg := testConfig()
-	cfg.FrontendURL = "https://app.example.com/"
-	cfg.EmailVerificationTTL = 24 * time.Hour
-	return AccountEmailDeps{Queries: repo, Config: cfg, Limiter: limiter, Revoker: &fakeRevoker{}, Mailer: mailer, Jobs: inlineJobs{}}
-}
-
-func resetDeps(repo *resetRepo, limiter *fakeLimiter, mailer *fakeMailer) AccountEmailDeps {
-	cfg := testConfig()
-	cfg.FrontendURL = "https://app.example.com/"
-	cfg.PasswordResetTTL = time.Hour
-	return AccountEmailDeps{Queries: repo, Config: cfg, Limiter: limiter, Revoker: &fakeRevoker{}, Mailer: mailer, Jobs: inlineJobs{}}
+// newHandler returns a Handler backed by store, with fakes that succeed for
+// everything else. Pass a *fakeLimiter, *fakeRevoker or *fakeMailer to use that
+// one instead, so the test can inspect it.
+func newHandler(store Store, fakes ...any) *Handler {
+	h := &Handler{
+		Store:   store,
+		Config:  testConfig(),
+		Limiter: &fakeLimiter{},
+		Revoker: &fakeRevoker{},
+		Mailer:  &fakeMailer{},
+		Jobs:    inlineJobs{},
+	}
+	for _, fake := range fakes {
+		switch fake := fake.(type) {
+		case *fakeLimiter:
+			h.Limiter = fake
+		case *fakeRevoker:
+			h.Revoker = fake
+		case *fakeMailer:
+			h.Mailer = fake
+		default:
+			panic(fmt.Sprintf("newHandler: unexpected fake %T", fake))
+		}
+	}
+	return h
 }
 
 func verifyTokenFromEmail(t *testing.T, msg email.Message) string {
@@ -148,4 +161,16 @@ const testSessionID = "02020202-0202-0202-0202-020202020202"
 
 func refreshCookie(token string) *http.Cookie {
 	return &http.Cookie{Name: "refresh_token", Value: token}
+}
+
+// serveAs runs handler as RequireAuth would after accepting userID's token.
+func serveAs(handler gin.HandlerFunc, userID string) *httptest.ResponseRecorder {
+	r := gin.New()
+	r.POST("/", func(c *gin.Context) {
+		c.Set(constants.UserIDKey, userID)
+		c.Next()
+	}, handler)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/", nil))
+	return w
 }

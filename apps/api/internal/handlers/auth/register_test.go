@@ -25,21 +25,21 @@ func TestRegister(t *testing.T) {
 
 	t.Run("accepts real names", func(t *testing.T) {
 		for _, name := range []string{"José García", "O'Brien", "O’Brien", "Mary-Jane", "सुप्रिम", "सुप्रिम खत्री", "J. R. Smith", "Martin Jr."} {
-			w := serve(Register(registerDeps(&fakeRepo{}, &fakeMailer{})), body(name, "a@example.com", testPassword))
+			w := serve(newHandler(&fakeRepo{}).Register, body(name, "a@example.com", testPassword))
 			assert.Equal(t, http.StatusCreated, w.Code, "%q: %s", name, w.Body)
 		}
 	})
 
 	t.Run("rejects names that are not names", func(t *testing.T) {
 		for _, name := range []string{"12345", "<script>", "John\nDoe", "--", "   "} {
-			w := serve(Register(registerDeps(&fakeRepo{}, &fakeMailer{})), body(name, "a@example.com", testPassword))
+			w := serve(newHandler(&fakeRepo{}).Register, body(name, "a@example.com", testPassword))
 			assert.Equal(t, http.StatusBadRequest, w.Code, "%q", name)
 		}
 	})
 
 	t.Run("stores the normalized email", func(t *testing.T) {
 		repo := &fakeRepo{}
-		serve(Register(registerDeps(repo, &fakeMailer{})), body("Ada", "Ada.L@Example.COM", testPassword))
+		serve(newHandler(repo).Register, body("Ada", "Ada.L@Example.COM", testPassword))
 		if assert.NotNil(t, repo.created) {
 			assert.Equal(t, "ada.l@example.com", repo.created.Email)
 		}
@@ -47,7 +47,7 @@ func TestRegister(t *testing.T) {
 
 	t.Run("password over 72 bytes is a validation error", func(t *testing.T) {
 		emoji := strings.Repeat("😀", 50) // 50 characters, 200 bytes
-		w := serve(Register(registerDeps(&fakeRepo{}, &fakeMailer{})), body("Ada", "a@example.com", emoji))
+		w := serve(newHandler(&fakeRepo{}).Register, body("Ada", "a@example.com", emoji))
 		require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
 		errs := decode(t, w).Errors
 		if assert.Len(t, errs, 1) {
@@ -56,20 +56,20 @@ func TestRegister(t *testing.T) {
 	})
 
 	t.Run("password of exactly 72 bytes works", func(t *testing.T) {
-		w := serve(Register(registerDeps(&fakeRepo{}, &fakeMailer{})), body("Ada", "a@example.com", strings.Repeat("a", 72)))
+		w := serve(newHandler(&fakeRepo{}).Register, body("Ada", "a@example.com", strings.Repeat("a", 72)))
 		assert.Equal(t, http.StatusCreated, w.Code, w.Body.String())
 	})
 
 	t.Run("duplicate email is a conflict", func(t *testing.T) {
 		repo := &fakeRepo{createErr: &pgconn.PgError{Code: "23505"}}
-		w := serve(Register(registerDeps(repo, &fakeMailer{})), body("Ada", "a@example.com", testPassword))
+		w := serve(newHandler(repo).Register, body("Ada", "a@example.com", testPassword))
 		assert.Equal(t, http.StatusConflict, w.Code)
 	})
 
 	t.Run("emails a verification link and doesn't log the user in", func(t *testing.T) {
 		repo := &fakeRepo{}
 		mailer := &fakeMailer{}
-		w := serve(Register(registerDeps(repo, mailer)), body("Ada", "Ada@Example.com", testPassword))
+		w := serve(newHandler(repo, mailer).Register, body("Ada", "Ada@Example.com", testPassword))
 
 		require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
 		assert.Empty(t, setCookies(w))
@@ -86,13 +86,13 @@ func TestRegister(t *testing.T) {
 	})
 
 	t.Run("a failed email doesn't fail registration", func(t *testing.T) {
-		w := serve(Register(registerDeps(&fakeRepo{}, &fakeMailer{err: errors.New("smtp down")})), body("Ada", "a@example.com", testPassword))
+		w := serve(newHandler(&fakeRepo{}, &fakeMailer{err: errors.New("smtp down")}).Register, body("Ada", "a@example.com", testPassword))
 		assert.Equal(t, http.StatusCreated, w.Code)
 	})
 
 	t.Run("new users are always members", func(t *testing.T) {
 		repo := &fakeRepo{}
-		serve(Register(registerDeps(repo, &fakeMailer{})), `{"name":"Ada","email":"a@example.com","password":"`+testPassword+`","role":"admin"}`)
+		serve(newHandler(repo).Register, `{"name":"Ada","email":"a@example.com","password":"`+testPassword+`","role":"admin"}`)
 		if assert.NotNil(t, repo.created) {
 			assert.Equal(t, constants.RoleMember, repo.created.Role)
 		}
@@ -115,7 +115,7 @@ func TestRegister(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				repo := &fakeRepo{}
 				mailer := &fakeMailer{}
-				w := serve(Register(registerDeps(repo, mailer)), tt.body)
+				w := serve(newHandler(repo, mailer).Register, tt.body)
 
 				require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
 				res := decode(t, w)
@@ -131,7 +131,7 @@ func TestRegister(t *testing.T) {
 
 	t.Run("malformed JSON is a validation error", func(t *testing.T) {
 		repo := &fakeRepo{}
-		w := serve(Register(registerDeps(repo, &fakeMailer{})), `{"name":`)
+		w := serve(newHandler(repo).Register, `{"name":`)
 		require.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Equal(t, constants.ValidationFailed, decode(t, w).Code)
 		assert.Nil(t, repo.created)
@@ -140,7 +140,7 @@ func TestRegister(t *testing.T) {
 	t.Run("stores a bcrypt hash of the untrimmed password", func(t *testing.T) {
 		repo := &fakeRepo{}
 		password := "  spaces around  "
-		serve(Register(registerDeps(repo, &fakeMailer{})), body("Ada", "a@example.com", password))
+		serve(newHandler(repo).Register, body("Ada", "a@example.com", password))
 
 		require.NotNil(t, repo.created)
 		assert.NotEqual(t, password, repo.created.PasswordHash)
@@ -150,7 +150,7 @@ func TestRegister(t *testing.T) {
 	t.Run("other database errors are a 500 and send no email", func(t *testing.T) {
 		for _, err := range []error{errDB, &pgconn.PgError{Code: "23503"}} {
 			mailer := &fakeMailer{}
-			w := serve(Register(registerDeps(&fakeRepo{createErr: err}, mailer)), body("Ada", "a@example.com", testPassword))
+			w := serve(newHandler(&fakeRepo{createErr: err}, mailer).Register, body("Ada", "a@example.com", testPassword))
 			assert.Equal(t, http.StatusInternalServerError, w.Code, "%v", err)
 			assert.Equal(t, constants.InternalServerError, decode(t, w).Code, "%v", err)
 			assert.Empty(t, mailer.sent, "%v", err)
@@ -159,7 +159,7 @@ func TestRegister(t *testing.T) {
 
 	t.Run("trims the name and email before validating them", func(t *testing.T) {
 		repo := &fakeRepo{}
-		w := serve(Register(registerDeps(repo, &fakeMailer{})), body("  Ada Lovelace ", " Ada@Example.com  ", testPassword))
+		w := serve(newHandler(repo).Register, body("  Ada Lovelace ", " Ada@Example.com  ", testPassword))
 
 		require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
 		require.NotNil(t, repo.created)

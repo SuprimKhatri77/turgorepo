@@ -3,28 +3,13 @@ package auth
 import (
 	"errors"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 )
-
-// serveAs runs handler as RequireAuth would after accepting userID's token.
-func serveAs(handler gin.HandlerFunc, userID string) *httptest.ResponseRecorder {
-	r := gin.New()
-	r.POST("/", func(c *gin.Context) {
-		c.Set(constants.UserIDKey, userID)
-		c.Next()
-	}, handler)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/", nil))
-	return w
-}
 
 func TestLogoutAll(t *testing.T) {
 	const userID = "01010101-0101-0101-0101-010101010101"
@@ -33,7 +18,7 @@ func TestLogoutAll(t *testing.T) {
 		repo := &fakeRepo{}
 		revoker := &fakeRevoker{}
 		before := time.Now()
-		w := serveAs(LogoutAll(repo, testConfig(), revoker), userID)
+		w := serveAs(newHandler(repo, revoker).LogoutAll, userID)
 
 		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 		assert.Equal(t, []pgtype.UUID{testUUID(1)}, repo.revokedUsers)
@@ -48,7 +33,7 @@ func TestLogoutAll(t *testing.T) {
 
 	t.Run("a database error changes nothing", func(t *testing.T) {
 		revoker := &fakeRevoker{}
-		w := serveAs(LogoutAll(&fakeRepo{revokeAllErr: errDB}, testConfig(), revoker), userID)
+		w := serveAs(newHandler(&fakeRepo{revokeAllErr: errDB}, revoker).LogoutAll, userID)
 
 		require.Equal(t, http.StatusInternalServerError, w.Code)
 		assert.Empty(t, revoker.userIDs)
@@ -57,7 +42,7 @@ func TestLogoutAll(t *testing.T) {
 
 	t.Run("a Redis failure still logs out", func(t *testing.T) {
 		repo := &fakeRepo{}
-		w := serveAs(LogoutAll(repo, testConfig(), &fakeRevoker{err: errors.New("redis down")}), userID)
+		w := serveAs(newHandler(repo, &fakeRevoker{err: errors.New("redis down")}).LogoutAll, userID)
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Len(t, repo.revokedUsers, 1)

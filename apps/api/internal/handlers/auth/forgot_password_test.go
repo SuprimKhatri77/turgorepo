@@ -19,7 +19,7 @@ func TestForgotPassword(t *testing.T) {
 	t.Run("emails a link and stores only the hash", func(t *testing.T) {
 		repo := &resetRepo{fakeRepo: fakeRepo{user: testUser(t)}}
 		mailer := &fakeMailer{}
-		w := serve(ForgotPassword(resetDeps(repo, &fakeLimiter{}, mailer)), body)
+		w := serve(newHandler(repo, mailer).ForgotPassword, body)
 
 		require.Equal(t, http.StatusOK, w.Code)
 		assert.Equal(t, "ada@example.com", repo.lookedUp)
@@ -50,7 +50,7 @@ func TestForgotPassword(t *testing.T) {
 
 		var firstBody string
 		for _, tt := range tests {
-			w := serve(ForgotPassword(resetDeps(tt.repo, tt.limiter, tt.mailer)), body)
+			w := serve(newHandler(tt.repo, tt.limiter, tt.mailer).ForgotPassword, body)
 			assert.Equal(t, http.StatusOK, w.Code, tt.name)
 			if firstBody == "" {
 				firstBody = w.Body.String()
@@ -62,7 +62,7 @@ func TestForgotPassword(t *testing.T) {
 
 	t.Run("email limit applies across IPs, without the raw address", func(t *testing.T) {
 		limiter := &fakeLimiter{}
-		serve(ForgotPassword(resetDeps(&resetRepo{fakeRepo: fakeRepo{user: testUser(t)}}, limiter, &fakeMailer{})), body)
+		serve(newHandler(&resetRepo{fakeRepo: fakeRepo{user: testUser(t)}}, limiter).ForgotPassword, body)
 		require.Len(t, limiter.keys, 1)
 		require.True(t, strings.HasPrefix(limiter.keys[0], "ratelimit:forgot-password:email:"), "key = %s", limiter.keys[0])
 		assert.NotContains(t, limiter.keys[0], "ada@example.com", "key has the address")
@@ -70,7 +70,7 @@ func TestForgotPassword(t *testing.T) {
 	})
 
 	t.Run("invalid email is a validation error", func(t *testing.T) {
-		w := serve(ForgotPassword(resetDeps(&resetRepo{}, &fakeLimiter{}, &fakeMailer{})), `{"email":"nope"}`)
+		w := serve(newHandler(&resetRepo{}).ForgotPassword, `{"email":"nope"}`)
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }

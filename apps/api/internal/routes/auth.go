@@ -2,51 +2,32 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
-	authHandler "github.com/suprimkhatri77/turgorepo/api/internal/handlers/auth"
+	"github.com/suprimkhatri77/turgorepo/api/internal/handlers/auth"
 	"github.com/suprimkhatri77/turgorepo/api/internal/middleware"
 	"github.com/suprimkhatri77/turgorepo/api/internal/ratelimit"
 )
 
 func setupAuthRoutes(router *gin.RouterGroup, deps Deps) {
-	auth := router.Group("/auth")
-	auth.POST("/login",
-		ratelimit.ByIP(deps.Redis, ratelimit.LoginPerIP),
-		authHandler.Login(deps.Queries, deps.Config, deps.Redis),
-	)
-	accountEmail := authHandler.AccountEmailDeps{
-		Queries: deps.Queries,
+	h := &auth.Handler{
+		Store:   deps.Queries,
 		Config:  deps.Config,
 		Limiter: deps.Redis,
 		Revoker: deps.Redis,
 		Mailer:  deps.Mailer,
 		Jobs:    deps.Jobs,
 	}
-	auth.POST("/register",
-		ratelimit.ByIP(deps.Redis, ratelimit.RegisterPerIP),
-		authHandler.Register(accountEmail),
-	)
-	auth.POST("/verify-email",
-		ratelimit.ByIP(deps.Redis, ratelimit.VerifyEmailPerIP),
-		authHandler.VerifyEmail(accountEmail),
-	)
-	auth.POST("/resend-verification",
-		ratelimit.ByIP(deps.Redis, ratelimit.ResendVerificationPerIP),
-		authHandler.ResendVerification(accountEmail),
-	)
-	auth.POST("/forgot-password",
-		ratelimit.ByIP(deps.Redis, ratelimit.ForgotPasswordPerIP),
-		authHandler.ForgotPassword(accountEmail),
-	)
-	auth.POST("/reset-password",
-		ratelimit.ByIP(deps.Redis, ratelimit.ResetPasswordPerIP),
-		authHandler.ResetPassword(accountEmail),
-	)
+	requireAuth := middleware.RequireAuth(deps.Config, deps.Redis)
 
-	auth.POST("/logout", authHandler.Logout(deps.Queries, deps.Config, deps.Redis))
-	auth.POST("/refresh", authHandler.Refresh(deps.Queries, deps.Config, deps.Redis))
-	auth.POST("/logout-all",
-		middleware.RequireAuth(deps.Config, deps.Redis),
-		authHandler.LogoutAll(deps.Queries, deps.Config, deps.Redis),
-	)
-	auth.GET("/me", middleware.RequireAuth(deps.Config, deps.Redis), authHandler.Me(deps.Queries))
+	r := router.Group("/auth")
+	r.POST("/login", ratelimit.ByIP(deps.Redis, ratelimit.LoginPerIP), h.Login)
+	r.POST("/register", ratelimit.ByIP(deps.Redis, ratelimit.RegisterPerIP), h.Register)
+	r.POST("/verify-email", ratelimit.ByIP(deps.Redis, ratelimit.VerifyEmailPerIP), h.VerifyEmail)
+	r.POST("/resend-verification", ratelimit.ByIP(deps.Redis, ratelimit.ResendVerificationPerIP), h.ResendVerification)
+	r.POST("/forgot-password", ratelimit.ByIP(deps.Redis, ratelimit.ForgotPasswordPerIP), h.ForgotPassword)
+	r.POST("/reset-password", ratelimit.ByIP(deps.Redis, ratelimit.ResetPasswordPerIP), h.ResetPassword)
+
+	r.POST("/logout", h.Logout)
+	r.POST("/refresh", h.Refresh)
+	r.POST("/logout-all", requireAuth, h.LogoutAll)
+	r.GET("/me", requireAuth, h.Me)
 }
