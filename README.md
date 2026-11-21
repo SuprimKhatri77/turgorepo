@@ -49,7 +49,7 @@ turgorepo/
 ## Prerequisites
 
 - [Bun](https://bun.sh) 1.4.4
-- [Go](https://go.dev) 1.27.3
+- [Go](https://go.dev) 1.27.4
 - [sqlc](https://sqlc.dev) 1.31.1 (CI pins this version, and a different one fails `db:sqlc:check`)
 - [Docker](https://www.docker.com) & Docker Compose (for containerized dev)
 - [golang-migrate](https://github.com/golang-migrate/migrate) CLI (for local migrations)

@@ -1,6 +1,6 @@
 # Production image. Build from apps/api: needs no JS tooling or other workspaces.
 #   docker build -t turgorepo-api apps/api
-FROM golang:1.27.3-alpine AS build
+FROM golang:1.27.4-alpine AS build
 
 WORKDIR /src
 
