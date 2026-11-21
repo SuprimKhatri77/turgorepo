@@ -1,18 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { useAuthStore } from "@/store/auth";
+import { AuthCard, AuthCardLink } from "./auth-card";
 import { ResendVerification } from "./resend-verification";
-
-const cardClassName =
-  "w-full max-w-sm border border-border bg-card p-6 text-card-foreground shadow-sm";
 
 /** Shown after registering, and when an unverified user tries to sign in. */
 export function CheckEmail() {
   const email = useAuthStore((state) => state.pendingEmail);
 
   return (
-    <div className={cardClassName}>
+    <AuthCard>
       <h1 className="text-xl font-semibold">Verify your email</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         {email ? (
@@ -31,14 +28,7 @@ export function CheckEmail() {
         <ResendVerification email={email} />
       </div>
 
-      <p className="mt-5 text-center text-sm">
-        <Link
-          className="font-medium underline underline-offset-4"
-          href="/auth/login"
-        >
-          Back to sign in
-        </Link>
-      </p>
-    </div>
+      <AuthCardLink href="/auth/login">Back to sign in</AuthCardLink>
+    </AuthCard>
   );
 }

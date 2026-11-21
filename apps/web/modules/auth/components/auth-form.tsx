@@ -10,14 +10,11 @@ import {
 } from "@repo/types";
 
 import { getApiError } from "@/lib/api/errors";
-import { mapFieldErrors } from "@/modules/auth/lib/form-errors";
+import { mapFieldErrors, toFieldErrors } from "@/modules/auth/lib/form-errors";
+import { TextField } from "@/components/form/text-field";
+import { AuthCardForm } from "./auth-card";
 import { Button } from "@/components/ui/button";
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
+import { FieldGroup } from "@/components/ui/field";
 
 type AuthFormProps =
   | {
@@ -36,9 +33,6 @@ type FormValues = {
   email: string;
   password: string;
 };
-
-export const inputClassName =
-  "h-9 w-full border border-input bg-background px-3 text-sm outline-none transition focus:border-ring focus:ring-1 focus:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive/20";
 
 const submitLabel = {
   login: { idle: "Sign in", pending: "Signing in…" },
@@ -98,11 +92,7 @@ export function AuthForm(props: AuthFormProps) {
   const isRegister = props.mode === "register";
 
   return (
-    <form
-      className="w-full max-w-sm border border-border bg-card p-6 text-card-foreground shadow-sm"
-      onSubmit={handleSubmit}
-      noValidate
-    >
+    <AuthCardForm onSubmit={handleSubmit}>
       <div className="mb-6 space-y-1">
         <p className="text-xs uppercase tracking-widest text-muted-foreground">
           Turgorepo
@@ -119,60 +109,45 @@ export function AuthForm(props: AuthFormProps) {
 
       <FieldGroup>
         {isRegister && (
-          <Field data-invalid={Boolean(fieldErrors.name)}>
-            <FieldLabel htmlFor="name">Name</FieldLabel>
-            <input
-              id="name"
-              name="name"
-              autoComplete="name"
-              className={inputClassName}
-              value={values.name}
-              onChange={(event) => updateField("name", event.target.value)}
-              aria-invalid={Boolean(fieldErrors.name)}
-            />
-            <FieldError>{fieldErrors.name}</FieldError>
-          </Field>
+          <TextField
+            id="name"
+            label="Name"
+            autoComplete="name"
+            value={values.name}
+            onChange={(value) => updateField("name", value)}
+            error={fieldErrors.name}
+          />
         )}
 
-        <Field data-invalid={Boolean(fieldErrors.email)}>
-          <FieldLabel htmlFor="email">Email</FieldLabel>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            className={inputClassName}
-            value={values.email}
-            onChange={(event) => updateField("email", event.target.value)}
-            aria-invalid={Boolean(fieldErrors.email)}
-          />
-          <FieldError>{fieldErrors.email}</FieldError>
-        </Field>
+        <TextField
+          id="email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          value={values.email}
+          onChange={(value) => updateField("email", value)}
+          error={fieldErrors.email}
+        />
 
-        <Field data-invalid={Boolean(fieldErrors.password)}>
-          <div className="flex items-center justify-between gap-2">
-            <FieldLabel htmlFor="password">Password</FieldLabel>
-            {!isRegister && (
+        <TextField
+          id="password"
+          label="Password"
+          type="password"
+          autoComplete={isRegister ? "new-password" : "current-password"}
+          value={values.password}
+          onChange={(value) => updateField("password", value)}
+          error={fieldErrors.password}
+          labelAside={
+            isRegister ? undefined : (
               <Link
                 className="text-xs text-muted-foreground underline underline-offset-4"
                 href="/auth/forgot-password"
               >
                 Forgot password?
               </Link>
-            )}
-          </div>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete={isRegister ? "new-password" : "current-password"}
-            className={inputClassName}
-            value={values.password}
-            onChange={(event) => updateField("password", event.target.value)}
-            aria-invalid={Boolean(fieldErrors.password)}
-          />
-          <FieldError>{fieldErrors.password}</FieldError>
-        </Field>
+            )
+          }
+        />
 
         <Button className="w-full" type="submit" disabled={props.isPending}>
           {submitLabel[props.mode][props.isPending ? "pending" : "idle"]}
@@ -188,19 +163,6 @@ export function AuthForm(props: AuthFormProps) {
           {isRegister ? "Sign in" : "Create an account"}
         </Link>
       </p>
-    </form>
+    </AuthCardForm>
   );
-}
-
-export function toFieldErrors(
-  issues: ReadonlyArray<{ path: PropertyKey[]; message: string }>,
-): Record<string, string> {
-  const errors: Record<string, string> = {};
-  for (const issue of issues) {
-    const field = issue.path[0];
-    if (typeof field === "string" && !errors[field]) {
-      errors[field] = issue.message;
-    }
-  }
-  return errors;
 }
