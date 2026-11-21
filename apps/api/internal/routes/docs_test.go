@@ -9,15 +9,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	apiconfig "github.com/suprimkhatri77/turgorepo/api/internal/config"
-	"github.com/suprimkhatri77/turgorepo/api/internal/routes/config"
+	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 )
 
 func TestDocsPageNonce(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
-	setupDocsRoutes(r.Group("/api/v1"), config.Config{Config: &apiconfig.Config{}})
+	setupDocsRoutes(r.Group("/api/v1"), Deps{Config: &config.Config{}})
 
 	nonceAttr := regexp.MustCompile(`nonce="([^"]+)"`)
 	get := func() (string, string) {

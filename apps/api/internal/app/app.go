@@ -16,6 +16,7 @@ import (
 	dbgen "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 	"github.com/suprimkhatri77/turgorepo/api/internal/packages/cloudinary"
 	apiredis "github.com/suprimkhatri77/turgorepo/api/internal/packages/redis"
+	"github.com/suprimkhatri77/turgorepo/api/internal/routes"
 	"github.com/suprimkhatri77/turgorepo/api/internal/validator"
 )
 
@@ -71,7 +72,16 @@ func New(ctx context.Context) (_ *App, err error) {
 
 	a.Jobs = &background.Runner{}
 
-	if a.Router, err = buildRouter(cfg, a.Queries, a.CldClient, a.DB, a.Redis, initMailer(cfg), a.Jobs); err != nil {
+	a.Router, err = buildRouter(routes.Deps{
+		Config:     cfg,
+		Queries:    a.Queries,
+		Pool:       a.DB.Pool,
+		Redis:      a.Redis,
+		Mailer:     initMailer(cfg),
+		Jobs:       a.Jobs,
+		Cloudinary: a.CldClient,
+	})
+	if err != nil {
 		return nil, err
 	}
 	return a, nil
