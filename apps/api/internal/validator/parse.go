@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -13,7 +14,11 @@ import (
 
 func Parse(err error, obj any) []response.FieldError {
 	var ve validator.ValidationErrors
+	var typeErr *json.UnmarshalTypeError
 
+	if errors.As(err, &typeErr) && typeErr.Field != "" {
+		return []response.FieldError{typeError(typeErr, obj)}
+	}
 	if !errors.As(err, &ve) {
 		return []response.FieldError{
 			{
@@ -38,6 +43,37 @@ func Parse(err error, obj any) []response.FieldError {
 	}
 
 	return errs
+}
+
+// typeError names the field whose JSON value had the wrong type, such as a
+// number sent for a text field, so the client can show the error there.
+func typeError(err *json.UnmarshalTypeError, obj any) response.FieldError {
+	name := err.Field
+	if i := strings.LastIndex(name, "."); i != -1 {
+		name = name[i+1:]
+	}
+	label := fieldLabel(fieldByJSONName(obj, err.Field), name)
+
+	t := err.Type
+	for t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	var message string
+	switch t.Kind() {
+	case reflect.String:
+		message = fmt.Sprintf("%s must be text", label)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64:
+		message = fmt.Sprintf("%s must be a number", label)
+	case reflect.Bool:
+		message = fmt.Sprintf("%s must be true or false", label)
+	case reflect.Slice, reflect.Array:
+		message = fmt.Sprintf("%s must be a list", label)
+	default:
+		message = fmt.Sprintf("%s is invalid", label)
+	}
+	return response.FieldError{Code: "INVALID_TYPE", Field: err.Field, Message: message}
 }
 
 func messageFor(fe validator.FieldError, field *reflect.StructField, label string) string {
@@ -96,12 +132,12 @@ func buildMessage(fe validator.FieldError, label string) string {
 		return fmt.Sprintf("%s is required", label)
 	case "min":
 		if fe.Kind() == reflect.Slice {
-			return fmt.Sprintf("%s must have at least %s item(s)", label, fe.Param())
+			return fmt.Sprintf("%s needs at least %s", label, items(fe.Param()))
 		}
 		return fmt.Sprintf("%s must be at least %s characters", label, fe.Param())
 	case "max":
 		if fe.Kind() == reflect.Slice {
-			return fmt.Sprintf("%s cannot have more than %s item(s)", label, fe.Param())
+			return fmt.Sprintf("%s can have at most %s", label, items(fe.Param()))
 		}
 		return fmt.Sprintf("%s cannot exceed %s characters", label, fe.Param())
 	case "email":
@@ -123,7 +159,8 @@ func buildMessage(fe validator.FieldError, label string) string {
 	case "lte":
 		return fmt.Sprintf("%s must be at most %s", label, fe.Param())
 	case "oneof":
-		return fmt.Sprintf("%s must be one of: %s", label, strings.ReplaceAll(fe.Param(), " ", ", "))
+		// The allowed values are code (member, admin), not words to show a user.
+		return fmt.Sprintf("Choose a valid %s", strings.ToLower(label))
 	case "boolean":
 		return fmt.Sprintf("%s must be true or false", label)
 	case "numeric":
@@ -137,10 +174,18 @@ func buildMessage(fe validator.FieldError, label string) string {
 	case "not_blank":
 		return fmt.Sprintf("%s cannot be blank", label)
 	case "date_format":
-		return fmt.Sprintf("%s must be a valid date (YYYY-MM-DD)", label)
+		return fmt.Sprintf("%s must be a valid date", label)
 	default:
 		return fmt.Sprintf("%s is invalid", label)
 	}
+}
+
+// items formats a count of list items: "1 item", "3 items".
+func items(n string) string {
+	if n == "1" {
+		return "1 item"
+	}
+	return n + " items"
 }
 
 func getStructField(obj any, fe validator.FieldError) *reflect.StructField {
@@ -177,6 +222,24 @@ func jsonName(field *reflect.StructField, fe validator.FieldError) string {
 		name = fe.StructField()
 	}
 	return stripIndex(strings.ToLower(name))
+}
+
+// fieldByJSONName finds the top-level struct field whose json tag is name.
+func fieldByJSONName(obj any, name string) *reflect.StructField {
+	t := reflect.TypeOf(obj)
+	for t != nil && t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	if t == nil || t.Kind() != reflect.Struct {
+		return nil
+	}
+	for i := range t.NumField() {
+		field := t.Field(i)
+		if strings.Split(field.Tag.Get("json"), ",")[0] == name {
+			return &field
+		}
+	}
+	return nil
 }
 
 func fieldLabel(field *reflect.StructField, jsonField string) string {
