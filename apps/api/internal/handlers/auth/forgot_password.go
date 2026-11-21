@@ -19,7 +19,7 @@ import (
 )
 
 type ForgotPasswordRequest struct {
-	Email string `json:"email" label:"Email" binding:"required,email" msg_required:"Email is required" msg_email:"Enter a valid email address"`
+	Email string `json:"email" binding:"required,email"`
 }
 
 // ForgotPassword emails a reset link. Everything after validation happens in the

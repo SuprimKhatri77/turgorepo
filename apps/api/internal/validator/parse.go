@@ -42,7 +42,8 @@ func Parse(err error, obj any) []response.FieldError {
 
 func messageFor(fe validator.FieldError, field *reflect.StructField, label string) string {
 	if field != nil {
-		// Per-rule override: msg_required, msg_min, msg_email, ...
+		// Per-rule override, for when the default wording doesn't fit:
+		// msg_required:"Reset link is missing". Most fields need none.
 		if override := strings.TrimSpace(field.Tag.Get("msg_" + fe.Tag())); override != "" {
 			return override
 		}
@@ -104,13 +105,13 @@ func buildMessage(fe validator.FieldError, label string) string {
 		}
 		return fmt.Sprintf("%s cannot exceed %s characters", label, fe.Param())
 	case "email":
-		return fmt.Sprintf("Enter a valid %s", strings.ToLower(label))
+		return "Enter a valid email address"
 	case "uuid":
 		return fmt.Sprintf("%s must be a valid ID", label)
 	case "url":
 		return fmt.Sprintf("%s must be a valid URL", label)
 	case "max_bytes":
-		return fmt.Sprintf("%s is too long", label)
+		return fmt.Sprintf("%s cannot exceed %s bytes", label, fe.Param())
 	case "person_name":
 		return fmt.Sprintf("%s can only contain letters, spaces, and ' . -", label)
 	case "gt":
