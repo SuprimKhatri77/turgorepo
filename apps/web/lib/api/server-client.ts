@@ -6,6 +6,16 @@ import {
 import { cookies } from "next/headers";
 import { getApiUrl } from "@/lib/api/url";
 
+/** Thrown when neither NEXT_PUBLIC_API_URL nor INTERNAL_API_URL is set. */
+export class ApiUrlNotConfiguredError extends Error {
+  constructor() {
+    super(
+      "API URL is not configured. Set NEXT_PUBLIC_API_URL (and INTERNAL_API_URL in Docker).",
+    );
+    this.name = "ApiUrlNotConfiguredError";
+  }
+}
+
 /**
  * Per-request server client: forwards Next cookies and uses INTERNAL_API_URL
  * inside Docker via getApiUrl(). No refresh interceptor — proxy handles that
@@ -14,9 +24,7 @@ import { getApiUrl } from "@/lib/api/url";
 export async function createServerApiClient(): Promise<Client> {
   const baseUrl = getApiUrl();
   if (!baseUrl) {
-    throw new Error(
-      "API URL is not configured. Set NEXT_PUBLIC_API_URL (and INTERNAL_API_URL in Docker).",
-    );
+    throw new ApiUrlNotConfiguredError();
   }
 
   const cookie = await getAllCookies();

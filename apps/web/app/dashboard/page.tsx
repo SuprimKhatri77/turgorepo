@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth/require-user";
 import { LogoutAllDevices } from "@/modules/auth/components/logout-all-devices";
 
 export const metadata: Metadata = {
-  title: "Dashboard | Turgorepo",
+  title: "Dashboard",
 };
 
 export default async function DashboardPage() {

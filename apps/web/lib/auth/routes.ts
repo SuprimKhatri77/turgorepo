@@ -1,8 +1,10 @@
+import type { UserRole } from "@repo/types";
+
 /**
  * The only place to protect a page: add its path here with the roles allowed.
  * proxy.ts runs on every page, so nothing else needs changing.
  */
-export const ROLE_RULES: Record<string, string[]> = {
+export const ROLE_RULES: Record<string, UserRole[]> = {
   "/admin": ["admin", "superadmin"],
   "/dashboard": ["member", "admin", "superadmin"],
 };
@@ -19,7 +21,7 @@ export const OPEN_AUTH_ROUTES = ["/auth/reset-password", "/auth/verify-email"];
 export const SESSION_EXPIRED_PATH = "/auth/login?expired=1";
 
 /** Where a user lands after logging in. */
-export function homePathForRole(role: string): string {
+export function homePathForRole(role: UserRole): string {
   return role === "admin" || role === "superadmin" ? "/admin" : "/dashboard";
 }
 
@@ -37,7 +39,7 @@ export function isUnauthenticatedOnlyRoute(pathname: string): boolean {
   );
 }
 
-export function getRequiredRoles(pathname: string): string[] | undefined {
+export function getRequiredRoles(pathname: string): UserRole[] | undefined {
   return Object.entries(ROLE_RULES).find(([route]) =>
     matchesRoute(pathname, route),
   )?.[1];

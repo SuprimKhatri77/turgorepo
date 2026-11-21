@@ -40,6 +40,11 @@ type FormValues = {
 export const inputClassName =
   "h-9 w-full border border-input bg-background px-3 text-sm outline-none transition focus:border-ring focus:ring-1 focus:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive/20";
 
+const submitLabel = {
+  login: { idle: "Sign in", pending: "Signing in…" },
+  register: { idle: "Create account", pending: "Creating account…" },
+} as const;
+
 export function AuthForm(props: AuthFormProps) {
   const [values, setValues] = useState<FormValues>({
     name: "",
@@ -170,13 +175,7 @@ export function AuthForm(props: AuthFormProps) {
         </Field>
 
         <Button className="w-full" type="submit" disabled={props.isPending}>
-          {props.isPending
-            ? isRegister
-              ? "Creating account…"
-              : "Signing in…"
-            : isRegister
-              ? "Create account"
-              : "Sign in"}
+          {submitLabel[props.mode][props.isPending ? "pending" : "idle"]}
         </Button>
       </FieldGroup>
 

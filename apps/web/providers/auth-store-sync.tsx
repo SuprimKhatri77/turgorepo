@@ -4,7 +4,12 @@ import { useAuthStore } from "@/store/auth";
 import type { User } from "@repo/types";
 import { apiClient, getApiV1AuthMe } from "@/lib/api/client";
 
-export function AuthProvider({ user }: { user: User | null }) {
+/**
+ * Copies the signed-in user into the client auth store. The layout passes the
+ * user it read from the access token; without one, an is_logged_in cookie means
+ * the access token expired, so ask /auth/me. Renders nothing.
+ */
+export function AuthStoreSync({ user }: { user: User | null }) {
   const setUser = useAuthStore((state) => state.setUser);
   const clearUser = useAuthStore((state) => state.clearUser);
 

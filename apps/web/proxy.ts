@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest, NextResponse } from "next/server";
 import { contentSecurityPolicy, createNonce } from "@/lib/proxy/csp";
 import { handleAuthRoute, handleProtectedRoute } from "@/lib/proxy/handlers";
 import { continueRequest } from "@/lib/proxy/redirects";

@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { userFromAccessToken } from "@/lib/auth/claims";
 import { getApiUrl } from "@/lib/api/url";
 import { continueRequest, redirectForRole } from "./redirects";

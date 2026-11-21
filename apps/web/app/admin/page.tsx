@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth/require-user";
 import { ROLE_RULES } from "@/lib/auth/routes";
 
 export const metadata: Metadata = {
-  title: "Admin | Turgorepo",
+  title: "Admin",
 };
 
 export default async function AdminPage() {

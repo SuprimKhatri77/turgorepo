@@ -1,4 +1,4 @@
-import type { User } from "@repo/types";
+import type { User, UserRole } from "@repo/types";
 import { redirect } from "next/navigation";
 import { SESSION_EXPIRED_PATH } from "@/lib/auth/routes";
 import { fetchCurrentUser } from "./current-user";
@@ -7,7 +7,7 @@ import { fetchCurrentUser } from "./current-user";
  * Loads the user for a protected page. proxy.ts only decodes tokens, so this is
  * the check the API has verified, including the role stored in the database.
  */
-export async function requireUser(allowedRoles?: string[]): Promise<User> {
+export async function requireUser(allowedRoles?: UserRole[]): Promise<User> {
   const user = await fetchCurrentUser();
   if (!user) {
     redirect(SESSION_EXPIRED_PATH);
