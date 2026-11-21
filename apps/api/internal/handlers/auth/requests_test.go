@@ -61,7 +61,7 @@ var (
 	errPasswordRequired = fieldError{"REQUIRED_FIELD", "Password is required"}
 	errPasswordShort    = fieldError{"TOO_SHORT", "Password must be at least 8 characters"}
 	errPasswordBlank    = fieldError{"BLANK_FIELD", "Password cannot be blank"}
-	errPasswordBytes    = fieldError{"TOO_LONG", "Password cannot exceed 72 bytes"}
+	errPasswordBytes    = fieldError{"TOO_LONG", "Password is too long"}
 )
 
 func TestRegisterRequestValidation(t *testing.T) {

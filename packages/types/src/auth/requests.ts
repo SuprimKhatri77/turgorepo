@@ -7,7 +7,7 @@ const MAX_PASSWORD_BYTES = 72;
 const fitsBcrypt = (password: string) =>
   new TextEncoder().encode(password).length <= MAX_PASSWORD_BYTES;
 
-const passwordTooLong = `Password cannot exceed ${MAX_PASSWORD_BYTES} bytes`;
+const passwordTooLong = "Password is too long";
 
 // Trimmed before the format check, so a pasted address with a trailing space
 // passes. The API trims the same way before validating. preprocess keeps
