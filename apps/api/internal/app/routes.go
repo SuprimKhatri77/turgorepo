@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/suprimkhatri77/turgorepo/api/internal/middleware"
@@ -11,6 +12,10 @@ import (
 // maxRequestBodyBytes applies to every route. If you add file uploads, move
 // BodyLimit onto a route group so the upload route can have its own limit.
 const maxRequestBodyBytes = 1 << 20
+
+// requestTimeout bounds each request. It stays under the server's 30s
+// WriteTimeout, so the error response can still be written.
+const requestTimeout = 15 * time.Second
 
 // buildRouter applies the global middleware and mounts the routes.
 func buildRouter(deps routes.Deps) (*gin.Engine, error) {
@@ -33,6 +38,7 @@ func buildRouter(deps routes.Deps) (*gin.Engine, error) {
 	r.Use(middleware.SecurityHeaders(cfg))
 	r.Use(middleware.CORS(cfg))
 	r.Use(middleware.BodyLimit(maxRequestBodyBytes))
+	r.Use(middleware.RequestTimeout(requestTimeout))
 
 	routes.Setup(r, deps)
 	return r, nil
