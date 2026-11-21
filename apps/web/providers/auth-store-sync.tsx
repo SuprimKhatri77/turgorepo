@@ -1,5 +1,6 @@
 "use client";
 import { useEffect } from "react";
+import { LOGGED_IN_COOKIE } from "@/lib/auth/cookies";
 import { useAuthStore } from "@/store/auth";
 import type { User } from "@repo/types";
 import { getApiV1AuthMe } from "@repo/api-client";
@@ -20,7 +21,7 @@ export function AuthStoreSync({ user }: { user: User | null }) {
       return;
     }
 
-    const isLoggedIn = document.cookie.includes("is_logged_in=true");
+    const isLoggedIn = document.cookie.includes(`${LOGGED_IN_COOKIE}=true`);
     if (!isLoggedIn) {
       clearUser();
       return;

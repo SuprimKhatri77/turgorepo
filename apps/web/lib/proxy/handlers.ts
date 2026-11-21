@@ -1,9 +1,11 @@
 import type { NextRequest, NextResponse } from "next/server";
 import { userFromAccessToken } from "@/lib/auth/claims";
+import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from "@/lib/auth/cookies";
+import { LOGIN_PATH } from "@/lib/auth/routes";
 import {
-  attemptRefresh,
-  attemptRefreshForAuthRoute,
   clearAuthCookies,
+  refreshForAuthRoute,
+  refreshForProtectedRoute,
 } from "./auth";
 import { continueRequest, redirectForRole, redirectTo } from "./redirects";
 
@@ -19,12 +21,12 @@ export async function handleAuthRoute(
     return response;
   }
 
-  const refreshToken = req.cookies.get("refresh_token")?.value;
+  const refreshToken = req.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
   if (!refreshToken) {
     return continueRequest(requestHeaders);
   }
 
-  const accessToken = req.cookies.get("access_token")?.value;
+  const accessToken = req.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
   if (accessToken) {
     const user = userFromAccessToken(accessToken);
     if (user) {
@@ -32,7 +34,7 @@ export async function handleAuthRoute(
     }
   }
 
-  return attemptRefreshForAuthRoute(refreshToken, req, requestHeaders);
+  return refreshForAuthRoute(refreshToken, req, requestHeaders);
 }
 
 export async function handleProtectedRoute(
@@ -40,11 +42,11 @@ export async function handleProtectedRoute(
   requestHeaders: Headers,
   requiredRoles: string[],
 ): Promise<NextResponse> {
-  const accessToken = req.cookies.get("access_token")?.value;
-  const refreshToken = req.cookies.get("refresh_token")?.value;
+  const accessToken = req.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
+  const refreshToken = req.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
 
   if (!refreshToken) {
-    return redirectTo(req, "/auth/login");
+    return redirectTo(req, LOGIN_PATH);
   }
 
   if (accessToken) {
@@ -57,5 +59,10 @@ export async function handleProtectedRoute(
     }
   }
 
-  return attemptRefresh(refreshToken, req, requestHeaders, requiredRoles);
+  return refreshForProtectedRoute(
+    refreshToken,
+    req,
+    requestHeaders,
+    requiredRoles,
+  );
 }

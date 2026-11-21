@@ -346,6 +346,8 @@ After changing Zod schemas or OpenAPI path definitions, run `bun run generate` a
 | `bun run build` | Build all apps and packages |
 | `bun run lint` | Lint JS/TS across the monorepo |
 | `bun run lint:go` | Lint the Go API with golangci-lint |
+| `bun run test:go` | Run the Go API tests |
+| `bun run test:web` | Run the web app tests (`bun test`, next to the code they test) |
 | `bun run check-types` | TypeScript type checking (includes `web`) |
 | `bun run generate` | Generate OpenAPI spec + axios + fetch `@repo/api-client` outputs |
 | `bun run generate:check` | Regenerate and fail if committed output is stale |
@@ -362,8 +364,8 @@ After changing Zod schemas or OpenAPI path definitions, run `bun run generate` a
 | `bun run docker:build:web` | Build the production web image (needs `NEXT_PUBLIC_API_URL` set) |
 | `bun run start` | Build and run both apps without Docker |
 | `bun run format` | Format with Prettier |
-| `bun run prepush` | Typecheck + lint:go + test:go + build (same as the pre-push hook) |
-| `bun run ci` | Full local CI: generate:check, sqlc:check, typecheck, lint, lint:go, test:go, build |
+| `bun run prepush` | Typecheck + lint:go + test:go + test:web + build (same as the pre-push hook) |
+| `bun run ci` | Full local CI: generate:check, sqlc:check, typecheck, lint, lint:go, test:go, test:web, build |
 
 Filter to a single app:
 
@@ -394,7 +396,7 @@ fix: validate user_id claim on logout
 chore: bump golangci-lint config
 ```
 
-**pre-push** — runs `bun run prepush` (`check-types` + `lint:go` + `test:go` + `build`) so the same quality gates as CI run before push. Skip hooks with `git push --no-verify` when you need to (use sparingly).
+**pre-push** — runs `bun run prepush` (`check-types` + `lint:go` + `test:go` + `test:web` + `build`) so the same quality gates as CI run before push. Skip hooks with `git push --no-verify` when you need to (use sparingly).
 
 ### GitHub Actions CI
 
