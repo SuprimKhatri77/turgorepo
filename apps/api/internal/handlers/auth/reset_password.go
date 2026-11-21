@@ -74,7 +74,7 @@ func ResetPassword(deps AccountEmailDeps) gin.HandlerFunc {
 
 		// Someone locked out by wrong passwords should be able to log in straight away.
 		ratelimit.ClearAccount(c, deps.Limiter, user.Email)
-		utils.ClearAuthCookies(c, deps.Config)
+		session.ClearCookies(c, deps.Config)
 
 		requestID := c.GetString(constants.RequestIDKey)
 		deps.Jobs.Go("password changed email", func(ctx context.Context) {

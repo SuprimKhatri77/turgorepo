@@ -17,7 +17,7 @@ import (
 func Logout(queries repository.AuthRepository, cfg *config.Config, revoker session.TokenRevoker) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		sessionID, userID, found := sessionFromCookies(c, cfg)
-		utils.ClearAuthCookies(c, cfg)
+		session.ClearCookies(c, cfg)
 
 		if !found {
 			rlog.Info(c, "logout without a valid session token")

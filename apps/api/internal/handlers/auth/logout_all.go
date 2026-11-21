@@ -43,7 +43,7 @@ func LogoutAll(queries repository.AuthRepository, cfg *config.Config, revoker se
 		}
 
 		revokeUserTokens(c, revoker, cfg, userIDFromContext)
-		utils.ClearAuthCookies(c, cfg)
+		session.ClearCookies(c, cfg)
 
 		rlog.Info(c, "logged out on all devices", "user_id", userIDFromContext)
 		c.JSON(http.StatusOK, types.APIResponse{

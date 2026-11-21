@@ -18,7 +18,7 @@ const revocationCheckTimeout = 200 * time.Millisecond
 
 func RequireAuth(cfg *config.Config, revoker session.TokenRevoker) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		accessToken, err := c.Cookie("access_token")
+		accessToken, err := c.Cookie(session.AccessTokenCookie)
 		if err != nil {
 			rlog.Warn(c, "missing access token")
 

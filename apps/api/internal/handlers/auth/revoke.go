@@ -18,12 +18,12 @@ const revokeTimeout = 500 * time.Millisecond
 // valid access token is the fallback, so a client that lost its refresh cookie can
 // still revoke the access token it holds.
 func sessionFromCookies(c *gin.Context, cfg *config.Config) (sessionID, userID string, found bool) {
-	if token, err := c.Cookie("refresh_token"); err == nil && token != "" {
+	if token, err := c.Cookie(session.RefreshTokenCookie); err == nil && token != "" {
 		if claims, err := session.ParseRefresh(token, cfg.JWTRefreshSecret); err == nil {
 			return claims.FamilyID, claims.UserID, true
 		}
 	}
-	if token, err := c.Cookie("access_token"); err == nil && token != "" {
+	if token, err := c.Cookie(session.AccessTokenCookie); err == nil && token != "" {
 		if claims, err := session.ParseAccess(token, cfg.JWTAccessSecret); err == nil {
 			return claims.SessionID, claims.UserID, true
 		}

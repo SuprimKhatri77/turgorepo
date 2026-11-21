@@ -9,7 +9,6 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
-	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 )
 
 func Issue(c *gin.Context, queries repository.AuthRepository, cfg *config.Config, user db.User) error {
@@ -36,39 +35,6 @@ func Issue(c *gin.Context, queries repository.AuthRepository, cfg *config.Config
 		return err
 	}
 
-	SetSessionCookies(c, cfg, tokens.AccessToken, tokens.RefreshToken)
+	SetCookies(c, cfg, tokens.AccessToken, tokens.RefreshToken)
 	return nil
-}
-
-func SetSessionCookies(c *gin.Context, cfg *config.Config, accessToken, refreshToken string) {
-	utils.SetAuthCookie(c, "access_token", accessToken, cfg.AccessCookieMaxAge(), cfg)
-	utils.SetAuthCookie(c, "refresh_token", refreshToken, cfg.RefreshCookieMaxAge(), cfg)
-	utils.SetPublicCookie(c, "is_logged_in", "true", cfg.RefreshCookieMaxAge(), cfg)
-}
-
-func SetAccessCookie(c *gin.Context, cfg *config.Config, accessToken string) {
-	utils.SetAuthCookie(c, "access_token", accessToken, cfg.AccessCookieMaxAge(), cfg)
-}
-
-// PublicUserResponse is the user shape returned by the API. It matches UserSchema
-// in @repo/types.
-type PublicUserResponse struct {
-	ID       string  `json:"id"`
-	Name     string  `json:"name"`
-	Email    string  `json:"email"`
-	Role     string  `json:"role"`
-	ImageURL *string `json:"image_url,omitempty"`
-}
-
-func PublicUser(user db.User) PublicUserResponse {
-	public := PublicUserResponse{
-		ID:    uuid.UUID(user.ID.Bytes).String(),
-		Name:  user.Name,
-		Email: user.Email,
-		Role:  user.Role,
-	}
-	if user.ImageUrl.Valid {
-		public.ImageURL = &user.ImageUrl.String
-	}
-	return public
 }

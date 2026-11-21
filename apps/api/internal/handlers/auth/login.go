@@ -125,7 +125,7 @@ func Login(
 		c.JSON(http.StatusOK, types.APIResponse{
 			Success: true,
 			Message: "logged in successfully",
-			Data:    session.PublicUser(user),
+			Data:    newUserResponse(user),
 		})
 	}
 }

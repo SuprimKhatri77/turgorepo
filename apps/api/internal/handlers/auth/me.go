@@ -9,7 +9,6 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	"github.com/suprimkhatri77/turgorepo/api/internal/packages/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
-	"github.com/suprimkhatri77/turgorepo/api/internal/session"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 )
@@ -60,7 +59,7 @@ func Me(queries repository.AuthRepository) gin.HandlerFunc {
 		c.JSON(http.StatusOK, types.APIResponse{
 			Success: true,
 			Message: "Valid session",
-			Data:    session.PublicUser(user),
+			Data:    newUserResponse(user),
 		})
 	}
 }
