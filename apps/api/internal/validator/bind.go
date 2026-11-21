@@ -1,20 +1,29 @@
 package validator
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	"github.com/suprimkhatri77/turgorepo/api/internal/packages/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 )
 
-// BindJSON binds and validates the request body into T.
+// BindJSON decodes the request body into T, trims its string fields (see
+// trimStrings) and validates it. Trimming comes first so " ada@example.com "
+// passes the email rule instead of being rejected for its spaces.
 // On failure it writes a 400 response and returns (nil, false).
 func BindJSON[T any](c *gin.Context) (*T, bool) {
 	var body T
-	if err := c.ShouldBindJSON(&body); err != nil {
+	err := json.NewDecoder(c.Request.Body).Decode(&body)
+	if err == nil {
+		trimStrings(&body)
+		err = binding.Validator.ValidateStruct(&body)
+	}
+	if err != nil {
 		var tooLarge *http.MaxBytesError
 		if errors.As(err, &tooLarge) {
 			rlog.Warn(c, "request body too large", "limit", tooLarge.Limit)

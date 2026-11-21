@@ -156,4 +156,14 @@ func TestRegister(t *testing.T) {
 			assert.Empty(t, mailer.sent, "%v", err)
 		}
 	})
+
+	t.Run("trims the name and email before validating them", func(t *testing.T) {
+		repo := &fakeRepo{}
+		w := serve(Register(registerDeps(repo, &fakeMailer{})), body("  Ada Lovelace ", " Ada@Example.com  ", testPassword))
+
+		require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+		require.NotNil(t, repo.created)
+		assert.Equal(t, "Ada Lovelace", repo.created.Name)
+		assert.Equal(t, "ada@example.com", repo.created.Email)
+	})
 }
