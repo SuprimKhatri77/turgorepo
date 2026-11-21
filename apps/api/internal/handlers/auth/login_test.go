@@ -132,4 +132,12 @@ func TestLogin(t *testing.T) {
 		assert.Equal(t, constants.InternalServerError, decode(t, w).Code)
 		assert.Empty(t, setCookies(w))
 	})
+
+	t.Run("an email with surrounding spaces logs in", func(t *testing.T) {
+		repo := &fakeRepo{user: testUser(t)}
+		w := serve(Login(repo, testConfig(), &fakeLimiter{}), `{"email":"  ada@example.com ","password":"`+testPassword+`"}`)
+
+		assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		assert.Equal(t, "ada@example.com", repo.lookedUp)
+	})
 }

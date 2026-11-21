@@ -9,6 +9,14 @@ const fitsBcrypt = (password: string) =>
 
 const passwordTooLong = `Password cannot exceed ${MAX_PASSWORD_BYTES} bytes`;
 
+// Trimmed before the format check, so a pasted address with a trailing space
+// passes. The API trims the same way before validating. preprocess keeps
+// `format: email` in the generated OpenAPI spec, which .pipe() would drop.
+const email = z.preprocess(
+  (value) => (typeof value === "string" ? value.trim() : value),
+  z.email("Enter a valid email address"),
+);
+
 const newPassword = z
   .string()
   .min(8, "Password must be at least 8 characters")
@@ -24,14 +32,14 @@ export const RegisterBodySchema = z.object({
       /^[\p{L}\p{M}]+(?:[ '’.\-]+[\p{L}\p{M}]+)*\.?$/u,
       "Name can only contain letters, spaces, and ' . -",
     ),
-  email: z.email("Enter a valid email address"),
+  email,
   password: newPassword,
 });
 
 export type RegisterBody = z.infer<typeof RegisterBodySchema>;
 
 export const LoginBodySchema = z.object({
-  email: z.email("Enter a valid email address"),
+  email,
   password: z
     .string()
     .min(1, "Password is required")
@@ -41,7 +49,7 @@ export const LoginBodySchema = z.object({
 export type LoginBody = z.infer<typeof LoginBodySchema>;
 
 export const ForgotPasswordBodySchema = z.object({
-  email: z.email("Enter a valid email address"),
+  email,
 });
 
 export type ForgotPasswordBody = z.infer<typeof ForgotPasswordBodySchema>;
@@ -60,7 +68,7 @@ export const VerifyEmailBodySchema = z.object({
 export type VerifyEmailBody = z.infer<typeof VerifyEmailBodySchema>;
 
 export const ResendVerificationBodySchema = z.object({
-  email: z.email("Enter a valid email address"),
+  email,
 });
 
 export type ResendVerificationBody = z.infer<
