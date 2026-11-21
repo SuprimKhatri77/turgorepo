@@ -2,12 +2,6 @@ import { z } from "zod";
 import { createApiResponseSchema } from "../api/response";
 import { UserSchema } from "../user/user";
 
-export const HealthResponseSchema = createApiResponseSchema().extend({
-  success: z.literal(true),
-});
-
-export type HealthResponse = z.infer<typeof HealthResponseSchema>;
-
 export const AuthUserResponseSchema = createApiResponseSchema(
   UserSchema,
 ).extend({
@@ -23,9 +17,8 @@ export const AuthSuccessResponseSchema = createApiResponseSchema().extend({
 
 export type AuthSuccessResponse = z.infer<typeof AuthSuccessResponseSchema>;
 
-export const MeResponseSchema = createApiResponseSchema(UserSchema).extend({
-  success: z.literal(true),
-  data: UserSchema,
-});
+// The same shape as AuthUserResponseSchema. It keeps its own name so the
+// OpenAPI spec documents /auth/me separately.
+export const MeResponseSchema = AuthUserResponseSchema;
 
 export type MeResponse = z.infer<typeof MeResponseSchema>;
