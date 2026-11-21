@@ -49,7 +49,7 @@ func cleanupExpired(store Store) {
 	for _, job := range jobs {
 		result, err := job.run(ctx)
 		if err != nil {
-			slog.Error("failed to delete expired rows", "table", job.name, "err", err)
+			slog.Error("failed to delete expired rows", "table", job.name, "error", err)
 			continue
 		}
 		slog.Info("deleted expired rows", "table", job.name, "count", result.RowsAffected())

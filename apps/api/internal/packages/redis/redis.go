@@ -59,7 +59,7 @@ func ConnectWithRetry(ctx context.Context, redisURL string, maxRetries int) (*Cl
 		if err == nil {
 			return client, nil
 		}
-		slog.Warn("failed to connect to redis, retrying...", "attempt", i+1, "max", maxRetries, "err", err)
+		slog.Warn("failed to connect to redis, retrying...", "attempt", i+1, "max", maxRetries, "error", err)
 		if i+1 == maxRetries {
 			break
 		}

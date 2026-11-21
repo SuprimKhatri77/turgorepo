@@ -84,7 +84,7 @@ func Register(deps AccountEmailDeps) gin.HandlerFunc {
 		requestID := c.GetString(constants.RequestIDKey)
 		deps.Jobs.Go("verification email", func(ctx context.Context) {
 			if err := sendVerificationEmail(ctx, deps, user); err != nil {
-				slog.Error("failed to send verification email", "request_id", requestID, "err", err)
+				slog.Error("failed to send verification email", "request_id", requestID, "error", err)
 			}
 		})
 

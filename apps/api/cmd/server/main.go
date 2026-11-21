@@ -13,13 +13,13 @@ func main() {
 
 	a, err := app.New(ctx)
 	if err != nil {
-		slog.Error("startup failed", "err", err)
+		slog.Error("startup failed", "error", err)
 		os.Exit(1)
 	}
 	defer a.Close()
 
 	if err := a.Run(); err != nil {
-		slog.Error("server run failed", "err", err)
+		slog.Error("server run failed", "error", err)
 		os.Exit(1)
 	}
 }

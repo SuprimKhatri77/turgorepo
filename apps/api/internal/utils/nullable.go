@@ -6,6 +6,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+// The helpers below turn request values into pgtype values for sqlc query
+// params. None is called yet: they're starters for the first CRUD feature.
+// PtrToNullableDate and ToNullableDate do the same thing despite the names;
+// keep one when you start using them.
+
 func ToNullableUUID(id string) pgtype.UUID {
 	if id == "" {
 		return pgtype.UUID{Valid: false}

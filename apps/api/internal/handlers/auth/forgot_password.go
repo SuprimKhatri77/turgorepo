@@ -41,7 +41,7 @@ func ForgotPassword(deps AccountEmailDeps) gin.HandlerFunc {
 
 		deps.Jobs.Go("password reset email", func(ctx context.Context) {
 			if err := sendPasswordResetEmail(ctx, deps, emailAddress); err != nil {
-				slog.Error("failed to send password reset email", "request_id", requestID, "err", err)
+				slog.Error("failed to send password reset email", "request_id", requestID, "error", err)
 			}
 		})
 

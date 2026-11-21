@@ -40,7 +40,7 @@ func buildRouter(
 	r.Use(middleware.RequestID())
 	r.Use(middleware.Recovery())
 	if cfg.IsRelease() {
-		r.Use(middleware.RequestLogger())
+		r.Use(middleware.RequestLogger(routes.HealthPath))
 	} else {
 		r.Use(gin.Logger())
 	}

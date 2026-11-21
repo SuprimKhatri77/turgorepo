@@ -39,3 +39,7 @@ func Warn(c *gin.Context, msg string, extra ...any) {
 func Info(c *gin.Context, msg string, extra ...any) {
 	slog.Info(msg, attrs(c, extra...)...)
 }
+
+func Debug(c *gin.Context, msg string, extra ...any) {
+	slog.Debug(msg, attrs(c, extra...)...)
+}

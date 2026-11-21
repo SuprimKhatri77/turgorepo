@@ -11,6 +11,11 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const (
+	minJWTSecretBytes = 32
+	defaultSMTPPort   = 587
+)
+
 // Config holds application configuration from environment.
 type Config struct {
 	Port                 int
@@ -41,8 +46,10 @@ type Config struct {
 	RefreshReuseWindow   time.Duration
 }
 
-// Load loads .env from the current directory (if present) then reads configuration from environment variables.
-// No hardcoded URLs: PORT defaults to 5000 if unset; GIN_MODE defaults to "debug"; DATABASE_URL must be set in .env or env.
+// Load reads configuration from environment variables. For local runs it first
+// loads the repo's .env.local (../../ from apps/api) if it exists; variables that
+// are already set win. PORT defaults to 5000 and GIN_MODE to "debug". Validate
+// checks what's required.
 func Load() (*Config, error) {
 	_ = godotenv.Load("../../.env.local")
 
@@ -142,11 +149,6 @@ func splitList(value string) []string {
 	}
 	return items
 }
-
-const (
-	minJWTSecretBytes = 32
-	defaultSMTPPort   = 587
-)
 
 // IsRelease reports whether the API is running in production mode.
 func (c *Config) IsRelease() bool {

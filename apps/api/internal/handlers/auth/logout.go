@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -43,34 +42,5 @@ func Logout(queries repository.AuthRepository, cfg *config.Config, revoker sessi
 			Success: true,
 			Message: "Logged out successfully",
 		})
-	}
-}
-
-// sessionFromCookies finds the session to end. The refresh token names it, and a
-// valid access token is the fallback, so a client that lost its refresh cookie can
-// still revoke the access token it holds.
-func sessionFromCookies(c *gin.Context, cfg *config.Config) (sessionID, userID string, found bool) {
-	if token, err := c.Cookie("refresh_token"); err == nil && token != "" {
-		if claims, err := session.ParseRefresh(token, cfg.JWTRefreshSecret); err == nil {
-			return claims.FamilyID, claims.UserID, true
-		}
-	}
-	if token, err := c.Cookie("access_token"); err == nil && token != "" {
-		if claims, err := session.ParseAccess(token, cfg.JWTAccessSecret); err == nil {
-			return claims.SessionID, claims.UserID, true
-		}
-	}
-	return "", "", false
-}
-
-// revokeSessionTokens rejects the session's access tokens until they expire. A
-// failure is logged rather than returned: the session is already revoked in the
-// database, so its tokens can't be refreshed and expire within minutes.
-func revokeSessionTokens(c *gin.Context, revoker session.TokenRevoker, cfg *config.Config, sessionID string) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), revokeTimeout)
-	defer cancel()
-
-	if err := revoker.RevokeSession(ctx, sessionID, cfg.AccessTokenTTL); err != nil {
-		rlog.Error(c, "failed to revoke session access tokens", err, "session_id", sessionID)
 	}
 }

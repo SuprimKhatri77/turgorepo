@@ -25,7 +25,7 @@ func New(cloudName, apiKey, apiSecret string) (*Client, error) {
 	return &Client{cld: cld}, nil
 }
 
-func (c *Client) UploadImage(ctx context.Context, file interface{}, folder string) (string, string, error) {
+func (c *Client) UploadImage(ctx context.Context, file any, folder string) (string, string, error) {
 	resp, err := c.cld.Upload.Upload(ctx, file, uploader.UploadParams{
 		Folder:       folder,
 		ResourceType: "image",
@@ -33,7 +33,7 @@ func (c *Client) UploadImage(ctx context.Context, file interface{}, folder strin
 	if err != nil {
 		return "", "", err
 	}
-	slog.Info("cloudinary response", "full", fmt.Sprintf("%+v", resp))
+	slog.Debug("cloudinary response", "full", fmt.Sprintf("%+v", resp))
 
 	return resp.SecureURL, resp.PublicID, nil
 }

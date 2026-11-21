@@ -68,7 +68,7 @@ func RequireAuth(cfg *config.Config, revoker session.TokenRevoker) gin.HandlerFu
 			return
 		}
 
-		rlog.Info(c, "authenticated request", "user_id", claims.UserID, "role", claims.Role)
+		rlog.Debug(c, "authenticated request", "user_id", claims.UserID, "role", claims.Role)
 
 		c.Set(constants.UserIDKey, claims.UserID)
 		c.Set(constants.RoleKey, claims.Role)

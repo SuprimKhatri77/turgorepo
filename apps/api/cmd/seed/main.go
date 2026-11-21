@@ -12,7 +12,7 @@ func main() {
 	ctx := context.Background()
 
 	if err := app.Seed(ctx); err != nil {
-		slog.Error("seed failed", "err", err)
+		slog.Error("seed failed", "error", err)
 		os.Exit(1)
 	}
 }

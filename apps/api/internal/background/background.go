@@ -23,7 +23,7 @@ func (r *Runner) Go(name string, job func(ctx context.Context)) {
 	r.wg.Go(func() {
 		defer func() {
 			if err := recover(); err != nil {
-				slog.Error("background job panicked", "job", name, "err", err, "stack", string(debug.Stack()))
+				slog.Error("background job panicked", "job", name, "error", err, "stack", string(debug.Stack()))
 			}
 		}()
 
