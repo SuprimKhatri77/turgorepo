@@ -3,13 +3,9 @@
 import { useState, type SubmitEvent } from "react";
 import { ResendVerificationBodySchema } from "@repo/types";
 import { Button } from "@/components/ui/button";
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
-import { inputClassName, toFieldErrors } from "./auth-form";
+import { FieldGroup } from "@/components/ui/field";
+import { TextField } from "@/components/form/text-field";
+import { toFieldErrors } from "@/modules/auth/lib/form-errors";
 import { useResendVerification } from "../hooks/mutations/use-resend-verification";
 
 /**
@@ -48,20 +44,15 @@ export function ResendVerification({ email }: { email?: string | null }) {
     <form onSubmit={handleSubmit} noValidate>
       <FieldGroup>
         {!email && (
-          <Field data-invalid={Boolean(emailError)}>
-            <FieldLabel htmlFor="email">Email</FieldLabel>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              className={inputClassName}
-              value={typedEmail}
-              onChange={(event) => setTypedEmail(event.target.value)}
-              aria-invalid={Boolean(emailError)}
-            />
-            <FieldError>{emailError}</FieldError>
-          </Field>
+          <TextField
+            id="email"
+            label="Email"
+            type="email"
+            autoComplete="email"
+            value={typedEmail}
+            onChange={setTypedEmail}
+            error={emailError}
+          />
         )}
         <Button
           className="w-full"

@@ -1,20 +1,13 @@
 "use client";
 
 import { useState, type SubmitEvent } from "react";
-import Link from "next/link";
 import { ForgotPasswordBodySchema } from "@repo/types";
 import { Button } from "@/components/ui/button";
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
-import { inputClassName, toFieldErrors } from "./auth-form";
+import { FieldGroup } from "@/components/ui/field";
+import { TextField } from "@/components/form/text-field";
+import { toFieldErrors } from "@/modules/auth/lib/form-errors";
+import { AuthCard, AuthCardForm, AuthCardLink } from "./auth-card";
 import { useForgotPassword } from "../hooks/mutations/use-forgot-password";
-
-const cardClassName =
-  "w-full max-w-sm border border-border bg-card p-6 text-card-foreground shadow-sm";
 
 export function ForgotPasswordForm() {
   const forgotPassword = useForgotPassword();
@@ -36,26 +29,19 @@ export function ForgotPasswordForm() {
 
   if (forgotPassword.isSuccess) {
     return (
-      <div className={cardClassName}>
+      <AuthCard>
         <h1 className="text-xl font-semibold">Check your email</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           If {email} has an account, we&apos;ve sent a link to reset the
           password. It expires in 1 hour.
         </p>
-        <p className="mt-5 text-center text-sm">
-          <Link
-            className="font-medium underline underline-offset-4"
-            href="/auth/login"
-          >
-            Back to sign in
-          </Link>
-        </p>
-      </div>
+        <AuthCardLink href="/auth/login">Back to sign in</AuthCardLink>
+      </AuthCard>
     );
   }
 
   return (
-    <form className={cardClassName} onSubmit={handleSubmit} noValidate>
+    <AuthCardForm onSubmit={handleSubmit}>
       <div className="mb-6 space-y-1">
         <h1 className="text-xl font-semibold">Forgot your password?</h1>
         <p className="text-sm text-muted-foreground">
@@ -64,20 +50,15 @@ export function ForgotPasswordForm() {
       </div>
 
       <FieldGroup>
-        <Field data-invalid={Boolean(emailError)}>
-          <FieldLabel htmlFor="email">Email</FieldLabel>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            className={inputClassName}
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            aria-invalid={Boolean(emailError)}
-          />
-          <FieldError>{emailError}</FieldError>
-        </Field>
+        <TextField
+          id="email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={setEmail}
+          error={emailError}
+        />
 
         <Button
           className="w-full"
@@ -88,14 +69,7 @@ export function ForgotPasswordForm() {
         </Button>
       </FieldGroup>
 
-      <p className="mt-5 text-center text-sm text-muted-foreground">
-        <Link
-          className="font-medium text-foreground underline underline-offset-4"
-          href="/auth/login"
-        >
-          Back to sign in
-        </Link>
-      </p>
-    </form>
+      <AuthCardLink href="/auth/login">Back to sign in</AuthCardLink>
+    </AuthCardForm>
   );
 }

@@ -1,62 +1,39 @@
 "use client";
 
-import { useEffect, useState, type SubmitEvent } from "react";
-import Link from "next/link";
+import { useState, type SubmitEvent } from "react";
 import { ResetPasswordBodySchema } from "@repo/types";
 import { Button } from "@/components/ui/button";
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
+import { FieldGroup } from "@/components/ui/field";
+import { TextField } from "@/components/form/text-field";
 import { getApiError } from "@/lib/api/errors";
-import { mapFieldErrors } from "@/modules/auth/lib/form-errors";
-import { inputClassName, toFieldErrors } from "./auth-form";
+import { mapFieldErrors, toFieldErrors } from "@/modules/auth/lib/form-errors";
+import { AuthCard, AuthCardForm, AuthCardLink } from "./auth-card";
 import { useResetPassword } from "../hooks/mutations/use-reset-password";
-
-const cardClassName =
-  "w-full max-w-sm border border-border bg-card p-6 text-card-foreground shadow-sm";
-
-function tokenFromUrl(): string | null {
-  return new URLSearchParams(window.location.hash.slice(1)).get("token");
-}
+import { useFragmentToken } from "../hooks/use-fragment-token";
 
 function InvalidLink() {
   return (
-    <div className={cardClassName}>
+    <AuthCard>
       <h1 className="text-xl font-semibold">This link doesn&apos;t work</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         It may have expired or already been used. Request a new one to reset
         your password.
       </p>
-      <p className="mt-5 text-center text-sm">
-        <Link
-          className="font-medium underline underline-offset-4"
-          href="/auth/forgot-password"
-        >
-          Request a new link
-        </Link>
-      </p>
-    </div>
+      <AuthCardLink href="/auth/forgot-password">
+        Request a new link
+      </AuthCardLink>
+    </AuthCard>
   );
 }
 
 /** Reads window.location, so it's loaded without server rendering. */
 export function ResetPasswordForm() {
   const resetPassword = useResetPassword();
-  const [token] = useState(tokenFromUrl);
+  const token = useFragmentToken();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [linkInvalid, setLinkInvalid] = useState(false);
-
-  // Keeps the token out of the address bar and browser history.
-  useEffect(() => {
-    if (window.location.hash) {
-      window.history.replaceState(null, "", window.location.pathname);
-    }
-  }, []);
 
   if (!token || linkInvalid) {
     return <InvalidLink />;
@@ -94,7 +71,7 @@ export function ResetPasswordForm() {
   }
 
   return (
-    <form className={cardClassName} onSubmit={handleSubmit} noValidate>
+    <AuthCardForm onSubmit={handleSubmit}>
       <div className="mb-6 space-y-1">
         <h1 className="text-xl font-semibold">Set a new password</h1>
         <p className="text-sm text-muted-foreground">
@@ -104,37 +81,25 @@ export function ResetPasswordForm() {
       </div>
 
       <FieldGroup>
-        <Field data-invalid={Boolean(fieldErrors.password)}>
-          <FieldLabel htmlFor="password">New password</FieldLabel>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            className={inputClassName}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            aria-invalid={Boolean(fieldErrors.password)}
-          />
-          <FieldError>{fieldErrors.password}</FieldError>
-        </Field>
+        <TextField
+          id="password"
+          label="New password"
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={setPassword}
+          error={fieldErrors.password}
+        />
 
-        <Field data-invalid={Boolean(fieldErrors.confirmPassword)}>
-          <FieldLabel htmlFor="confirmPassword">
-            Confirm new password
-          </FieldLabel>
-          <input
-            id="confirmPassword"
-            name="confirmPassword"
-            type="password"
-            autoComplete="new-password"
-            className={inputClassName}
-            value={confirmPassword}
-            onChange={(event) => setConfirmPassword(event.target.value)}
-            aria-invalid={Boolean(fieldErrors.confirmPassword)}
-          />
-          <FieldError>{fieldErrors.confirmPassword}</FieldError>
-        </Field>
+        <TextField
+          id="confirmPassword"
+          label="Confirm new password"
+          type="password"
+          autoComplete="new-password"
+          value={confirmPassword}
+          onChange={setConfirmPassword}
+          error={fieldErrors.confirmPassword}
+        />
 
         <Button
           className="w-full"
@@ -144,6 +109,6 @@ export function ResetPasswordForm() {
           {resetPassword.isPending ? "Saving…" : "Reset password"}
         </Button>
       </FieldGroup>
-    </form>
+    </AuthCardForm>
   );
 }

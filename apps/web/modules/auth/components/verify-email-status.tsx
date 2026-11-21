@@ -1,22 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { getApiError } from "@/lib/api/errors";
+import { AuthCard, AuthCardLink } from "./auth-card";
 import { ResendVerification } from "./resend-verification";
 import { useVerifyEmail } from "../hooks/mutations/use-verify-email";
-
-const cardClassName =
-  "w-full max-w-sm border border-border bg-card p-6 text-card-foreground shadow-sm";
-
-function tokenFromUrl(): string | null {
-  return new URLSearchParams(window.location.hash.slice(1)).get("token");
-}
+import { useFragmentToken } from "../hooks/use-fragment-token";
 
 function InvalidLink() {
   return (
-    <div className={cardClassName}>
+    <AuthCard>
       <h1 className="text-xl font-semibold">This link doesn&apos;t work</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         It may have expired, already been used, or been replaced by a newer
@@ -25,7 +19,7 @@ function InvalidLink() {
       <div className="mt-6">
         <ResendVerification />
       </div>
-    </div>
+    </AuthCard>
   );
 }
 
@@ -36,15 +30,11 @@ function InvalidLink() {
  */
 export function VerifyEmailStatus() {
   const verify = useVerifyEmail();
-  const [token] = useState(tokenFromUrl);
+  const token = useFragmentToken();
   // Development runs effects twice, and a token only works once.
   const sent = useRef(false);
 
   useEffect(() => {
-    // Keeps the token out of the address bar and browser history.
-    if (window.location.hash) {
-      window.history.replaceState(null, "", window.location.pathname);
-    }
     if (token && !sent.current) {
       sent.current = true;
       verify.mutate({ token });
@@ -60,7 +50,7 @@ export function VerifyEmailStatus() {
       return <InvalidLink />;
     }
     return (
-      <div className={cardClassName}>
+      <AuthCard>
         <h1 className="text-xl font-semibold">Something went wrong</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           We couldn&apos;t verify your email just now. Your link still works.
@@ -72,32 +62,25 @@ export function VerifyEmailStatus() {
         >
           Try again
         </Button>
-      </div>
+      </AuthCard>
     );
   }
 
   if (verify.isSuccess) {
     return (
-      <div className={cardClassName}>
+      <AuthCard>
         <h1 className="text-xl font-semibold">Email verified</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Your account is ready. Sign in to continue.
         </p>
-        <p className="mt-5 text-center text-sm">
-          <Link
-            className="font-medium underline underline-offset-4"
-            href="/auth/login"
-          >
-            Sign in
-          </Link>
-        </p>
-      </div>
+        <AuthCardLink href="/auth/login">Sign in</AuthCardLink>
+      </AuthCard>
     );
   }
 
   return (
-    <div className={cardClassName} role="status">
+    <AuthCard role="status">
       <h1 className="text-xl font-semibold">Verifying your email…</h1>
-    </div>
+    </AuthCard>
   );
 }
