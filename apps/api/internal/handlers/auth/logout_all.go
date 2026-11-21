@@ -6,9 +6,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
+	"github.com/suprimkhatri77/turgorepo/api/internal/response"
 	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/session"
-	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 )
 
@@ -21,11 +21,7 @@ func LogoutAll(queries Store, cfg *config.Config, revoker session.TokenRevoker) 
 		userID, err := utils.ConvertToUUID(userIDFromContext)
 		if err != nil {
 			rlog.Error(c, "invalid user_id in context", err, "user_id", userIDFromContext)
-			c.JSON(http.StatusBadRequest, types.APIResponse{
-				Success: false,
-				Message: "Invalid user ID format",
-				Code:    constants.ValidationFailed,
-			})
+			response.Error(c, http.StatusBadRequest, constants.ValidationFailed, "Invalid user ID format")
 			return
 		}
 
@@ -33,11 +29,7 @@ func LogoutAll(queries Store, cfg *config.Config, revoker session.TokenRevoker) 
 		// is told, rather than believing their other devices are logged out.
 		if err := queries.RevokeAllUserSessions(c.Request.Context(), userID); err != nil {
 			rlog.Error(c, "failed to revoke all sessions", err, "user_id", userIDFromContext)
-			c.JSON(http.StatusInternalServerError, types.APIResponse{
-				Success: false,
-				Message: "Failed to log out of all devices",
-				Code:    constants.InternalServerError,
-			})
+			response.Internal(c)
 			return
 		}
 
@@ -45,9 +37,6 @@ func LogoutAll(queries Store, cfg *config.Config, revoker session.TokenRevoker) 
 		session.ClearCookies(c, cfg)
 
 		rlog.Info(c, "logged out on all devices", "user_id", userIDFromContext)
-		c.JSON(http.StatusOK, types.APIResponse{
-			Success: true,
-			Message: "Logged out on all devices",
-		})
+		response.OK(c, http.StatusOK, "Logged out on all devices", nil)
 	}
 }

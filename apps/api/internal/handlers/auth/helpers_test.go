@@ -18,8 +18,8 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 	"github.com/suprimkhatri77/turgorepo/api/internal/email"
+	"github.com/suprimkhatri77/turgorepo/api/internal/response"
 	"github.com/suprimkhatri77/turgorepo/api/internal/session"
-	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -79,9 +79,9 @@ func serve(handler gin.HandlerFunc, body string, cookies ...*http.Cookie) *httpt
 	return w
 }
 
-func decode(t *testing.T, w *httptest.ResponseRecorder) types.APIResponse {
+func decode(t *testing.T, w *httptest.ResponseRecorder) response.Body {
 	t.Helper()
-	var res types.APIResponse
+	var res response.Body
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res), "decode %q", w.Body.String())
 	return res
 }

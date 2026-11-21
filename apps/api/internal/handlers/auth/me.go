@@ -7,8 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
+	"github.com/suprimkhatri77/turgorepo/api/internal/response"
 	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
-	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 )
 
@@ -22,11 +22,7 @@ func Me(queries Store) gin.HandlerFunc {
 		if err != nil {
 			rlog.Error(c, "invalid user_id in context", err, "user_id", userIDFromContext)
 
-			c.JSON(http.StatusBadRequest, types.APIResponse{
-				Success: false,
-				Message: "Invalid user ID format",
-				Code:    constants.ValidationFailed,
-			})
+			response.Error(c, http.StatusBadRequest, constants.ValidationFailed, "Invalid user ID format")
 			return
 		}
 
@@ -35,30 +31,18 @@ func Me(queries Store) gin.HandlerFunc {
 			if errors.Is(err, pgx.ErrNoRows) {
 				rlog.Warn(c, "user not found", "user_id", userID)
 
-				c.JSON(http.StatusNotFound, types.APIResponse{
-					Success: false,
-					Message: "User not found",
-					Code:    constants.UserNotFound,
-				})
+				response.Error(c, http.StatusNotFound, constants.UserNotFound, "User not found")
 				return
 			}
 
 			rlog.Error(c, "failed to fetch user", err, "user_id", userID)
 
-			c.JSON(http.StatusInternalServerError, types.APIResponse{
-				Success: false,
-				Message: "Failed to fetch user",
-				Code:    constants.InternalServerError,
-			})
+			response.Internal(c)
 			return
 		}
 
 		rlog.Info(c, "fetched current user", "user_id", userID, "role", user.Role)
 
-		c.JSON(http.StatusOK, types.APIResponse{
-			Success: true,
-			Message: "Valid session",
-			Data:    newUserResponse(user),
-		})
+		response.OK(c, http.StatusOK, "Valid session", newUserResponse(user))
 	}
 }

@@ -8,14 +8,14 @@ import (
 	"unicode"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/suprimkhatri77/turgorepo/api/internal/types"
+	"github.com/suprimkhatri77/turgorepo/api/internal/response"
 )
 
-func Parse(err error, obj any) []types.AppError {
+func Parse(err error, obj any) []response.FieldError {
 	var ve validator.ValidationErrors
 
 	if !errors.As(err, &ve) {
-		return []types.AppError{
+		return []response.FieldError{
 			{
 				Code:    "INVALID_REQUEST",
 				Message: "Invalid request body",
@@ -23,14 +23,14 @@ func Parse(err error, obj any) []types.AppError {
 		}
 	}
 
-	var errs []types.AppError
+	var errs []response.FieldError
 
 	for _, fe := range ve {
 		field := getStructField(obj, fe)
 		jsonField := jsonName(field, fe)
 		label := fieldLabel(field, jsonField)
 
-		errs = append(errs, types.AppError{
+		errs = append(errs, response.FieldError{
 			Code:    mapTagToCode(fe.Tag()),
 			Field:   jsonField,
 			Message: messageFor(fe, field, label),

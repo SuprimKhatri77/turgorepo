@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
+	"github.com/suprimkhatri77/turgorepo/api/internal/response"
 	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/session"
-	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 )
 
@@ -20,10 +20,7 @@ func Logout(queries Store, cfg *config.Config, revoker session.TokenRevoker) gin
 
 		if !found {
 			rlog.Info(c, "logout without a valid session token")
-			c.JSON(http.StatusOK, types.APIResponse{
-				Success: true,
-				Message: "Logged out successfully",
-			})
+			response.OK(c, http.StatusOK, "Logged out successfully", nil)
 			return
 		}
 
@@ -37,9 +34,6 @@ func Logout(queries Store, cfg *config.Config, revoker session.TokenRevoker) gin
 		revokeSessionTokens(c, revoker, cfg, sessionID)
 
 		rlog.Info(c, "user logged out", "user_id", userID, "session_id", sessionID)
-		c.JSON(http.StatusOK, types.APIResponse{
-			Success: true,
-			Message: "Logged out successfully",
-		})
+		response.OK(c, http.StatusOK, "Logged out successfully", nil)
 	}
 }

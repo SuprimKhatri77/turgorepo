@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
+	"github.com/suprimkhatri77/turgorepo/api/internal/response"
 	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
-	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 )
 
 func RequireRole(roles ...string) gin.HandlerFunc {
@@ -22,11 +22,6 @@ func RequireRole(roles ...string) gin.HandlerFunc {
 
 		rlog.Warn(c, "insufficient permissions", "role", role)
 
-		c.JSON(http.StatusForbidden, types.APIResponse{
-			Success: false,
-			Message: "Insufficient permissions",
-			Code:    constants.Forbidden,
-		})
-		c.Abort()
+		response.Abort(c, http.StatusForbidden, constants.Forbidden, "Insufficient permissions")
 	}
 }

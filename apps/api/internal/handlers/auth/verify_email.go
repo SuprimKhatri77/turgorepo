@@ -16,9 +16,9 @@ import (
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 	"github.com/suprimkhatri77/turgorepo/api/internal/email"
 	"github.com/suprimkhatri77/turgorepo/api/internal/ratelimit"
+	"github.com/suprimkhatri77/turgorepo/api/internal/response"
 	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/session"
-	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 	"github.com/suprimkhatri77/turgorepo/api/internal/validator"
 )
@@ -43,28 +43,17 @@ func VerifyEmail(deps AccountEmailDeps) gin.HandlerFunc {
 		user, err := deps.Queries.VerifyEmailWithToken(c.Request.Context(), session.HashToken(req.Token))
 		if errors.Is(err, pgx.ErrNoRows) {
 			rlog.Warn(c, "invalid or expired email verification token")
-			c.JSON(http.StatusBadRequest, types.APIResponse{
-				Success: false,
-				Message: "This verification link is invalid or has expired",
-				Code:    constants.InvalidVerificationToken,
-			})
+			response.Error(c, http.StatusBadRequest, constants.InvalidVerificationToken, "This verification link is invalid or has expired")
 			return
 		}
 		if err != nil {
 			rlog.Error(c, "failed to verify email", err)
-			c.JSON(http.StatusInternalServerError, types.APIResponse{
-				Success: false,
-				Message: "Failed to process request",
-				Code:    constants.InternalServerError,
-			})
+			response.Internal(c)
 			return
 		}
 
 		rlog.Info(c, "email verified", "user_id", user.ID)
-		c.JSON(http.StatusOK, types.APIResponse{
-			Success: true,
-			Message: "Your email is verified. Please sign in",
-		})
+		response.OK(c, http.StatusOK, "Your email is verified. Please sign in", nil)
 	}
 }
 
@@ -87,10 +76,7 @@ func ResendVerification(deps AccountEmailDeps) gin.HandlerFunc {
 			}
 		})
 
-		c.JSON(http.StatusOK, types.APIResponse{
-			Success: true,
-			Message: "If that email has an unverified account, we've sent a new link",
-		})
+		response.OK(c, http.StatusOK, "If that email has an unverified account, we've sent a new link", nil)
 	}
 }
 

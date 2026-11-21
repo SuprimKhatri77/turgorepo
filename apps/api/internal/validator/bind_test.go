@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
-	"github.com/suprimkhatri77/turgorepo/api/internal/types"
+	"github.com/suprimkhatri77/turgorepo/api/internal/response"
 )
 
 type bindRequest struct {
@@ -50,7 +50,7 @@ func TestBindJSON(t *testing.T) {
 
 		assert.Nil(t, req)
 		require.Equal(t, http.StatusBadRequest, w.Code)
-		var res types.APIResponse
+		var res response.Body
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &res))
 		assert.Equal(t, constants.ValidationFailed, res.Code)
 		if assert.Len(t, res.Errors, 1) {

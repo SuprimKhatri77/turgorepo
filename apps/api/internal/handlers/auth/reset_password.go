@@ -12,9 +12,9 @@ import (
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 	"github.com/suprimkhatri77/turgorepo/api/internal/email"
 	"github.com/suprimkhatri77/turgorepo/api/internal/ratelimit"
+	"github.com/suprimkhatri77/turgorepo/api/internal/response"
 	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/session"
-	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 	"github.com/suprimkhatri77/turgorepo/api/internal/validator"
 	"golang.org/x/crypto/bcrypt"
@@ -37,11 +37,7 @@ func ResetPassword(deps AccountEmailDeps) gin.HandlerFunc {
 		passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
 			rlog.Error(c, "failed to hash password", err)
-			c.JSON(http.StatusInternalServerError, types.APIResponse{
-				Success: false,
-				Message: "Failed to process request",
-				Code:    constants.InternalServerError,
-			})
+			response.Internal(c)
 			return
 		}
 
@@ -51,20 +47,12 @@ func ResetPassword(deps AccountEmailDeps) gin.HandlerFunc {
 		})
 		if errors.Is(err, pgx.ErrNoRows) {
 			rlog.Warn(c, "invalid or expired password reset token")
-			c.JSON(http.StatusBadRequest, types.APIResponse{
-				Success: false,
-				Message: "This reset link is invalid or has expired",
-				Code:    constants.InvalidResetToken,
-			})
+			response.Error(c, http.StatusBadRequest, constants.InvalidResetToken, "This reset link is invalid or has expired")
 			return
 		}
 		if err != nil {
 			rlog.Error(c, "failed to reset password", err)
-			c.JSON(http.StatusInternalServerError, types.APIResponse{
-				Success: false,
-				Message: "Failed to process request",
-				Code:    constants.InternalServerError,
-			})
+			response.Internal(c)
 			return
 		}
 
@@ -83,10 +71,7 @@ func ResetPassword(deps AccountEmailDeps) gin.HandlerFunc {
 			}
 		})
 
-		c.JSON(http.StatusOK, types.APIResponse{
-			Success: true,
-			Message: "Your password has been reset. Please sign in",
-		})
+		response.OK(c, http.StatusOK, "Your password has been reset. Please sign in", nil)
 	}
 }
 

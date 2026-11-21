@@ -16,8 +16,8 @@ import (
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 	"github.com/suprimkhatri77/turgorepo/api/internal/email"
 	"github.com/suprimkhatri77/turgorepo/api/internal/ratelimit"
+	"github.com/suprimkhatri77/turgorepo/api/internal/response"
 	"github.com/suprimkhatri77/turgorepo/api/internal/session"
-	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 	"github.com/suprimkhatri77/turgorepo/api/internal/validator"
 )
@@ -45,10 +45,7 @@ func ForgotPassword(deps AccountEmailDeps) gin.HandlerFunc {
 			}
 		})
 
-		c.JSON(http.StatusOK, types.APIResponse{
-			Success: true,
-			Message: "If that email has an account, we've sent a reset link",
-		})
+		response.OK(c, http.StatusOK, "If that email has an account, we've sent a reset link", nil)
 	}
 }
 

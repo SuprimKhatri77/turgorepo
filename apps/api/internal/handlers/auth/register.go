@@ -10,8 +10,8 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
+	"github.com/suprimkhatri77/turgorepo/api/internal/response"
 	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
-	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 	"github.com/suprimkhatri77/turgorepo/api/internal/validator"
 	"golang.org/x/crypto/bcrypt"
@@ -40,11 +40,7 @@ func Register(deps AccountEmailDeps) gin.HandlerFunc {
 		if err != nil {
 			rlog.Error(c, "failed to hash password", err)
 
-			c.JSON(http.StatusInternalServerError, types.APIResponse{
-				Success: false,
-				Message: "Failed to process request",
-				Code:    constants.InternalServerError,
-			})
+			response.Internal(c)
 			return
 		}
 
@@ -60,21 +56,13 @@ func Register(deps AccountEmailDeps) gin.HandlerFunc {
 			if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 				rlog.Warn(c, "user already exists", "email", req.Email)
 
-				c.JSON(http.StatusConflict, types.APIResponse{
-					Success: false,
-					Message: "User already exists",
-					Code:    constants.UserAlreadyExists,
-				})
+				response.Error(c, http.StatusConflict, constants.UserAlreadyExists, "User already exists")
 				return
 			}
 
 			rlog.Error(c, "failed to create user", err)
 
-			c.JSON(http.StatusInternalServerError, types.APIResponse{
-				Success: false,
-				Message: "Failed to process request",
-				Code:    constants.InternalServerError,
-			})
+			response.Internal(c)
 			return
 		}
 
@@ -88,9 +76,6 @@ func Register(deps AccountEmailDeps) gin.HandlerFunc {
 			}
 		})
 
-		c.JSON(http.StatusCreated, types.APIResponse{
-			Success: true,
-			Message: "Check your inbox for a link to verify your email",
-		})
+		response.OK(c, http.StatusCreated, "Check your inbox for a link to verify your email", nil)
 	}
 }
