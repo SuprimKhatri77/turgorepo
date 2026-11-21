@@ -153,6 +153,23 @@ describe("handleProtectedRoute", () => {
     );
   });
 
+  test("each token is read from the cookie with exactly its name", async () => {
+    refreshAnswers(200, [
+      "refresh_token=new-refresh; Path=/",
+      "legacy_access_token=nope; Path=/",
+      `access_token=${newAccess}; Path=/`,
+    ]);
+    const res = await handleProtectedRoute(
+      request("/dashboard", { refresh_token: "old-refresh" }),
+      new Headers(),
+      [...roles],
+    );
+    expect(continues(res)).toBe(true);
+    expect(forwardedCookies(res)).toBe(
+      `access_token=${newAccess}; refresh_token=new-refresh`,
+    );
+  });
+
   test("a refreshed user without the role goes home, keeping the new cookies", async () => {
     refreshAnswers(200, rotated);
     const res = await handleProtectedRoute(

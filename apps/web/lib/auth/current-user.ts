@@ -1,6 +1,7 @@
 import type { User } from "@repo/types";
 import { cookies } from "next/headers";
 import { userFromAccessToken } from "./claims";
+import { ACCESS_TOKEN_COOKIE } from "./cookies";
 import { getApiV1AuthMe } from "@repo/api-client/server";
 import { createServerApiClient } from "@/lib/api/server-client";
 
@@ -15,7 +16,7 @@ import { createServerApiClient } from "@/lib/api/server-client";
  */
 export async function fetchCurrentUser(): Promise<User | null> {
   const cookieStore = await cookies();
-  if (!cookieStore.get("access_token")?.value) {
+  if (!cookieStore.get(ACCESS_TOKEN_COOKIE)?.value) {
     return null;
   }
 
@@ -42,7 +43,7 @@ export async function fetchCurrentUser(): Promise<User | null> {
  */
 export async function getCurrentUser(): Promise<User | null> {
   const cookieStore = await cookies();
-  const accessToken = cookieStore.get("access_token")?.value;
+  const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value;
   if (!accessToken) return null;
 
   return userFromAccessToken(accessToken);

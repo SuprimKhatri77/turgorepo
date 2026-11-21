@@ -17,8 +17,11 @@ export const UNAUTHENTICATED_ONLY_ROUTES = ["/auth"];
  */
 export const OPEN_AUTH_ROUTES = ["/auth/reset-password", "/auth/verify-email"];
 
+/** The login page. */
+export const LOGIN_PATH = "/auth/login";
+
 /** Sends the user to log in again, clearing a session the API has rejected. */
-export const SESSION_EXPIRED_PATH = "/auth/login?expired=1";
+export const SESSION_EXPIRED_PATH = `${LOGIN_PATH}?expired=1`;
 
 /** Where a user lands after logging in. */
 export function homePathForRole(role: UserRole): string {
