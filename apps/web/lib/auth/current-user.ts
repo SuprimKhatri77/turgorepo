@@ -1,7 +1,8 @@
 import type { User } from "@repo/types";
 import { cookies } from "next/headers";
 import { userFromAccessToken } from "./claims";
-import { createServerApiClient, getApiV1AuthMe } from "@/lib/api/server-client";
+import { getApiV1AuthMe } from "@repo/api-client/server";
+import { createServerApiClient } from "@/lib/api/server-client";
 
 /**
  * Authoritative current user from GET /auth/me (DB-backed).

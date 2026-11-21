@@ -1,11 +1,9 @@
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 
-import {
-  apiClient,
-  postApiV1AuthRegister,
-  type RegisterBody,
-} from "@/lib/api/client";
+import { postApiV1AuthRegister } from "@repo/api-client";
+import type { RegisterBody } from "@repo/types";
+import { apiClient } from "@/lib/api/client";
 import { useAuthStore } from "@/store/auth";
 import { toastApiError } from "@/lib/api/errors";
 

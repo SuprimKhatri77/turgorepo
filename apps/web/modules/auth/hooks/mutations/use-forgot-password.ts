@@ -1,9 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
-import {
-  apiClient,
-  postApiV1AuthForgotPassword,
-  type ForgotPasswordBody,
-} from "@/lib/api/client";
+import { postApiV1AuthForgotPassword } from "@repo/api-client";
+import type { ForgotPasswordBody } from "@repo/types";
+import { apiClient } from "@/lib/api/client";
 import { toastApiError } from "@/lib/api/errors";
 
 export function useForgotPassword() {

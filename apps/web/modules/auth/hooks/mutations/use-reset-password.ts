@@ -1,11 +1,9 @@
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  apiClient,
-  postApiV1AuthResetPassword,
-  type ResetPasswordBody,
-} from "@/lib/api/client";
+import { postApiV1AuthResetPassword } from "@repo/api-client";
+import type { ResetPasswordBody } from "@repo/types";
+import { apiClient } from "@/lib/api/client";
 import { useAuthStore } from "@/store/auth";
 
 export function useResetPassword() {

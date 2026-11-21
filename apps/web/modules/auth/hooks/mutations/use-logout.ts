@@ -1,6 +1,7 @@
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClient, postApiV1AuthLogout } from "@/lib/api/client";
+import { postApiV1AuthLogout } from "@repo/api-client";
+import { apiClient } from "@/lib/api/client";
 import { useAuthStore } from "@/store/auth";
 import { toastApiError } from "@/lib/api/errors";
 

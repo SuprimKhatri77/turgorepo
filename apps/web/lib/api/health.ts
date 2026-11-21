@@ -1,7 +1,7 @@
+import { getApiV1Health } from "@repo/api-client/server";
 import {
   ApiUrlNotConfiguredError,
   createServerApiClient,
-  getApiV1Health,
 } from "@/lib/api/server-client";
 
 export type HealthStatus = {
