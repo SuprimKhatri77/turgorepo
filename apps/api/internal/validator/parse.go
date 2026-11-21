@@ -111,7 +111,7 @@ func buildMessage(fe validator.FieldError, label string) string {
 	case "url":
 		return fmt.Sprintf("%s must be a valid URL", label)
 	case "max_bytes":
-		return fmt.Sprintf("%s cannot exceed %s bytes", label, fe.Param())
+		return fmt.Sprintf("%s is too long", label)
 	case "person_name":
 		return fmt.Sprintf("%s can only contain letters, spaces, and ' . -", label)
 	case "gt":
