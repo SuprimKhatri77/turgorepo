@@ -1,11 +1,9 @@
-"use client";
-
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiClient, postApiV1AuthLogoutAll } from "@/lib/api/client";
 import { useAuthStore } from "@/store/auth";
-import { getApiError } from "@/utils/get-api-error";
+import { toastApiError } from "@/lib/api/errors";
 
 export function useLogoutAll() {
   const router = useRouter();
@@ -24,9 +22,7 @@ export function useLogoutAll() {
     },
     // The API changes nothing when this fails, so the user is still logged in everywhere.
     onError: (error) => {
-      toast.error(
-        getApiError(error)?.message ?? "Failed to log out of all devices",
-      );
+      toastApiError(error, "Failed to log out of all devices");
     },
   });
 }

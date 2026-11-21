@@ -1,4 +1,4 @@
-import { ValidationError } from "@repo/types";
+import type { ValidationError } from "@repo/types";
 
 export function mapFieldErrors(
   error: ValidationError[],

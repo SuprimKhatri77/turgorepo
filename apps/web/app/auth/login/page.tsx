@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LoginForm } from "@/modules/auth/components/login-form";
 
 export const metadata: Metadata = {
-  title: "Sign in | Turgorepo",
+  title: "Sign in",
 };
 
 export default function LoginPage() {

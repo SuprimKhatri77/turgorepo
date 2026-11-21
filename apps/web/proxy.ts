@@ -1,14 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { contentSecurityPolicy, createNonce } from "@/lib/middleware/csp";
-import {
-  handleAuthRoute,
-  handleProtectedRoute,
-} from "@/lib/middleware/handlers";
-import { continueRequest } from "@/lib/middleware/redirects";
+import type { NextRequest, NextResponse } from "next/server";
+import { contentSecurityPolicy, createNonce } from "@/lib/proxy/csp";
+import { handleAuthRoute, handleProtectedRoute } from "@/lib/proxy/handlers";
+import { continueRequest } from "@/lib/proxy/redirects";
 import {
   getRequiredRoles,
   isUnauthenticatedOnlyRoute,
-} from "@/lib/middleware/routes";
+} from "@/lib/auth/routes";
 
 export async function proxy(req: NextRequest) {
   const nonce = createNonce();
@@ -43,7 +40,7 @@ function route(
 }
 
 export const config = {
-  // Every page, so that ROLE_RULES in lib/middleware/config.ts is the only place
+  // Every page, so that ROLE_RULES in lib/auth/routes.ts is the only place
   // to protect one, and every page gets a CSP nonce. Skips API routes and static
   // files.
   matcher: [

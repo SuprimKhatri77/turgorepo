@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-import { homePathForRole } from "./config";
+import type { UserRole } from "@repo/types";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { homePathForRole } from "@/lib/auth/routes";
 
 /**
  * Lets the request through with the given headers, which carry the CSP nonce
@@ -14,6 +16,9 @@ export function redirectTo(req: NextRequest, path: string) {
 }
 
 /** Where a logged-in user lands when they visit a logged-out-only page. */
-export function redirectForRole(req: NextRequest, role: string): NextResponse {
+export function redirectForRole(
+  req: NextRequest,
+  role: UserRole,
+): NextResponse {
   return redirectTo(req, homePathForRole(role));
 }

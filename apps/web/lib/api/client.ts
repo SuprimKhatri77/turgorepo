@@ -1,25 +1,21 @@
-import {
-  client,
-  createClient,
-  createConfig,
-  type Client,
-} from "@repo/api-client";
+import { createClient, createConfig, type Client } from "@repo/api-client";
 import api from "@/lib/axios";
 
-const apiConfig = {
-  axios: api,
-  // OpenAPI paths include `/api/v1/...`; baseURL is the API host only.
-  baseURL: process.env.NEXT_PUBLIC_API_URL ?? "",
-  withCredentials: true,
-} as const;
-
 /**
- * Typed API client backed by the shared axios instance (refresh interceptors).
+ * Typed API client backed by the shared axios instance, so its requests go
+ * through the refresh interceptor. Pass it to every SDK call:
+ * postApiV1AuthLogin({ client: apiClient, body }).
  */
-export const apiClient: Client = createClient(createConfig({ ...apiConfig }));
-
-// Keep the package default client in sync for direct SDK imports.
-client.setConfig({ ...apiConfig });
+export const apiClient: Client = createClient(
+  createConfig({
+    axios: api,
+    // The generated paths already start with /api/v1, so this is the host
+    // only. The axios instance's own baseURL includes /api/v1 for the raw
+    // calls the interceptor makes.
+    baseURL: process.env.NEXT_PUBLIC_API_URL ?? "",
+    withCredentials: true,
+  }),
+);
 
 export {
   getApiV1AuthMe,

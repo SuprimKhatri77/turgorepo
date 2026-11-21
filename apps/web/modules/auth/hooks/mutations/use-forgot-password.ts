@@ -1,13 +1,10 @@
-"use client";
-
 import { useMutation } from "@tanstack/react-query";
-import { toast } from "sonner";
 import {
   apiClient,
   postApiV1AuthForgotPassword,
   type ForgotPasswordBody,
 } from "@/lib/api/client";
-import { getApiError } from "@/utils/get-api-error";
+import { toastApiError } from "@/lib/api/errors";
 
 export function useForgotPassword() {
   return useMutation({
@@ -18,7 +15,7 @@ export function useForgotPassword() {
         throwOnError: true,
       }),
     onError: (error) => {
-      toast.error(getApiError(error)?.message ?? "Failed to send the request");
+      toastApiError(error, "Failed to send the request");
     },
   });
 }

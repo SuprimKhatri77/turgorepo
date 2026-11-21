@@ -1,5 +1,3 @@
-"use client";
-
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -9,9 +7,9 @@ import {
   postApiV1AuthLogin,
   type LoginBody,
 } from "@/lib/api/client";
-import { homePathForRole } from "@/lib/middleware/config";
+import { homePathForRole } from "@/lib/auth/routes";
 import { useAuthStore } from "@/store/auth";
-import { getApiError } from "@/utils/get-api-error";
+import { getApiError } from "@/lib/api/errors";
 
 export function useLogin() {
   const router = useRouter();

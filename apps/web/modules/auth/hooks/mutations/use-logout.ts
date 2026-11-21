@@ -1,11 +1,8 @@
-"use client";
-
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { apiClient, postApiV1AuthLogout } from "@/lib/api/client";
 import { useAuthStore } from "@/store/auth";
-import { getApiError } from "@/utils/get-api-error";
+import { toastApiError } from "@/lib/api/errors";
 
 export function useLogout() {
   const router = useRouter();
@@ -23,7 +20,7 @@ export function useLogout() {
     },
     // Only the API can clear httpOnly cookies, so on failure the user is still logged in.
     onError: (error) => {
-      toast.error(getApiError(error)?.message ?? "Failed to log out");
+      toastApiError(error, "Failed to log out");
     },
   });
 }

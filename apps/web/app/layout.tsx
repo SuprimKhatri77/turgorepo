@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, JetBrains_Mono } from "next/font/google";
+import { Geist, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ReactQueryProvider } from "@/providers/react-query-provider";
 import { cn } from "@/lib/utils";
-import { getCurrentUser } from "@/lib/api/auth/auth";
-import { AuthProvider } from "@/providers/auth-provider";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { AuthStoreSync } from "@/providers/auth-store-sync";
 import { Toaster } from "@/components/ui/sonner";
 
 const jetbrainsMono = JetBrains_Mono({
@@ -17,13 +17,8 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "Turgorepo",
+  title: { default: "Turgorepo", template: "%s | Turgorepo" },
   description:
     "Turborepo starter with a Go/Gin API, Next.js frontend, and a typed OpenAPI client.",
 };
@@ -41,14 +36,13 @@ export default async function RootLayout({
         "h-full",
         "antialiased",
         geistSans.variable,
-        geistMono.variable,
         "font-mono",
         jetbrainsMono.variable,
       )}
     >
       <body className="min-h-full flex flex-col">
         <ReactQueryProvider>
-          <AuthProvider user={user} />
+          <AuthStoreSync user={user} />
           {children}
           <Toaster richColors />
         </ReactQueryProvider>

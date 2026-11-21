@@ -236,11 +236,11 @@ It runs on every page, and handles:
 - `/admin/*` — require `admin` or `superadmin` role
 - `/dashboard/*` — require any logged-in user
 
-To protect a new page, add it to `ROLE_RULES` in `apps/web/lib/middleware/config.ts`. The proxy only decodes tokens, so call `requireUser()` in the page as well, which verifies the session with the API. `apps/web/app/admin/page.tsx` is an example.
+To protect a new page, add it to `ROLE_RULES` in `apps/web/lib/auth/routes.ts`. The proxy only decodes tokens, so call `requireUser()` in the page as well, which verifies the session with the API. `apps/web/app/admin/page.tsx` is an example.
 
 ### Security headers
 
-The proxy also sends a Content-Security-Policy with a new nonce on each request (`apps/web/lib/middleware/csp.ts`). Next adds the nonce to its own scripts, so only scripts the app rendered can run, plus whatever they load. Inline styles are allowed, and connections go only to the site itself and `NEXT_PUBLIC_API_URL`. Every page is already rendered per request, because the root layout reads cookies, so the nonce costs nothing extra. `next.config.ts` sets the fixed headers: `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy` and HSTS.
+The proxy also sends a Content-Security-Policy with a new nonce on each request (`apps/web/lib/proxy/csp.ts`). Next adds the nonce to its own scripts, so only scripts the app rendered can run, plus whatever they load. Inline styles are allowed, and connections go only to the site itself and `NEXT_PUBLIC_API_URL`. Every page is already rendered per request, because the root layout reads cookies, so the nonce costs nothing extra. `next.config.ts` sets the fixed headers: `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy` and HSTS.
 
 To add something from another site:
 
@@ -332,7 +332,7 @@ const client = await createServerApiClient();
 const health = await getApiV1Health({ client });
 
 // Authoritative /me (DB). For cheap layout JWT claims, use getCurrentUser().
-import { fetchCurrentUser } from "@/lib/api/auth/fetch-current-user";
+import { fetchCurrentUser } from "@/lib/auth/current-user";
 const user = await fetchCurrentUser();
 ```
 

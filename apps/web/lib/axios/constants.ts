@@ -1,5 +1,4 @@
-import { ROLE_RULES } from "@/lib/middleware/config";
-import { matchesRoute } from "@/lib/middleware/routes";
+import { matchesRoute, ROLE_RULES } from "@/lib/auth/routes";
 
 export const AUTH_ENDPOINTS = [
   "/auth/refresh",

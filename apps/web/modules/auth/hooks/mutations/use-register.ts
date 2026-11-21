@@ -1,8 +1,5 @@
-"use client";
-
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
-import { toast } from "sonner";
 
 import {
   apiClient,
@@ -10,7 +7,7 @@ import {
   type RegisterBody,
 } from "@/lib/api/client";
 import { useAuthStore } from "@/store/auth";
-import { getApiError } from "@/utils/get-api-error";
+import { toastApiError } from "@/lib/api/errors";
 
 export function useRegister() {
   const router = useRouter();
@@ -29,7 +26,7 @@ export function useRegister() {
       router.push("/auth/check-email");
     },
     onError: (error) => {
-      toast.error(getApiError(error)?.message ?? "Failed to create account");
+      toastApiError(error, "Failed to create account");
     },
   });
 }
