@@ -1,9 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
-import {
-  apiClient,
-  postApiV1AuthResendVerification,
-  type ResendVerificationBody,
-} from "@/lib/api/client";
+import { postApiV1AuthResendVerification } from "@repo/api-client";
+import type { ResendVerificationBody } from "@repo/types";
+import { apiClient } from "@/lib/api/client";
 import { toastApiError } from "@/lib/api/errors";
 
 export function useResendVerification() {

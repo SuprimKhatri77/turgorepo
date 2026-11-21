@@ -30,13 +30,13 @@ export const createApiResponseSchema = <T extends z.ZodType>(
   return z.object(baseShape);
 };
 
-export const apiErrorResponseSchema = z.object({
+export const ApiErrorResponseSchema = z.object({
   success: z.literal(false),
   message: z.string(),
   code: z.string(),
   errors: z.array(ValidationErrorSchema).optional(),
 });
-export type ApiErrorResponse = z.infer<typeof apiErrorResponseSchema>;
+export type ApiErrorResponse = z.infer<typeof ApiErrorResponseSchema>;
 
 export type ApiResponse<T = unknown> = {
   success: boolean;
@@ -47,7 +47,7 @@ export type ApiResponse<T = unknown> = {
   meta?: unknown;
 };
 
-const paginationMetaSchema = z.object({
+const PaginationMetaSchema = z.object({
   total: z.number(),
   page: z.number(),
   limit: z.number(),
@@ -55,7 +55,7 @@ const paginationMetaSchema = z.object({
   offset: z.number(),
 });
 
-export type PaginationMeta = z.infer<typeof paginationMetaSchema>;
+export type PaginationMeta = z.infer<typeof PaginationMetaSchema>;
 
 export type ApiSuccessResponse<T = unknown> = {
   success: true;

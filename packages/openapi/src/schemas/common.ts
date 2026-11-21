@@ -1,6 +1,6 @@
-import { apiErrorResponseSchema } from "@repo/types";
+import { ApiErrorResponseSchema } from "@repo/types";
 
-export const ApiErrorResponse = apiErrorResponseSchema.openapi(
+export const ApiErrorResponse = ApiErrorResponseSchema.openapi(
   "ApiErrorResponse",
   {
     example: {

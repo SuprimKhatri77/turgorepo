@@ -2,7 +2,8 @@
 import { useEffect } from "react";
 import { useAuthStore } from "@/store/auth";
 import type { User } from "@repo/types";
-import { apiClient, getApiV1AuthMe } from "@/lib/api/client";
+import { getApiV1AuthMe } from "@repo/api-client";
+import { apiClient } from "@/lib/api/client";
 
 /**
  * Copies the signed-in user into the client auth store. The layout passes the

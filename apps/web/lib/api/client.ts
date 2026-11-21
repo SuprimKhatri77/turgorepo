@@ -16,28 +16,3 @@ export const apiClient: Client = createClient(
     withCredentials: true,
   }),
 );
-
-export {
-  getApiV1AuthMe,
-  getApiV1Health,
-  postApiV1AuthForgotPassword,
-  postApiV1AuthLogin,
-  postApiV1AuthLogout,
-  postApiV1AuthLogoutAll,
-  postApiV1AuthRefresh,
-  postApiV1AuthRegister,
-  postApiV1AuthResendVerification,
-  postApiV1AuthResetPassword,
-  postApiV1AuthVerifyEmail,
-} from "@repo/api-client";
-
-export type {
-  ForgotPasswordBody,
-  LoginBody,
-  MeResponse,
-  RegisterBody,
-  ResendVerificationBody,
-  ResetPasswordBody,
-  User,
-  VerifyEmailBody,
-} from "@repo/api-client";
