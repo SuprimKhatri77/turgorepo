@@ -5,34 +5,13 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	session "github.com/suprimkhatri77/turgorepo/api/internal/auth"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
-	"github.com/suprimkhatri77/turgorepo/api/internal/packages/email"
 )
-
-func registerDeps(repo *fakeRepo, mailer *fakeMailer) AccountEmailDeps {
-	return verifyDeps(repo, &fakeLimiter{}, mailer)
-}
-
-func verifyDeps(repo *fakeRepo, limiter *fakeLimiter, mailer *fakeMailer) AccountEmailDeps {
-	cfg := testConfig()
-	cfg.FrontendURL = "https://app.example.com/"
-	cfg.EmailVerificationTTL = 24 * time.Hour
-	return AccountEmailDeps{Queries: repo, Config: cfg, Limiter: limiter, Revoker: &fakeRevoker{}, Mailer: mailer, Jobs: inlineJobs{}}
-}
-
-func verifyTokenFromEmail(t *testing.T, msg email.Message) string {
-	t.Helper()
-	const marker = "https://app.example.com/auth/verify-email#token="
-	_, rest, found := strings.Cut(msg.Text, marker)
-	require.True(t, found, "no verification link in email: %s", msg.Text)
-	return strings.Fields(rest)[0]
-}
 
 func TestVerifyEmail(t *testing.T) {
 	body := func(token string) string { return `{"token":"` + token + `"}` }

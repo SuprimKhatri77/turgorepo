@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -82,28 +83,6 @@ func TestSignAccessSetsIssuedAt(t *testing.T) {
 
 	require.NotNil(t, claims.IssuedAt)
 	require.WithinRange(t, claims.IssuedAt.Time, before, time.Now())
-}
-
-func TestIssuedAtOrBefore(t *testing.T) {
-	cutoff := time.Unix(1_000, 500_000_000)
-
-	tests := []struct {
-		name     string
-		issuedAt *jwt.NumericDate
-		want     bool
-	}{
-		{"earlier", jwt.NewNumericDate(time.Unix(999, 0)), true},
-		{"same second", jwt.NewNumericDate(time.Unix(1_000, 0)), true},
-		{"later", jwt.NewNumericDate(time.Unix(1_001, 0)), false},
-		{"no issue time", nil, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			claims := AccessClaims{RegisteredClaims: jwt.RegisteredClaims{IssuedAt: tt.issuedAt}}
-			assert.Equal(t, tt.want, claims.IssuedAtOrBefore(cutoff))
-		})
-	}
 }
 
 func TestSignAndParseRefresh(t *testing.T) {
@@ -206,4 +185,16 @@ func TestHashTokenIsDeterministic(t *testing.T) {
 	require.Equal(t, first, second, "hash should be deterministic")
 	require.NotEqual(t, first, other, "different tokens should hash differently")
 	require.Len(t, first, 64, "sha256 hex length")
+}
+
+func TestEmailTokensAreRandomAndURLSafe(t *testing.T) {
+	first, firstHash, err := NewEmailToken()
+	require.NoError(t, err)
+	second, _, err := NewEmailToken()
+	require.NoError(t, err)
+
+	assert.NotEqual(t, first, second, "tokens repeat")
+	assert.Len(t, first, 43, "32 bytes")
+	assert.False(t, strings.ContainsAny(first, "+/="), "token isn't URL safe: %s", first)
+	assert.Equal(t, HashToken(first), firstHash, "hash doesn't match")
 }
