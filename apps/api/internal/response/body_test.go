@@ -37,7 +37,7 @@ func TestHelpers(t *testing.T) {
 	})
 
 	t.Run("Abort also stops the chain", func(t *testing.T) {
-		w, c := run(func(c *gin.Context) { Abort(c, http.StatusUnauthorized, "TOKEN_INVALID", "Invalid access token") })
+		w, c := run(func(c *gin.Context) { Abort(c, http.StatusUnauthorized, "INVALID_TOKEN", "Invalid access token") })
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
 		assert.True(t, c.IsAborted())
 	})

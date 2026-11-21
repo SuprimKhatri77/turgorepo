@@ -129,7 +129,7 @@ func TestRefresh(t *testing.T) {
 		w := serve(newHandler(repo).Refresh, "", refreshCookie(token))
 
 		require.Equal(t, http.StatusUnauthorized, w.Code)
-		assert.Equal(t, constants.TokenInvalid, decode(t, w).Code)
+		assert.Equal(t, constants.InvalidToken, decode(t, w).Code)
 		assert.Contains(t, setCookies(w), "refresh_token", "refresh cookie should be cleared")
 		assert.Empty(t, setCookies(w)["refresh_token"], "refresh cookie should be cleared")
 	})
@@ -144,7 +144,7 @@ func TestRefresh(t *testing.T) {
 		w := serve(newHandler(repo).Refresh, "", refreshCookie(token))
 
 		require.Equal(t, http.StatusUnauthorized, w.Code)
-		assert.Equal(t, constants.TokenInvalid, decode(t, w).Code)
+		assert.Equal(t, constants.InvalidToken, decode(t, w).Code)
 		assert.NotEmpty(t, setCookies(w), "cookies should be cleared")
 		assert.Empty(t, setCookies(w)["access_token"], "no new access token")
 	})
