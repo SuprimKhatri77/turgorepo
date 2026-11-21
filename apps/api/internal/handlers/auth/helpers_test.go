@@ -17,7 +17,7 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
-	"github.com/suprimkhatri77/turgorepo/api/internal/packages/email"
+	"github.com/suprimkhatri77/turgorepo/api/internal/email"
 	"github.com/suprimkhatri77/turgorepo/api/internal/session"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"golang.org/x/crypto/bcrypt"

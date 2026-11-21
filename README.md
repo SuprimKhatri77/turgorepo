@@ -454,7 +454,7 @@ Open the repo root in VS Code/Cursor. Recommended extensions are in `.vscode/ext
 
 ### Request logging
 
-Auth handlers use `internal/packages/rlog` for structured logging. It automatically attaches `request_id`, `path`, `method`, `ip`, and `actor_id` (when available) to every log line:
+Auth handlers use `internal/rlog` for structured logging. It automatically attaches `request_id`, `path`, `method`, `ip`, and `actor_id` (when available) to every log line:
 
 ```go
 rlog.Info(c, "login successful", "user_id", user.ID)

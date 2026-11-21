@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
-	"github.com/suprimkhatri77/turgorepo/api/internal/packages/rlog"
+	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/session"
 )
 

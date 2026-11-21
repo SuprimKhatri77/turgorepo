@@ -10,12 +10,12 @@ import (
 	robfigcron "github.com/robfig/cron/v3"
 
 	"github.com/suprimkhatri77/turgorepo/api/internal/background"
+	"github.com/suprimkhatri77/turgorepo/api/internal/cloudinary"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/cron"
 	"github.com/suprimkhatri77/turgorepo/api/internal/database"
 	dbgen "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
-	"github.com/suprimkhatri77/turgorepo/api/internal/packages/cloudinary"
-	apiredis "github.com/suprimkhatri77/turgorepo/api/internal/packages/redis"
+	"github.com/suprimkhatri77/turgorepo/api/internal/redisstore"
 	"github.com/suprimkhatri77/turgorepo/api/internal/routes"
 	"github.com/suprimkhatri77/turgorepo/api/internal/validator"
 )
@@ -26,7 +26,7 @@ type App struct {
 	Cfg       *config.Config
 	Queries   *dbgen.Queries
 	DB        *database.DB
-	Redis     *apiredis.Client
+	Redis     *redisstore.Client
 	CldClient *cloudinary.Client
 	Router    *gin.Engine
 	Scheduler *robfigcron.Cron

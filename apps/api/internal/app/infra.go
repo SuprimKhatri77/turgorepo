@@ -6,11 +6,11 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/suprimkhatri77/turgorepo/api/internal/cloudinary"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/database"
-	"github.com/suprimkhatri77/turgorepo/api/internal/packages/cloudinary"
-	"github.com/suprimkhatri77/turgorepo/api/internal/packages/email"
-	apiredis "github.com/suprimkhatri77/turgorepo/api/internal/packages/redis"
+	"github.com/suprimkhatri77/turgorepo/api/internal/email"
+	"github.com/suprimkhatri77/turgorepo/api/internal/redisstore"
 )
 
 func initDB(ctx context.Context, cfg *config.Config) (*database.DB, error) {
@@ -24,11 +24,11 @@ func initDB(ctx context.Context, cfg *config.Config) (*database.DB, error) {
 	return db, nil
 }
 
-func initRedis(ctx context.Context, cfg *config.Config) (*apiredis.Client, error) {
+func initRedis(ctx context.Context, cfg *config.Config) (*redisstore.Client, error) {
 	if cfg.RedisURL == "" {
 		return nil, fmt.Errorf("config: REDIS_URL is required")
 	}
-	client, err := apiredis.ConnectWithRetry(ctx, cfg.RedisURL, 10)
+	client, err := redisstore.ConnectWithRetry(ctx, cfg.RedisURL, 10)
 	if err != nil {
 		return nil, fmt.Errorf("redis: %w", err)
 	}

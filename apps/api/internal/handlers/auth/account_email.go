@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
-	"github.com/suprimkhatri77/turgorepo/api/internal/packages/email"
+	"github.com/suprimkhatri77/turgorepo/api/internal/email"
 	"github.com/suprimkhatri77/turgorepo/api/internal/ratelimit"
 	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
 	"github.com/suprimkhatri77/turgorepo/api/internal/session"

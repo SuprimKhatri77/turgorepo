@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
-	"github.com/suprimkhatri77/turgorepo/api/internal/packages/email"
+	"github.com/suprimkhatri77/turgorepo/api/internal/email"
 	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
 	"github.com/suprimkhatri77/turgorepo/api/internal/session"
 )
