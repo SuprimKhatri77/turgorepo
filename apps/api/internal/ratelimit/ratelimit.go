@@ -89,7 +89,7 @@ func Allowed(ctx context.Context, limiter Limiter, rule Rule, key string) bool {
 
 	allowed, _, err := limiter.Allow(ctx, fullKey(rule, key), rule.Limit, rule.Window)
 	if err != nil {
-		slog.Error("rate limit check failed, allowing request", "rule", rule.Name, "err", err)
+		slog.Error("rate limit check failed, allowing request", "rule", rule.Name, "error", err)
 		return true
 	}
 	return allowed

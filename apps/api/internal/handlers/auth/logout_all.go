@@ -1,9 +1,7 @@
 package auth
 
 import (
-	"context"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	session "github.com/suprimkhatri77/turgorepo/api/internal/auth"
@@ -52,18 +50,5 @@ func LogoutAll(queries repository.AuthRepository, cfg *config.Config, revoker se
 			Success: true,
 			Message: "Logged out on all devices",
 		})
-	}
-}
-
-// revokeUserTokens rejects every access token the user has been issued so far.
-// It runs after the sessions are revoked, so a refresh can't issue a token after
-// the cutoff. A failure is logged rather than returned: the sessions are already
-// revoked, so old access tokens can't be refreshed and expire within minutes.
-func revokeUserTokens(c *gin.Context, revoker session.TokenRevoker, cfg *config.Config, userID string) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), revokeTimeout)
-	defer cancel()
-
-	if err := revoker.RevokeTokensBefore(ctx, userID, time.Now(), cfg.AccessTokenTTL); err != nil {
-		rlog.Error(c, "failed to revoke access tokens", err, "user_id", userID)
 	}
 }

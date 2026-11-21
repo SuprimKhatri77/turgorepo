@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
@@ -20,8 +19,6 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/validator"
 	"golang.org/x/crypto/bcrypt"
 )
-
-const revokeTimeout = 500 * time.Millisecond
 
 type ResetPasswordRequest struct {
 	Token    string `json:"token" label:"Reset link" binding:"required,max=128" msg_required:"Reset link is missing" msg_max:"Reset link is invalid"`
@@ -82,7 +79,7 @@ func ResetPassword(deps AccountEmailDeps) gin.HandlerFunc {
 		requestID := c.GetString(constants.RequestIDKey)
 		deps.Jobs.Go("password changed email", func(ctx context.Context) {
 			if err := sendPasswordChangedEmail(ctx, deps, user); err != nil {
-				slog.Error("failed to send password changed email", "request_id", requestID, "err", err)
+				slog.Error("failed to send password changed email", "request_id", requestID, "error", err)
 			}
 		})
 

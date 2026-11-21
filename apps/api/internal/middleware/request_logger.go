@@ -7,16 +7,19 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/packages/rlog"
 )
 
-// healthPath is called constantly by the load balancer, so it isn't logged.
-const healthPath = "/api/v1/health"
-
 // RequestLogger writes one structured line per request, for production log tools.
-func RequestLogger() gin.HandlerFunc {
+// Requests to skipPaths aren't logged, for endpoints a load balancer calls constantly.
+func RequestLogger(skipPaths ...string) gin.HandlerFunc {
+	skip := make(map[string]bool, len(skipPaths))
+	for _, path := range skipPaths {
+		skip[path] = true
+	}
+
 	return func(c *gin.Context) {
 		start := time.Now()
 		c.Next()
 
-		if c.FullPath() == healthPath {
+		if skip[c.FullPath()] {
 			return
 		}
 		rlog.Info(c, "request completed",

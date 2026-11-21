@@ -50,7 +50,7 @@ func ConnectWithRetry(ctx context.Context, connString string, maxRetries int) (*
 		if err == nil {
 			return database, nil
 		}
-		slog.Warn("failed to connect to database, retrying...", "attempt", i+1, "max", maxRetries, "err", err)
+		slog.Warn("failed to connect to database, retrying...", "attempt", i+1, "max", maxRetries, "error", err)
 		if i+1 == maxRetries {
 			break
 		}

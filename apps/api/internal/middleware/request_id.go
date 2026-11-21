@@ -8,22 +8,19 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 )
 
-const RequestIDHeader = constants.RequestIDHeader
-const RequestIDKey = constants.RequestIDKey
-
 const maxRequestIDLength = 128
 
 // RequestID ensures every request has an ID: reuse the incoming header or mint one.
 // The value is stored on the Gin context and echoed back on the response.
 func RequestID() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id := c.GetHeader(RequestIDHeader)
+		id := c.GetHeader(constants.RequestIDHeader)
 		if !validRequestID(id) {
 			id = uuid.NewString()
 		}
 
-		c.Set(RequestIDKey, id)
-		c.Writer.Header().Set(RequestIDHeader, id)
+		c.Set(constants.RequestIDKey, id)
+		c.Writer.Header().Set(constants.RequestIDHeader, id)
 		c.Next()
 	}
 }

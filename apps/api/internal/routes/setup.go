@@ -14,8 +14,14 @@ import (
 
 const readyTimeout = 2 * time.Second
 
+// APIPrefix is where every route is mounted.
+const APIPrefix = "/api/v1"
+
+// HealthPath is the liveness endpoint load balancers poll.
+const HealthPath = APIPrefix + "/health"
+
 func Setup(r *gin.Engine, cfg config.Config) {
-	router := r.Group("/api/v1")
+	router := r.Group(APIPrefix)
 
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "Welcome to the API"})

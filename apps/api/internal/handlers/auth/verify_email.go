@@ -83,7 +83,7 @@ func ResendVerification(deps AccountEmailDeps) gin.HandlerFunc {
 
 		deps.Jobs.Go("verification email", func(ctx context.Context) {
 			if err := resendVerificationEmail(ctx, deps, emailAddress); err != nil {
-				slog.Error("failed to send verification email", "request_id", requestID, "err", err)
+				slog.Error("failed to send verification email", "request_id", requestID, "error", err)
 			}
 		})
 

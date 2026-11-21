@@ -32,7 +32,7 @@ type App struct {
 	Jobs      *background.Runner
 }
 
-func New(ctx context.Context) (*App, error) {
+func New(ctx context.Context) (_ *App, err error) {
 	cfg, err := config.Load()
 	if err != nil {
 		return nil, fmt.Errorf("config: %w", err)
@@ -44,54 +44,37 @@ func New(ctx context.Context) (*App, error) {
 		return nil, fmt.Errorf("config: %w", err)
 	}
 
-	db, err := initDB(ctx, cfg)
-	if err != nil {
+	a := &App{Cfg: cfg}
+	// On failure, release whatever was set up before it. Close skips the rest.
+	defer func() {
+		if err != nil {
+			a.Close()
+		}
+	}()
+
+	if a.DB, err = initDB(ctx, cfg); err != nil {
+		return nil, err
+	}
+	if a.Redis, err = initRedis(ctx, cfg); err != nil {
+		return nil, err
+	}
+	if a.CldClient, err = initCloudinary(cfg); err != nil {
 		return nil, err
 	}
 
-	redisClient, err := initRedis(ctx, cfg)
-	if err != nil {
-		db.Close()
-		return nil, err
-	}
-
-	cldClient, err := initCloudinary(cfg)
-	if err != nil {
-		_ = redisClient.Close()
-		db.Close()
-		return nil, err
-	}
-
-	queries := dbgen.New(db.Pool)
+	a.Queries = dbgen.New(a.DB.Pool)
 	validator.Init()
 
-	scheduler, err := cron.Start(queries)
-	if err != nil {
-		_ = redisClient.Close()
-		db.Close()
+	if a.Scheduler, err = cron.Start(a.Queries); err != nil {
 		return nil, fmt.Errorf("cron: %w", err)
 	}
 
-	jobs := &background.Runner{}
+	a.Jobs = &background.Runner{}
 
-	r, err := buildRouter(cfg, queries, cldClient, db, redisClient, initMailer(cfg), jobs)
-	if err != nil {
-		scheduler.Stop()
-		_ = redisClient.Close()
-		db.Close()
+	if a.Router, err = buildRouter(cfg, a.Queries, a.CldClient, a.DB, a.Redis, initMailer(cfg), a.Jobs); err != nil {
 		return nil, err
 	}
-
-	return &App{
-		Cfg:       cfg,
-		Queries:   queries,
-		DB:        db,
-		Redis:     redisClient,
-		CldClient: cldClient,
-		Router:    r,
-		Scheduler: scheduler,
-		Jobs:      jobs,
-	}, nil
+	return a, nil
 }
 
 func (a *App) Close() {
@@ -108,8 +91,10 @@ func (a *App) Close() {
 	}
 	if a.Redis != nil {
 		if err := a.Redis.Close(); err != nil {
-			slog.Warn("failed to close redis", "err", err)
+			slog.Warn("failed to close redis", "error", err)
 		}
 	}
-	a.DB.Close()
+	if a.DB != nil {
+		a.DB.Close()
+	}
 }
