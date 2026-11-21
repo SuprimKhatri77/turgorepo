@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "generate": "tsx src/generate.ts"
+    "generate": "tsx src/generate.ts",
+    "check-types": "tsc --noEmit"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^9.1.0",
