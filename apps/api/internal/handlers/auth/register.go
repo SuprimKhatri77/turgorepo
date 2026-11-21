@@ -16,9 +16,9 @@ import (
 )
 
 type RegisterRequest struct {
-	Name     string `json:"name" label:"Name" binding:"required,not_blank,min=2,max=50,person_name" msg_required:"Name is required" msg_min:"Name must be at least 2 characters" msg_max:"Name cannot exceed 50 characters" msg_person_name:"Name can only contain letters, spaces, and ' . -" msg_not_blank:"Name cannot be blank"`
-	Email    string `json:"email" label:"Email" binding:"required,email" msg_required:"Email is required" msg_email:"Enter a valid email address"`
-	Password string `json:"password" trim:"-" label:"Password" binding:"required,not_blank,min=8,max_bytes=72" msg_required:"Password is required" msg_min:"Password must be at least 8 characters" msg_max_bytes:"Password cannot exceed 72 bytes" msg_not_blank:"Password cannot be blank"`
+	Name     string `json:"name" binding:"required,min=2,max=50,person_name"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" trim:"-" binding:"required,not_blank,min=8,max_bytes=72"`
 }
 
 // Register creates an account and emails a verification link. It doesn't log

@@ -25,7 +25,7 @@ type VerifyEmailRequest struct {
 }
 
 type ResendVerificationRequest struct {
-	Email string `json:"email" label:"Email" binding:"required,email" msg_required:"Email is required" msg_email:"Enter a valid email address"`
+	Email string `json:"email" binding:"required,email"`
 }
 
 // VerifyEmail confirms an address using the token from a verification email. It

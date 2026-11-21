@@ -18,8 +18,8 @@ import (
 )
 
 type LoginRequest struct {
-	Email    string `json:"email" label:"Email" binding:"required,email" msg_required:"Email is required" msg_email:"Enter a valid email address"`
-	Password string `json:"password" trim:"-" label:"Password" binding:"required,max_bytes=72" msg_required:"Password is required" msg_max_bytes:"Password cannot exceed 72 bytes"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" trim:"-" binding:"required,max_bytes=72"`
 }
 
 // dummyPasswordHash is compared against when the email is unknown, so that path

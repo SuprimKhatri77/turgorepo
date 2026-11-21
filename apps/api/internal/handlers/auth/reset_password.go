@@ -21,7 +21,7 @@ import (
 
 type ResetPasswordRequest struct {
 	Token    string `json:"token" label:"Reset link" binding:"required,max=128" msg_required:"Reset link is missing" msg_max:"Reset link is invalid"`
-	Password string `json:"password" trim:"-" label:"Password" binding:"required,not_blank,min=8,max_bytes=72" msg_required:"Password is required" msg_min:"Password must be at least 8 characters" msg_max_bytes:"Password cannot exceed 72 bytes" msg_not_blank:"Password cannot be blank"`
+	Password string `json:"password" trim:"-" binding:"required,not_blank,min=8,max_bytes=72"`
 }
 
 // ResetPassword sets a new password using a token from a reset email, and logs the
