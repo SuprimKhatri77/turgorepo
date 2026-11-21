@@ -14,7 +14,7 @@ import (
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/cron"
 	"github.com/suprimkhatri77/turgorepo/api/internal/database"
-	dbgen "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
+	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 	"github.com/suprimkhatri77/turgorepo/api/internal/redisstore"
 	"github.com/suprimkhatri77/turgorepo/api/internal/routes"
 	"github.com/suprimkhatri77/turgorepo/api/internal/validator"
@@ -24,7 +24,7 @@ const jobsShutdownTimeout = 10 * time.Second
 
 type App struct {
 	Cfg       *config.Config
-	Queries   *dbgen.Queries
+	Queries   *db.Queries
 	DB        *database.DB
 	Redis     *redisstore.Client
 	CldClient *cloudinary.Client
@@ -63,7 +63,7 @@ func New(ctx context.Context) (_ *App, err error) {
 		return nil, err
 	}
 
-	a.Queries = dbgen.New(a.DB.Pool)
+	a.Queries = db.New(a.DB.Pool)
 	validator.Init()
 
 	if a.Scheduler, err = cron.Start(a.Queries); err != nil {

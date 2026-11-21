@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
-	dbgen "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
+	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -35,13 +35,13 @@ func Seed(ctx context.Context) error {
 
 	initLogger(cfg)
 
-	db, err := initDB(ctx, cfg)
+	conn, err := initDB(ctx, cfg)
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer conn.Close()
 
-	queries := dbgen.New(db.Pool)
+	queries := db.New(conn.Pool)
 
 	adminPassword, err := requireSeedPassword(cfg, "SEED_ADMIN_PASSWORD")
 	if err != nil {
@@ -84,7 +84,7 @@ func Seed(ctx context.Context) error {
 	return nil
 }
 
-func upsertSeedUser(ctx context.Context, queries *dbgen.Queries, u seedUser) error {
+func upsertSeedUser(ctx context.Context, queries *db.Queries, u seedUser) error {
 	u.Email = utils.NormalizeEmail(u.Email)
 
 	existing, err := queries.GetUserByEmail(ctx, u.Email)
@@ -101,7 +101,7 @@ func upsertSeedUser(ctx context.Context, queries *dbgen.Queries, u seedUser) err
 		return fmt.Errorf("hash password for %s: %w", u.Email, err)
 	}
 
-	created, err := queries.CreateUser(ctx, dbgen.CreateUserParams{
+	created, err := queries.CreateUser(ctx, db.CreateUserParams{
 		Name:         u.Name,
 		Email:        u.Email,
 		PasswordHash: string(hash),
