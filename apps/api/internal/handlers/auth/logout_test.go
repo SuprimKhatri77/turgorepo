@@ -16,7 +16,7 @@ func TestLogout(t *testing.T) {
 		_, token, _ := refreshFixture(t)
 		repo := &fakeRepo{}
 		revoker := &fakeRevoker{}
-		w := serve(Logout(repo, testConfig(), revoker), "", refreshCookie(token))
+		w := serve(newHandler(repo, revoker).Logout, "", refreshCookie(token))
 
 		require.Equal(t, http.StatusOK, w.Code)
 		require.Equal(t, []pgtype.UUID{testUUID(2)}, repo.revoked)
@@ -33,7 +33,7 @@ func TestLogout(t *testing.T) {
 		for _, cookies := range [][]*http.Cookie{{access}, {access, refreshCookie("not-a-jwt")}} {
 			repo := &fakeRepo{}
 			revoker := &fakeRevoker{}
-			w := serve(Logout(repo, testConfig(), revoker), "", cookies...)
+			w := serve(newHandler(repo, revoker).Logout, "", cookies...)
 
 			assert.Equal(t, http.StatusOK, w.Code)
 			assert.Equal(t, []pgtype.UUID{testUUID(2)}, repo.revoked)
@@ -44,7 +44,7 @@ func TestLogout(t *testing.T) {
 	t.Run("a Redis failure still logs out", func(t *testing.T) {
 		_, token, _ := refreshFixture(t)
 		repo := &fakeRepo{}
-		w := serve(Logout(repo, testConfig(), &fakeRevoker{err: errors.New("redis down")}), "", refreshCookie(token))
+		w := serve(newHandler(repo, &fakeRevoker{err: errors.New("redis down")}).Logout, "", refreshCookie(token))
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Len(t, repo.revoked, 1)
@@ -56,7 +56,7 @@ func TestLogout(t *testing.T) {
 		repo := &fakeRepo{}
 		revoker := &fakeRevoker{}
 		for _, cookies := range [][]*http.Cookie{nil, {refreshCookie("not-a-jwt")}} {
-			assert.Equal(t, http.StatusOK, serve(Logout(repo, testConfig(), revoker), "", cookies...).Code)
+			assert.Equal(t, http.StatusOK, serve(newHandler(repo, revoker).Logout, "", cookies...).Code)
 		}
 		assert.Empty(t, repo.revoked)
 		assert.Empty(t, revoker.sessions)

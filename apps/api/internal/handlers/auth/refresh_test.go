@@ -17,7 +17,7 @@ func TestRefresh(t *testing.T) {
 	t.Run("current token rotates", func(t *testing.T) {
 		user, token, sess := refreshFixture(t)
 		repo := &fakeRepo{user: user, sessions: []db.Session{sess}}
-		w := serve(Refresh(repo, testConfig(), &fakeRevoker{}), "", refreshCookie(token))
+		w := serve(newHandler(repo).Refresh, "", refreshCookie(token))
 
 		require.Equal(t, http.StatusOK, w.Code)
 		require.True(t, repo.rotated, "rotated")
@@ -32,7 +32,7 @@ func TestRefresh(t *testing.T) {
 		sess.PreviousRotatedAt = pgtype.Timestamptz{Time: time.Now().Add(-time.Minute), Valid: true}
 		sess.CurrentTokenHash = "hash-of-newer-token"
 		repo := &fakeRepo{user: user, sessions: []db.Session{sess}}
-		w := serve(Refresh(repo, testConfig(), &fakeRevoker{}), "", refreshCookie(token))
+		w := serve(newHandler(repo).Refresh, "", refreshCookie(token))
 
 		require.Equal(t, http.StatusOK, w.Code)
 		require.False(t, repo.rotated, "rotated")
@@ -48,7 +48,7 @@ func TestRefresh(t *testing.T) {
 		sess.CurrentTokenHash = "hash-of-newer-token"
 		repo := &fakeRepo{user: user, sessions: []db.Session{sess}}
 		revoker := &fakeRevoker{}
-		w := serve(Refresh(repo, testConfig(), revoker), "", refreshCookie(token))
+		w := serve(newHandler(repo, revoker).Refresh, "", refreshCookie(token))
 
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
 		assert.Len(t, repo.revoked, 1)
@@ -58,7 +58,7 @@ func TestRefresh(t *testing.T) {
 
 	t.Run("expired or revoked session clears cookies", func(t *testing.T) {
 		user, token, _ := refreshFixture(t)
-		w := serve(Refresh(&fakeRepo{user: user, sessionErr: pgx.ErrNoRows}, testConfig(), &fakeRevoker{}), "", refreshCookie(token))
+		w := serve(newHandler(&fakeRepo{user: user, sessionErr: pgx.ErrNoRows}).Refresh, "", refreshCookie(token))
 
 		require.Equal(t, http.StatusUnauthorized, w.Code)
 		assert.Contains(t, setCookies(w), "refresh_token", "refresh cookie should be cleared")
@@ -67,7 +67,7 @@ func TestRefresh(t *testing.T) {
 
 	t.Run("database outage keeps the user logged in", func(t *testing.T) {
 		user, token, _ := refreshFixture(t)
-		w := serve(Refresh(&fakeRepo{user: user, sessionErr: errDB}, testConfig(), &fakeRevoker{}), "", refreshCookie(token))
+		w := serve(newHandler(&fakeRepo{user: user, sessionErr: errDB}).Refresh, "", refreshCookie(token))
 
 		require.Equal(t, http.StatusServiceUnavailable, w.Code)
 		assert.Empty(t, setCookies(w), "cookies should be untouched")
@@ -81,14 +81,14 @@ func TestRefresh(t *testing.T) {
 		reloaded.PreviousRotatedAt = pgtype.Timestamptz{Time: time.Now(), Valid: true}
 		reloaded.CurrentTokenHash = "hash-of-winner"
 		repo := &fakeRepo{user: user, sessions: []db.Session{sess, reloaded}, rotateErr: pgx.ErrNoRows}
-		w := serve(Refresh(repo, testConfig(), &fakeRevoker{}), "", refreshCookie(token))
+		w := serve(newHandler(repo).Refresh, "", refreshCookie(token))
 
 		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 		assert.NotContains(t, setCookies(w), "refresh_token", "the losing request must not set a refresh token")
 	})
 
 	t.Run("missing and invalid cookies are rejected", func(t *testing.T) {
-		assert.Equal(t, http.StatusUnauthorized, serve(Refresh(&fakeRepo{}, testConfig(), &fakeRevoker{}), "").Code, "missing")
-		assert.Equal(t, http.StatusUnauthorized, serve(Refresh(&fakeRepo{}, testConfig(), &fakeRevoker{}), "", refreshCookie("not-a-jwt")).Code, "invalid")
+		assert.Equal(t, http.StatusUnauthorized, serve(newHandler(&fakeRepo{}).Refresh, "").Code, "missing")
+		assert.Equal(t, http.StatusUnauthorized, serve(newHandler(&fakeRepo{}).Refresh, "", refreshCookie("not-a-jwt")).Code, "invalid")
 	})
 }

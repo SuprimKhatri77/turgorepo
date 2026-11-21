@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
-	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	"github.com/suprimkhatri77/turgorepo/api/internal/ratelimit"
 	"github.com/suprimkhatri77/turgorepo/api/internal/response"
@@ -33,74 +32,68 @@ var dummyPasswordHash = sync.OnceValue(func() []byte {
 	return hash
 })
 
-func Login(
-	queries Store,
-	cfg *config.Config,
-	limiter ratelimit.Limiter,
-) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		ctx := c.Request.Context()
+func (h *Handler) Login(c *gin.Context) {
+	ctx := c.Request.Context()
 
-		req, ok := validator.BindJSON[LoginRequest](c)
-		if !ok {
-			return
-		}
+	req, ok := validator.BindJSON[LoginRequest](c)
+	if !ok {
+		return
+	}
 
-		req.Email = utils.NormalizeEmail(req.Email)
+	req.Email = utils.NormalizeEmail(req.Email)
 
-		if !ratelimit.Check(c, limiter, ratelimit.LoginPerAccount, ratelimit.AccountKey(c, req.Email)) {
-			return
-		}
+	if !ratelimit.Check(c, h.Limiter, ratelimit.LoginPerAccount, ratelimit.AccountKey(c, req.Email)) {
+		return
+	}
 
-		rlog.Info(c, "login attempt")
+	rlog.Info(c, "login attempt")
 
-		user, err := queries.GetUserByEmail(ctx, req.Email)
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				_ = bcrypt.CompareHashAndPassword(dummyPasswordHash(), []byte(req.Password))
-				rlog.Warn(c, "invalid credentials (user not found)")
-
-				response.Error(c, http.StatusUnauthorized, constants.InvalidCredentials, "Invalid credentials")
-				return
-			}
-
-			rlog.Error(c, "failed to fetch user", err)
-
-			response.Internal(c)
-			return
-		}
-
-		err = bcrypt.CompareHashAndPassword(
-			[]byte(user.PasswordHash),
-			[]byte(req.Password),
-		)
-		if err != nil {
-			rlog.Warn(c, "invalid credentials (password mismatch)", "user_id", user.ID)
+	user, err := h.Store.GetUserByEmail(ctx, req.Email)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			_ = bcrypt.CompareHashAndPassword(dummyPasswordHash(), []byte(req.Password))
+			rlog.Warn(c, "invalid credentials (user not found)")
 
 			response.Error(c, http.StatusUnauthorized, constants.InvalidCredentials, "Invalid credentials")
 			return
 		}
 
-		rlog.Info(c, "password verified", "user_id", user.ID)
+		rlog.Error(c, "failed to fetch user", err)
 
-		// Checked after the password, so only someone who knows it learns that the
-		// account exists and isn't verified.
-		if !user.EmailVerifiedAt.Valid {
-			rlog.Warn(c, "login refused, email not verified", "user_id", user.ID)
-
-			response.Error(c, http.StatusForbidden, constants.EmailNotVerified, "Verify your email before signing in. Check your inbox for the link")
-			return
-		}
-
-		if err := session.Issue(c, queries, cfg, user); err != nil {
-			rlog.Error(c, "failed to issue session", err, "user_id", user.ID)
-
-			response.Internal(c)
-			return
-		}
-
-		rlog.Info(c, "login successful", "user_id", user.ID)
-
-		response.OK(c, http.StatusOK, "logged in successfully", newUserResponse(user))
+		response.Internal(c)
+		return
 	}
+
+	err = bcrypt.CompareHashAndPassword(
+		[]byte(user.PasswordHash),
+		[]byte(req.Password),
+	)
+	if err != nil {
+		rlog.Warn(c, "invalid credentials (password mismatch)", "user_id", user.ID)
+
+		response.Error(c, http.StatusUnauthorized, constants.InvalidCredentials, "Invalid credentials")
+		return
+	}
+
+	rlog.Info(c, "password verified", "user_id", user.ID)
+
+	// Checked after the password, so only someone who knows it learns that the
+	// account exists and isn't verified.
+	if !user.EmailVerifiedAt.Valid {
+		rlog.Warn(c, "login refused, email not verified", "user_id", user.ID)
+
+		response.Error(c, http.StatusForbidden, constants.EmailNotVerified, "Verify your email before signing in. Check your inbox for the link")
+		return
+	}
+
+	if err := session.Issue(c, h.Store, h.Config, user); err != nil {
+		rlog.Error(c, "failed to issue session", err, "user_id", user.ID)
+
+		response.Internal(c)
+		return
+	}
+
+	rlog.Info(c, "login successful", "user_id", user.ID)
+
+	response.OK(c, http.StatusOK, "logged in successfully", newUserResponse(user))
 }

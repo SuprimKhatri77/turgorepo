@@ -18,7 +18,7 @@ func TestVerifyEmail(t *testing.T) {
 
 	t.Run("verifies by the token's hash without logging in", func(t *testing.T) {
 		repo := &fakeRepo{user: testUser(t)}
-		w := serve(VerifyEmail(verifyDeps(repo, &fakeLimiter{}, &fakeMailer{})), body("the-token"))
+		w := serve(newHandler(repo).VerifyEmail, body("the-token"))
 
 		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 		assert.Equal(t, session.HashToken("the-token"), repo.verifiedHash, "didn't look up the token by hash")
@@ -27,20 +27,20 @@ func TestVerifyEmail(t *testing.T) {
 	})
 
 	t.Run("invalid, used, expired or outdated token", func(t *testing.T) {
-		w := serve(VerifyEmail(verifyDeps(&fakeRepo{verifyErr: pgx.ErrNoRows}, &fakeLimiter{}, &fakeMailer{})), body("bad"))
+		w := serve(newHandler(&fakeRepo{verifyErr: pgx.ErrNoRows}).VerifyEmail, body("bad"))
 		require.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Equal(t, constants.InvalidVerificationToken, decode(t, w).Code)
 	})
 
 	t.Run("database error isn't reported as a bad link", func(t *testing.T) {
-		w := serve(VerifyEmail(verifyDeps(&fakeRepo{verifyErr: errDB}, &fakeLimiter{}, &fakeMailer{})), body("x"))
+		w := serve(newHandler(&fakeRepo{verifyErr: errDB}).VerifyEmail, body("x"))
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 
 	t.Run("missing or oversized token is rejected before the database", func(t *testing.T) {
 		for _, b := range []string{`{}`, body(strings.Repeat("a", 129))} {
 			repo := &fakeRepo{}
-			w := serve(VerifyEmail(verifyDeps(repo, &fakeLimiter{}, &fakeMailer{})), b)
+			w := serve(newHandler(repo).VerifyEmail, b)
 			assert.Equal(t, http.StatusBadRequest, w.Code, b)
 			assert.Empty(t, repo.verifiedHash, "%s: looked up", b)
 		}
@@ -53,7 +53,7 @@ func TestResendVerification(t *testing.T) {
 	t.Run("sends a new link to an unverified account", func(t *testing.T) {
 		repo := &fakeRepo{user: unverifiedUser(t)}
 		mailer := &fakeMailer{}
-		w := serve(ResendVerification(verifyDeps(repo, &fakeLimiter{}, mailer)), body)
+		w := serve(newHandler(repo, mailer).ResendVerification, body)
 
 		require.Equal(t, http.StatusOK, w.Code)
 		assert.Equal(t, "ada@example.com", repo.lookedUp)
@@ -81,7 +81,7 @@ func TestResendVerification(t *testing.T) {
 
 		var firstBody string
 		for _, tt := range tests {
-			w := serve(ResendVerification(verifyDeps(tt.repo, tt.limiter, tt.mailer)), body)
+			w := serve(newHandler(tt.repo, tt.limiter, tt.mailer).ResendVerification, body)
 			assert.Equal(t, http.StatusOK, w.Code, tt.name)
 			if firstBody == "" {
 				firstBody = w.Body.String()
@@ -93,14 +93,14 @@ func TestResendVerification(t *testing.T) {
 
 	t.Run("email limit applies across IPs, without the raw address", func(t *testing.T) {
 		limiter := &fakeLimiter{}
-		serve(ResendVerification(verifyDeps(&fakeRepo{user: unverifiedUser(t)}, limiter, &fakeMailer{})), body)
+		serve(newHandler(&fakeRepo{user: unverifiedUser(t)}, limiter).ResendVerification, body)
 		require.Len(t, limiter.keys, 1)
 		require.True(t, strings.HasPrefix(limiter.keys[0], "ratelimit:resend-verification:email:"), "key = %s", limiter.keys[0])
 		assert.NotContains(t, limiter.keys[0], "ada@example.com", "key has the address")
 	})
 
 	t.Run("invalid email is a validation error", func(t *testing.T) {
-		w := serve(ResendVerification(verifyDeps(&fakeRepo{}, &fakeLimiter{}, &fakeMailer{})), `{"email":"nope"}`)
+		w := serve(newHandler(&fakeRepo{}).ResendVerification, `{"email":"nope"}`)
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }

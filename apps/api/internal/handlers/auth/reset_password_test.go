@@ -24,7 +24,7 @@ func TestResetPassword(t *testing.T) {
 		repo := &resetRepo{fakeRepo: fakeRepo{user: testUser(t)}}
 		limiter := &fakeLimiter{}
 		mailer := &fakeMailer{}
-		w := serve(ResetPassword(resetDeps(repo, limiter, mailer)), body("the-token", "new-password-123"))
+		w := serve(newHandler(repo, limiter, mailer).ResetPassword, body("the-token", "new-password-123"))
 
 		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 		assert.Equal(t, session.HashToken("the-token"), repo.resetParams.TokenHash, "didn't look up the token by hash")
@@ -43,42 +43,38 @@ func TestResetPassword(t *testing.T) {
 
 	t.Run("revokes the user's access tokens", func(t *testing.T) {
 		repo := &resetRepo{fakeRepo: fakeRepo{user: testUser(t)}}
-		deps := resetDeps(repo, &fakeLimiter{}, &fakeMailer{})
 		revoker := &fakeRevoker{}
-		deps.Revoker = revoker
+		h := newHandler(repo, revoker)
 
 		before := time.Now()
-		serve(ResetPassword(deps), body("the-token", "new-password-123"))
+		serve(h.ResetPassword, body("the-token", "new-password-123"))
 
 		require.Equal(t, []string{"01010101-0101-0101-0101-010101010101"}, revoker.userIDs)
 		assert.WithinRange(t, revoker.cutoff, before, time.Now())
-		assert.Equal(t, deps.Config.AccessTokenTTL, revoker.ttl)
+		assert.Equal(t, h.Config.AccessTokenTTL, revoker.ttl)
 	})
 
 	t.Run("a failed revocation doesn't fail the reset", func(t *testing.T) {
 		repo := &resetRepo{fakeRepo: fakeRepo{user: testUser(t)}}
-		deps := resetDeps(repo, &fakeLimiter{}, &fakeMailer{})
-		deps.Revoker = &fakeRevoker{err: errors.New("redis down")}
-		assert.Equal(t, http.StatusOK, serve(ResetPassword(deps), body("the-token", "new-password-123")).Code)
+		h := newHandler(repo, &fakeRevoker{err: errors.New("redis down")})
+		assert.Equal(t, http.StatusOK, serve(h.ResetPassword, body("the-token", "new-password-123")).Code)
 	})
 
 	t.Run("an invalid token revokes nothing", func(t *testing.T) {
-		deps := resetDeps(&resetRepo{resetErr: pgx.ErrNoRows}, &fakeLimiter{}, &fakeMailer{})
 		revoker := &fakeRevoker{}
-		deps.Revoker = revoker
-		serve(ResetPassword(deps), body("bad", "new-password-123"))
+		serve(newHandler(&resetRepo{resetErr: pgx.ErrNoRows}, revoker).ResetPassword, body("bad", "new-password-123"))
 		assert.Empty(t, revoker.userIDs)
 	})
 
 	t.Run("a failed notification doesn't fail the reset", func(t *testing.T) {
 		repo := &resetRepo{fakeRepo: fakeRepo{user: testUser(t)}}
-		w := serve(ResetPassword(resetDeps(repo, &fakeLimiter{}, &fakeMailer{err: errors.New("smtp down")})), body("the-token", "new-password-123"))
+		w := serve(newHandler(repo, &fakeMailer{err: errors.New("smtp down")}).ResetPassword, body("the-token", "new-password-123"))
 		assert.Equal(t, http.StatusOK, w.Code)
 	})
 
 	t.Run("invalid or used token", func(t *testing.T) {
 		mailer := &fakeMailer{}
-		w := serve(ResetPassword(resetDeps(&resetRepo{resetErr: pgx.ErrNoRows}, &fakeLimiter{}, mailer)), body("bad", "new-password-123"))
+		w := serve(newHandler(&resetRepo{resetErr: pgx.ErrNoRows}, mailer).ResetPassword, body("bad", "new-password-123"))
 
 		require.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Equal(t, constants.InvalidResetToken, decode(t, w).Code)
@@ -87,7 +83,7 @@ func TestResetPassword(t *testing.T) {
 	})
 
 	t.Run("database error isn't reported as a bad link", func(t *testing.T) {
-		w := serve(ResetPassword(resetDeps(&resetRepo{resetErr: errDB}, &fakeLimiter{}, &fakeMailer{})), body("x", "new-password-123"))
+		w := serve(newHandler(&resetRepo{resetErr: errDB}).ResetPassword, body("x", "new-password-123"))
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 
@@ -95,14 +91,14 @@ func TestResetPassword(t *testing.T) {
 		tooLong := strings.Repeat("😀", 50)
 		for _, password := range []string{"short", "", "        ", tooLong} {
 			repo := &resetRepo{}
-			w := serve(ResetPassword(resetDeps(repo, &fakeLimiter{}, &fakeMailer{})), body("the-token", password))
+			w := serve(newHandler(repo).ResetPassword, body("the-token", password))
 			assert.Equal(t, http.StatusBadRequest, w.Code, "%q", password)
 			assert.Empty(t, repo.resetParams.TokenHash, "%q: token was used despite the invalid password", password)
 		}
 	})
 
 	t.Run("oversized token is rejected", func(t *testing.T) {
-		w := serve(ResetPassword(resetDeps(&resetRepo{}, &fakeLimiter{}, &fakeMailer{})), body(strings.Repeat("a", 129), "new-password-123"))
+		w := serve(newHandler(&resetRepo{}).ResetPassword, body(strings.Repeat("a", 129), "new-password-123"))
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }

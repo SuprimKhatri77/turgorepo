@@ -9,10 +9,10 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
+	"github.com/suprimkhatri77/turgorepo/api/internal/database"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 	"golang.org/x/crypto/bcrypt"
@@ -109,8 +109,7 @@ func upsertSeedUser(ctx context.Context, queries *db.Queries, u seedUser) error 
 		ImageUrl:     pgtype.Text{Valid: false},
 	})
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		if database.IsUniqueViolation(err) {
 			slog.Info("seed user already exists (concurrent), skipping", "email", u.Email)
 			return nil
 		}

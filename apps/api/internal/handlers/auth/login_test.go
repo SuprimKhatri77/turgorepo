@@ -15,7 +15,7 @@ import (
 func TestLogin(t *testing.T) {
 	t.Run("sets cookies and returns only public fields", func(t *testing.T) {
 		repo := &fakeRepo{user: testUser(t)}
-		w := serve(Login(repo, testConfig(), &fakeLimiter{}), `{"email":"ada@example.com","password":"`+testPassword+`"}`)
+		w := serve(newHandler(repo).Login, `{"email":"ada@example.com","password":"`+testPassword+`"}`)
 
 		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 		cookies := setCookies(w)
@@ -35,7 +35,7 @@ func TestLogin(t *testing.T) {
 
 	t.Run("refuses an unverified email without creating a session", func(t *testing.T) {
 		repo := &fakeRepo{user: unverifiedUser(t)}
-		w := serve(Login(repo, testConfig(), &fakeLimiter{}), `{"email":"ada@example.com","password":"`+testPassword+`"}`)
+		w := serve(newHandler(repo).Login, `{"email":"ada@example.com","password":"`+testPassword+`"}`)
 
 		require.Equal(t, http.StatusForbidden, w.Code, w.Body.String())
 		assert.Equal(t, constants.EmailNotVerified, decode(t, w).Code)
@@ -44,21 +44,21 @@ func TestLogin(t *testing.T) {
 	})
 
 	t.Run("an unverified account with the wrong password looks like any wrong password", func(t *testing.T) {
-		unverified := serve(Login(&fakeRepo{user: unverifiedUser(t)}, testConfig(), &fakeLimiter{}), `{"email":"ada@example.com","password":"wrong-password"}`)
-		verified := serve(Login(&fakeRepo{user: testUser(t)}, testConfig(), &fakeLimiter{}), `{"email":"ada@example.com","password":"wrong-password"}`)
+		unverified := serve(newHandler(&fakeRepo{user: unverifiedUser(t)}).Login, `{"email":"ada@example.com","password":"wrong-password"}`)
+		verified := serve(newHandler(&fakeRepo{user: testUser(t)}).Login, `{"email":"ada@example.com","password":"wrong-password"}`)
 		assert.Equal(t, http.StatusUnauthorized, unverified.Code)
 		assert.Equal(t, verified.Body.String(), unverified.Body.String())
 	})
 
 	t.Run("looks up the normalized email", func(t *testing.T) {
 		repo := &fakeRepo{user: testUser(t)}
-		serve(Login(repo, testConfig(), &fakeLimiter{}), `{"email":"Ada@Example.COM","password":"`+testPassword+`"}`)
+		serve(newHandler(repo).Login, `{"email":"Ada@Example.COM","password":"`+testPassword+`"}`)
 		assert.Equal(t, "ada@example.com", repo.lookedUp)
 	})
 
 	t.Run("wrong password and unknown email respond the same", func(t *testing.T) {
-		wrong := serve(Login(&fakeRepo{user: testUser(t)}, testConfig(), &fakeLimiter{}), `{"email":"ada@example.com","password":"wrong-password"}`)
-		unknown := serve(Login(&fakeRepo{getUserErr: pgx.ErrNoRows}, testConfig(), &fakeLimiter{}), `{"email":"no@example.com","password":"wrong-password"}`)
+		wrong := serve(newHandler(&fakeRepo{user: testUser(t)}).Login, `{"email":"ada@example.com","password":"wrong-password"}`)
+		unknown := serve(newHandler(&fakeRepo{getUserErr: pgx.ErrNoRows}).Login, `{"email":"no@example.com","password":"wrong-password"}`)
 
 		require.Equal(t, http.StatusUnauthorized, wrong.Code, "wrong password")
 		require.Equal(t, http.StatusUnauthorized, unknown.Code, "unknown email")
@@ -66,13 +66,13 @@ func TestLogin(t *testing.T) {
 	})
 
 	t.Run("database error is a 500, not invalid credentials", func(t *testing.T) {
-		w := serve(Login(&fakeRepo{getUserErr: errDB}, testConfig(), &fakeLimiter{}), `{"email":"ada@example.com","password":"`+testPassword+`"}`)
+		w := serve(newHandler(&fakeRepo{getUserErr: errDB}).Login, `{"email":"ada@example.com","password":"`+testPassword+`"}`)
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 
 	t.Run("account limit blocks before checking the password", func(t *testing.T) {
 		repo := &fakeRepo{user: testUser(t)}
-		w := serve(Login(repo, testConfig(), &fakeLimiter{blocked: true}), `{"email":"ada@example.com","password":"`+testPassword+`"}`)
+		w := serve(newHandler(repo, &fakeLimiter{blocked: true}).Login, `{"email":"ada@example.com","password":"`+testPassword+`"}`)
 		require.Equal(t, http.StatusTooManyRequests, w.Code)
 		assert.Empty(t, repo.lookedUp, "user was looked up despite the limit")
 		assert.Equal(t, constants.RateLimited, decode(t, w).Code)
@@ -81,8 +81,8 @@ func TestLogin(t *testing.T) {
 	t.Run("account limit treats email case variants as one account", func(t *testing.T) {
 		limiter := &fakeLimiter{}
 		user := testUser(t)
-		serve(Login(&fakeRepo{user: user}, testConfig(), limiter), `{"email":"ada@example.com","password":"`+testPassword+`"}`)
-		serve(Login(&fakeRepo{user: user}, testConfig(), limiter), `{"email":"ADA@example.com","password":"`+testPassword+`"}`)
+		serve(newHandler(&fakeRepo{user: user}, limiter).Login, `{"email":"ada@example.com","password":"`+testPassword+`"}`)
+		serve(newHandler(&fakeRepo{user: user}, limiter).Login, `{"email":"ADA@example.com","password":"`+testPassword+`"}`)
 		if assert.Len(t, limiter.keys, 2) {
 			assert.Equal(t, limiter.keys[0], limiter.keys[1])
 		}
@@ -105,7 +105,7 @@ func TestLogin(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				repo := &fakeRepo{user: testUser(t)}
 				limiter := &fakeLimiter{}
-				w := serve(Login(repo, testConfig(), limiter), tt.body)
+				w := serve(newHandler(repo, limiter).Login, tt.body)
 
 				require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
 				res := decode(t, w)
@@ -120,13 +120,13 @@ func TestLogin(t *testing.T) {
 	})
 
 	t.Run("the password is not trimmed", func(t *testing.T) {
-		w := serve(Login(&fakeRepo{user: testUser(t)}, testConfig(), &fakeLimiter{}), `{"email":"ada@example.com","password":" `+testPassword+` "}`)
+		w := serve(newHandler(&fakeRepo{user: testUser(t)}).Login, `{"email":"ada@example.com","password":" `+testPassword+` "}`)
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
 	})
 
 	t.Run("a failed session insert is a 500 without cookies", func(t *testing.T) {
 		repo := &fakeRepo{user: testUser(t), newSessErr: errDB}
-		w := serve(Login(repo, testConfig(), &fakeLimiter{}), `{"email":"ada@example.com","password":"`+testPassword+`"}`)
+		w := serve(newHandler(repo).Login, `{"email":"ada@example.com","password":"`+testPassword+`"}`)
 
 		require.Equal(t, http.StatusInternalServerError, w.Code)
 		assert.Equal(t, constants.InternalServerError, decode(t, w).Code)
@@ -135,7 +135,7 @@ func TestLogin(t *testing.T) {
 
 	t.Run("an email with surrounding spaces logs in", func(t *testing.T) {
 		repo := &fakeRepo{user: testUser(t)}
-		w := serve(Login(repo, testConfig(), &fakeLimiter{}), `{"email":"  ada@example.com ","password":"`+testPassword+`"}`)
+		w := serve(newHandler(repo).Login, `{"email":"  ada@example.com ","password":"`+testPassword+`"}`)
 
 		assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
 		assert.Equal(t, "ada@example.com", repo.lookedUp)
