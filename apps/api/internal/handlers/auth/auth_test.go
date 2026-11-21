@@ -54,6 +54,7 @@ type fakeRepo struct {
 	rotated     bool
 	revoked     []pgtype.UUID
 	sessionsNew int
+	newSessErr  error
 
 	revokedUsers []pgtype.UUID
 	revokeAllErr error
@@ -93,7 +94,7 @@ func (r *fakeRepo) CreateUser(_ context.Context, params db.CreateUserParams) (db
 
 func (r *fakeRepo) CreateSession(context.Context, db.CreateSessionParams) (db.Session, error) {
 	r.sessionsNew++
-	return db.Session{}, nil
+	return db.Session{}, r.newSessErr
 }
 
 func (r *fakeRepo) GetActiveSessionByID(context.Context, pgtype.UUID) (db.Session, error) {
@@ -283,6 +284,50 @@ func TestLogin(t *testing.T) {
 		}
 		assert.NotContains(t, limiter.keys[0], "ada@example.com", "key contains the raw email")
 	})
+
+	t.Run("invalid body is rejected before the limiter and the lookup", func(t *testing.T) {
+		tests := []struct {
+			name      string
+			body      string
+			wantField string
+		}{
+			{"malformed JSON", `{"email":`, ""},
+			{"missing email", `{"password":"` + testPassword + `"}`, "email"},
+			{"invalid email", `{"email":"not-an-email","password":"` + testPassword + `"}`, "email"},
+			{"missing password", `{"email":"ada@example.com"}`, "password"},
+			{"password over 72 bytes", `{"email":"ada@example.com","password":"` + strings.Repeat("a", 73) + `"}`, "password"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				repo := &fakeRepo{user: testUser(t)}
+				limiter := &fakeLimiter{}
+				w := serve(Login(repo, testConfig(), limiter), tt.body)
+
+				require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+				res := decode(t, w)
+				assert.Equal(t, constants.ValidationFailed, res.Code)
+				if tt.wantField != "" && assert.Len(t, res.Errors, 1) {
+					assert.Equal(t, tt.wantField, res.Errors[0].Field)
+				}
+				assert.Empty(t, limiter.keys, "limiter was hit")
+				assert.Empty(t, repo.lookedUp, "user was looked up")
+			})
+		}
+	})
+
+	t.Run("the password is not trimmed", func(t *testing.T) {
+		w := serve(Login(&fakeRepo{user: testUser(t)}, testConfig(), &fakeLimiter{}), `{"email":"ada@example.com","password":" `+testPassword+` "}`)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	t.Run("a failed session insert is a 500 without cookies", func(t *testing.T) {
+		repo := &fakeRepo{user: testUser(t), newSessErr: errDB}
+		w := serve(Login(repo, testConfig(), &fakeLimiter{}), `{"email":"ada@example.com","password":"`+testPassword+`"}`)
+
+		require.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Equal(t, constants.InternalServerError, decode(t, w).Code)
+		assert.Empty(t, setCookies(w))
+	})
 }
 
 func TestRegister(t *testing.T) {
@@ -364,6 +409,65 @@ func TestRegister(t *testing.T) {
 		serve(Register(registerDeps(repo, &fakeMailer{})), `{"name":"Ada","email":"a@example.com","password":"`+testPassword+`","role":"admin"}`)
 		if assert.NotNil(t, repo.created) {
 			assert.Equal(t, constants.RoleMember, repo.created.Role)
+		}
+	})
+
+	t.Run("invalid fields are rejected and nothing is created", func(t *testing.T) {
+		tests := []struct {
+			name, body, wantField string
+		}{
+			{"missing name", `{"email":"a@example.com","password":"` + testPassword + `"}`, "name"},
+			{"name too short", body("A", "a@example.com", testPassword), "name"},
+			{"name too long", body(strings.Repeat("a", 51), "a@example.com", testPassword), "name"},
+			{"missing email", `{"name":"Ada","password":"` + testPassword + `"}`, "email"},
+			{"invalid email", body("Ada", "not-an-email", testPassword), "email"},
+			{"missing password", `{"name":"Ada","email":"a@example.com"}`, "password"},
+			{"password under 8 characters", body("Ada", "a@example.com", "short"), "password"},
+			{"blank password", body("Ada", "a@example.com", strings.Repeat(" ", 8)), "password"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				repo := &fakeRepo{}
+				mailer := &fakeMailer{}
+				w := serve(Register(registerDeps(repo, mailer)), tt.body)
+
+				require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+				res := decode(t, w)
+				assert.Equal(t, constants.ValidationFailed, res.Code)
+				if assert.Len(t, res.Errors, 1) {
+					assert.Equal(t, tt.wantField, res.Errors[0].Field)
+				}
+				assert.Nil(t, repo.created, "user was created")
+				assert.Empty(t, mailer.sent)
+			})
+		}
+	})
+
+	t.Run("malformed JSON is a validation error", func(t *testing.T) {
+		repo := &fakeRepo{}
+		w := serve(Register(registerDeps(repo, &fakeMailer{})), `{"name":`)
+		require.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, constants.ValidationFailed, decode(t, w).Code)
+		assert.Nil(t, repo.created)
+	})
+
+	t.Run("stores a bcrypt hash of the untrimmed password", func(t *testing.T) {
+		repo := &fakeRepo{}
+		password := "  spaces around  "
+		serve(Register(registerDeps(repo, &fakeMailer{})), body("Ada", "a@example.com", password))
+
+		require.NotNil(t, repo.created)
+		assert.NotEqual(t, password, repo.created.PasswordHash)
+		assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(repo.created.PasswordHash), []byte(password)))
+	})
+
+	t.Run("other database errors are a 500 and send no email", func(t *testing.T) {
+		for _, err := range []error{errDB, &pgconn.PgError{Code: "23503"}} {
+			mailer := &fakeMailer{}
+			w := serve(Register(registerDeps(&fakeRepo{createErr: err}, mailer)), body("Ada", "a@example.com", testPassword))
+			assert.Equal(t, http.StatusInternalServerError, w.Code, "%v", err)
+			assert.Equal(t, constants.InternalServerError, decode(t, w).Code, "%v", err)
+			assert.Empty(t, mailer.sent, "%v", err)
 		}
 	})
 }
