@@ -63,6 +63,10 @@ jobs:
         working-directory: apps/api
         run: go test ./...
 
+      - name: Test web
+        working-directory: apps/web
+        run: bun test
+
       - name: Check Go vulnerabilities
         working-directory: apps/api
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
