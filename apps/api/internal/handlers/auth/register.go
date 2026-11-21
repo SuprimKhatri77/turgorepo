@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
-	"github.com/suprimkhatri77/turgorepo/api/internal/packages/rlog"
+	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 	"github.com/suprimkhatri77/turgorepo/api/internal/validator"

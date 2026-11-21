@@ -10,12 +10,13 @@ import (
 	robfigcron "github.com/robfig/cron/v3"
 
 	"github.com/suprimkhatri77/turgorepo/api/internal/background"
+	"github.com/suprimkhatri77/turgorepo/api/internal/cloudinary"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/cron"
 	"github.com/suprimkhatri77/turgorepo/api/internal/database"
-	dbgen "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
-	"github.com/suprimkhatri77/turgorepo/api/internal/packages/cloudinary"
-	apiredis "github.com/suprimkhatri77/turgorepo/api/internal/packages/redis"
+	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
+	"github.com/suprimkhatri77/turgorepo/api/internal/redisstore"
+	"github.com/suprimkhatri77/turgorepo/api/internal/routes"
 	"github.com/suprimkhatri77/turgorepo/api/internal/validator"
 )
 
@@ -23,9 +24,9 @@ const jobsShutdownTimeout = 10 * time.Second
 
 type App struct {
 	Cfg       *config.Config
-	Queries   *dbgen.Queries
+	Queries   *db.Queries
 	DB        *database.DB
-	Redis     *apiredis.Client
+	Redis     *redisstore.Client
 	CldClient *cloudinary.Client
 	Router    *gin.Engine
 	Scheduler *robfigcron.Cron
@@ -62,7 +63,7 @@ func New(ctx context.Context) (_ *App, err error) {
 		return nil, err
 	}
 
-	a.Queries = dbgen.New(a.DB.Pool)
+	a.Queries = db.New(a.DB.Pool)
 	validator.Init()
 
 	if a.Scheduler, err = cron.Start(a.Queries); err != nil {
@@ -71,7 +72,16 @@ func New(ctx context.Context) (_ *App, err error) {
 
 	a.Jobs = &background.Runner{}
 
-	if a.Router, err = buildRouter(cfg, a.Queries, a.CldClient, a.DB, a.Redis, initMailer(cfg), a.Jobs); err != nil {
+	a.Router, err = buildRouter(routes.Deps{
+		Config:     cfg,
+		Queries:    a.Queries,
+		Pool:       a.DB.Pool,
+		Redis:      a.Redis,
+		Mailer:     initMailer(cfg),
+		Jobs:       a.Jobs,
+		Cloudinary: a.CldClient,
+	})
+	if err != nil {
 		return nil, err
 	}
 	return a, nil

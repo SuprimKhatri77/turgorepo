@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/suprimkhatri77/turgorepo/api/internal/packages/rlog"
+	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
 )
 
 // RequestLogger writes one structured line per request, for production log tools.

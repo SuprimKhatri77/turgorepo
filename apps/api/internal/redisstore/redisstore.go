@@ -1,4 +1,4 @@
-package redis
+package redisstore
 
 import (
 	"context"
@@ -7,17 +7,17 @@ import (
 	"strconv"
 	"time"
 
-	goredis "github.com/redis/go-redis/v9"
-	"github.com/suprimkhatri77/turgorepo/api/internal/auth"
+	"github.com/redis/go-redis/v9"
+	"github.com/suprimkhatri77/turgorepo/api/internal/session"
 )
 
 // Client wraps a go-redis client.
 type Client struct {
-	rdb *goredis.Client
+	rdb *redis.Client
 }
 
 // RDB exposes the underlying go-redis client for callers that need raw commands.
-func (c *Client) RDB() *goredis.Client {
+func (c *Client) RDB() *redis.Client {
 	return c.rdb
 }
 
@@ -35,12 +35,12 @@ func (c *Client) Ping(ctx context.Context) error {
 }
 
 func open(ctx context.Context, redisURL string) (*Client, error) {
-	opts, err := goredis.ParseURL(redisURL)
+	opts, err := redis.ParseURL(redisURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse redis url: %w", err)
 	}
 
-	rdb := goredis.NewClient(opts)
+	rdb := redis.NewClient(opts)
 	if err := rdb.Ping(ctx).Err(); err != nil {
 		_ = rdb.Close()
 		return nil, err
@@ -74,7 +74,7 @@ func ConnectWithRetry(ctx context.Context, redisURL string, maxRetries int) (*Cl
 
 // allowScript increments a fixed-window counter and returns its count and time
 // left. It runs atomically so concurrent requests can't leave a key without an expiry.
-var allowScript = goredis.NewScript(`
+var allowScript = redis.NewScript(`
 local count = redis.call("INCR", KEYS[1])
 if count == 1 then
   redis.call("PEXPIRE", KEYS[1], ARGV[1])
@@ -112,32 +112,32 @@ func revokedSessionKey(sessionID string) string {
 	return "auth:session_revoked:" + sessionID
 }
 
-// RevokeTokensBefore implements auth.TokenRevoker.
+// RevokeTokensBefore implements session.TokenRevoker.
 func (c *Client) RevokeTokensBefore(ctx context.Context, userID string, cutoff time.Time, ttl time.Duration) error {
 	return c.rdb.Set(ctx, tokenCutoffKey(userID), cutoff.Unix(), ttl).Err()
 }
 
-// RevokeSession implements auth.TokenRevoker.
+// RevokeSession implements session.TokenRevoker.
 func (c *Client) RevokeSession(ctx context.Context, sessionID string, ttl time.Duration) error {
 	return c.rdb.Set(ctx, revokedSessionKey(sessionID), 1, ttl).Err()
 }
 
-// Revocations implements auth.TokenRevoker. Both markers are read in one round
+// Revocations implements session.TokenRevoker. Both markers are read in one round
 // trip, because this runs on every authenticated request.
-func (c *Client) Revocations(ctx context.Context, userID, sessionID string) (auth.Revocations, error) {
+func (c *Client) Revocations(ctx context.Context, userID, sessionID string) (session.Revocations, error) {
 	values, err := c.rdb.MGet(ctx, tokenCutoffKey(userID), revokedSessionKey(sessionID)).Result()
 	if err != nil {
-		return auth.Revocations{}, err
+		return session.Revocations{}, err
 	}
 	if len(values) != 2 {
-		return auth.Revocations{}, fmt.Errorf("revocation lookup returned %d values", len(values))
+		return session.Revocations{}, fmt.Errorf("revocation lookup returned %d values", len(values))
 	}
 
-	var revocations auth.Revocations
+	var revocations session.Revocations
 	if raw, ok := values[0].(string); ok {
 		seconds, err := strconv.ParseInt(raw, 10, 64)
 		if err != nil {
-			return auth.Revocations{}, fmt.Errorf("parse token cutoff: %w", err)
+			return session.Revocations{}, fmt.Errorf("parse token cutoff: %w", err)
 		}
 		revocations.Cutoff = time.Unix(seconds, 0)
 		revocations.HasCutoff = true

@@ -8,12 +8,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
-	session "github.com/suprimkhatri77/turgorepo/api/internal/auth"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
-	"github.com/suprimkhatri77/turgorepo/api/internal/packages/email"
-	"github.com/suprimkhatri77/turgorepo/api/internal/packages/rlog"
+	"github.com/suprimkhatri77/turgorepo/api/internal/email"
 	"github.com/suprimkhatri77/turgorepo/api/internal/ratelimit"
+	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
+	"github.com/suprimkhatri77/turgorepo/api/internal/session"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 	"github.com/suprimkhatri77/turgorepo/api/internal/validator"
@@ -74,7 +74,7 @@ func ResetPassword(deps AccountEmailDeps) gin.HandlerFunc {
 
 		// Someone locked out by wrong passwords should be able to log in straight away.
 		ratelimit.ClearAccount(c, deps.Limiter, user.Email)
-		utils.ClearAuthCookies(c, deps.Config)
+		session.ClearCookies(c, deps.Config)
 
 		requestID := c.GetString(constants.RequestIDKey)
 		deps.Jobs.Go("password changed email", func(ctx context.Context) {

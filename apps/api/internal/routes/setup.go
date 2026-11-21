@@ -7,8 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
-	"github.com/suprimkhatri77/turgorepo/api/internal/packages/rlog"
-	"github.com/suprimkhatri77/turgorepo/api/internal/routes/config"
+	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 )
 
@@ -20,7 +19,7 @@ const APIPrefix = "/api/v1"
 // HealthPath is the liveness endpoint load balancers poll.
 const HealthPath = APIPrefix + "/health"
 
-func Setup(r *gin.Engine, cfg config.Config) {
+func Setup(r *gin.Engine, deps Deps) {
 	router := r.Group(APIPrefix)
 
 	router.GET("/", func(c *gin.Context) {
@@ -36,11 +35,11 @@ func Setup(r *gin.Engine, cfg config.Config) {
 		})
 	})
 
-	router.GET("/ready", ready(cfg.PgxPool, cfg.Redis))
+	router.GET("/ready", ready(deps.Pool, deps.Redis))
 
-	setupAuthRoutes(router, cfg)
-	if cfg.Config.DocsEnabled {
-		setupDocsRoutes(router, cfg)
+	setupAuthRoutes(router, deps)
+	if deps.Config.DocsEnabled {
+		setupDocsRoutes(router, deps)
 	}
 }
 

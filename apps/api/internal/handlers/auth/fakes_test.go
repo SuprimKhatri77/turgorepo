@@ -6,15 +6,14 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	session "github.com/suprimkhatri77/turgorepo/api/internal/auth"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
-	"github.com/suprimkhatri77/turgorepo/api/internal/packages/email"
-	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
+	"github.com/suprimkhatri77/turgorepo/api/internal/email"
+	"github.com/suprimkhatri77/turgorepo/api/internal/session"
 )
 
 // fakeRepo embeds the interface, so a call the test didn't expect panics.
 type fakeRepo struct {
-	repository.AuthRepository
+	Store
 
 	user        db.User
 	getUserErr  error

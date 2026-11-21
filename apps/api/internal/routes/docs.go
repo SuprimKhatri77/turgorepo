@@ -8,16 +8,15 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/suprimkhatri77/turgorepo/api/internal/routes/config"
 )
 
-func setupDocsRoutes(r *gin.RouterGroup, cfg config.Config) {
+func setupDocsRoutes(r *gin.RouterGroup, deps Deps) {
 	r.GET("/openapi.json", func(c *gin.Context) {
-		if cfg.Config.OpenAPIPath == "" {
+		if deps.Config.OpenAPIPath == "" {
 			c.Status(http.StatusNotFound)
 			return
 		}
-		data, err := os.ReadFile(cfg.Config.OpenAPIPath)
+		data, err := os.ReadFile(deps.Config.OpenAPIPath)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "openapi spec not found"})
 			return

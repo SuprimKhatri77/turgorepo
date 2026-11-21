@@ -6,15 +6,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
-	session "github.com/suprimkhatri77/turgorepo/api/internal/auth"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
-	"github.com/suprimkhatri77/turgorepo/api/internal/packages/rlog"
-	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
+	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 )
 
-func Me(queries repository.AuthRepository) gin.HandlerFunc {
+func Me(queries Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -60,7 +58,7 @@ func Me(queries repository.AuthRepository) gin.HandlerFunc {
 		c.JSON(http.StatusOK, types.APIResponse{
 			Success: true,
 			Message: "Valid session",
-			Data:    session.PublicUser(user),
+			Data:    newUserResponse(user),
 		})
 	}
 }

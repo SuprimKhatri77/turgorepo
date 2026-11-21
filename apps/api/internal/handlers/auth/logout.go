@@ -4,20 +4,19 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	session "github.com/suprimkhatri77/turgorepo/api/internal/auth"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
-	"github.com/suprimkhatri77/turgorepo/api/internal/packages/rlog"
-	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
+	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
+	"github.com/suprimkhatri77/turgorepo/api/internal/session"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 )
 
 // Logout ends this device's session, including its access token, which would
 // otherwise keep working until it expires. The user's other sessions stay.
-func Logout(queries repository.AuthRepository, cfg *config.Config, revoker session.TokenRevoker) gin.HandlerFunc {
+func Logout(queries Store, cfg *config.Config, revoker session.TokenRevoker) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		sessionID, userID, found := sessionFromCookies(c, cfg)
-		utils.ClearAuthCookies(c, cfg)
+		session.ClearCookies(c, cfg)
 
 		if !found {
 			rlog.Info(c, "logout without a valid session token")

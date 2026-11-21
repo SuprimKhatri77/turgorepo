@@ -8,24 +8,23 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	session "github.com/suprimkhatri77/turgorepo/api/internal/auth"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
-	"github.com/suprimkhatri77/turgorepo/api/internal/packages/rlog"
-	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
+	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
+	"github.com/suprimkhatri77/turgorepo/api/internal/session"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 )
 
-func Refresh(queries repository.AuthRepository, cfg *config.Config, revoker session.TokenRevoker) gin.HandlerFunc {
+func Refresh(queries Store, cfg *config.Config, revoker session.TokenRevoker) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		refreshTokenString, err := c.Cookie("refresh_token")
+		refreshTokenString, err := c.Cookie(session.RefreshTokenCookie)
 		if err != nil {
 			rlog.Warn(c, "missing refresh token cookie")
-			utils.ClearAuthCookies(c, cfg)
+			session.ClearCookies(c, cfg)
 			c.JSON(http.StatusUnauthorized, types.APIResponse{
 				Success: false,
 				Message: "Missing refresh token",
@@ -37,7 +36,7 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config, revoker sess
 		claims, err := session.ParseRefresh(refreshTokenString, cfg.JWTRefreshSecret)
 		if err != nil {
 			rlog.Warn(c, "invalid refresh token", "error", err)
-			utils.ClearAuthCookies(c, cfg)
+			session.ClearCookies(c, cfg)
 			c.JSON(http.StatusUnauthorized, types.APIResponse{
 				Success: false,
 				Message: "Invalid refresh token",
@@ -49,7 +48,7 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config, revoker sess
 		familyID, err := utils.ConvertToUUID(claims.FamilyID)
 		if err != nil {
 			rlog.Warn(c, "invalid family_id in refresh token", "error", err)
-			utils.ClearAuthCookies(c, cfg)
+			session.ClearCookies(c, cfg)
 			c.JSON(http.StatusUnauthorized, types.APIResponse{
 				Success: false,
 				Message: "Invalid token claims",
@@ -65,7 +64,7 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config, revoker sess
 				return
 			}
 			rlog.Warn(c, "session not found or expired", "family_id", claims.FamilyID)
-			utils.ClearAuthCookies(c, cfg)
+			session.ClearCookies(c, cfg)
 			c.JSON(http.StatusUnauthorized, types.APIResponse{
 				Success: false,
 				Message: "Session expired",
@@ -144,7 +143,7 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config, revoker sess
 							return
 						}
 						rlog.Warn(c, "session gone after lost rotation race")
-						utils.ClearAuthCookies(c, cfg)
+						session.ClearCookies(c, cfg)
 						c.JSON(http.StatusUnauthorized, types.APIResponse{
 							Success: false,
 							Message: "Session expired",
@@ -157,7 +156,7 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config, revoker sess
 						return
 					}
 					rlog.Warn(c, "lost rotation race but grace window missed", "user_id", user.ID)
-					utils.ClearAuthCookies(c, cfg)
+					session.ClearCookies(c, cfg)
 					c.JSON(http.StatusUnauthorized, types.APIResponse{
 						Success: false,
 						Message: "Session invalid, please log in again",
@@ -175,7 +174,7 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config, revoker sess
 				return
 			}
 
-			session.SetSessionCookies(c, cfg, tokens.AccessToken, tokens.RefreshToken)
+			session.SetCookies(c, cfg, tokens.AccessToken, tokens.RefreshToken)
 			rlog.Info(c, "tokens rotated successfully", "user_id", user.ID)
 			c.JSON(http.StatusOK, types.APIResponse{
 				Success: true,
@@ -193,7 +192,7 @@ func Refresh(queries repository.AuthRepository, cfg *config.Config, revoker sess
 				rlog.Error(c, "failed to revoke session after stale token", err)
 			}
 			revokeSessionTokens(c, revoker, cfg, claims.FamilyID)
-			utils.ClearAuthCookies(c, cfg)
+			session.ClearCookies(c, cfg)
 			c.JSON(http.StatusUnauthorized, types.APIResponse{
 				Success: false,
 				Message: "Session invalid, please log in again",

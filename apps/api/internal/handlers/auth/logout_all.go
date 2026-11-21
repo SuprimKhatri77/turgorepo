@@ -4,18 +4,17 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	session "github.com/suprimkhatri77/turgorepo/api/internal/auth"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
-	"github.com/suprimkhatri77/turgorepo/api/internal/packages/rlog"
-	"github.com/suprimkhatri77/turgorepo/api/internal/repository"
+	"github.com/suprimkhatri77/turgorepo/api/internal/rlog"
+	"github.com/suprimkhatri77/turgorepo/api/internal/session"
 	"github.com/suprimkhatri77/turgorepo/api/internal/types"
 	"github.com/suprimkhatri77/turgorepo/api/internal/utils"
 )
 
 // LogoutAll ends every one of the user's sessions, including this one, and
 // rejects their access tokens until those expire. It needs RequireAuth.
-func LogoutAll(queries repository.AuthRepository, cfg *config.Config, revoker session.TokenRevoker) gin.HandlerFunc {
+func LogoutAll(queries Store, cfg *config.Config, revoker session.TokenRevoker) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userIDFromContext := c.MustGet(constants.UserIDKey).(string)
 
@@ -43,7 +42,7 @@ func LogoutAll(queries repository.AuthRepository, cfg *config.Config, revoker se
 		}
 
 		revokeUserTokens(c, revoker, cfg, userIDFromContext)
-		utils.ClearAuthCookies(c, cfg)
+		session.ClearCookies(c, cfg)
 
 		rlog.Info(c, "logged out on all devices", "user_id", userIDFromContext)
 		c.JSON(http.StatusOK, types.APIResponse{

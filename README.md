@@ -178,7 +178,7 @@ A password reset also marks the email as verified, since following the link prov
 To let unverified users log in instead:
 
 1. Remove the `EMAIL_NOT_VERIFIED` check in `internal/handlers/auth/login.go`.
-2. Call `session.IssueSession` in `register.go`.
+2. Call `session.Issue` in `register.go`.
 3. Send the user to their home page in `apps/web/modules/auth/hooks/mutations/use-register.ts`.
 
 `email_verified_at` is still recorded, so you can require it for particular actions later.
@@ -454,7 +454,7 @@ Open the repo root in VS Code/Cursor. Recommended extensions are in `.vscode/ext
 
 ### Request logging
 
-Auth handlers use `internal/packages/rlog` for structured logging. It automatically attaches `request_id`, `path`, `method`, `ip`, and `actor_id` (when available) to every log line:
+Auth handlers use `internal/rlog` for structured logging. It automatically attaches `request_id`, `path`, `method`, `ip`, and `actor_id` (when available) to every log line:
 
 ```go
 rlog.Info(c, "login successful", "user_id", user.ID)

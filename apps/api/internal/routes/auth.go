@@ -5,49 +5,48 @@ import (
 	authHandler "github.com/suprimkhatri77/turgorepo/api/internal/handlers/auth"
 	"github.com/suprimkhatri77/turgorepo/api/internal/middleware"
 	"github.com/suprimkhatri77/turgorepo/api/internal/ratelimit"
-	"github.com/suprimkhatri77/turgorepo/api/internal/routes/config"
 )
 
-func setupAuthRoutes(router *gin.RouterGroup, cfg config.Config) {
+func setupAuthRoutes(router *gin.RouterGroup, deps Deps) {
 	auth := router.Group("/auth")
 	auth.POST("/login",
-		ratelimit.ByIP(cfg.Redis, ratelimit.LoginPerIP),
-		authHandler.Login(cfg.Queries, cfg.Config, cfg.Redis),
+		ratelimit.ByIP(deps.Redis, ratelimit.LoginPerIP),
+		authHandler.Login(deps.Queries, deps.Config, deps.Redis),
 	)
 	accountEmail := authHandler.AccountEmailDeps{
-		Queries: cfg.Queries,
-		Config:  cfg.Config,
-		Limiter: cfg.Redis,
-		Revoker: cfg.Redis,
-		Mailer:  cfg.Mailer,
-		Jobs:    cfg.Jobs,
+		Queries: deps.Queries,
+		Config:  deps.Config,
+		Limiter: deps.Redis,
+		Revoker: deps.Redis,
+		Mailer:  deps.Mailer,
+		Jobs:    deps.Jobs,
 	}
 	auth.POST("/register",
-		ratelimit.ByIP(cfg.Redis, ratelimit.RegisterPerIP),
+		ratelimit.ByIP(deps.Redis, ratelimit.RegisterPerIP),
 		authHandler.Register(accountEmail),
 	)
 	auth.POST("/verify-email",
-		ratelimit.ByIP(cfg.Redis, ratelimit.VerifyEmailPerIP),
+		ratelimit.ByIP(deps.Redis, ratelimit.VerifyEmailPerIP),
 		authHandler.VerifyEmail(accountEmail),
 	)
 	auth.POST("/resend-verification",
-		ratelimit.ByIP(cfg.Redis, ratelimit.ResendVerificationPerIP),
+		ratelimit.ByIP(deps.Redis, ratelimit.ResendVerificationPerIP),
 		authHandler.ResendVerification(accountEmail),
 	)
 	auth.POST("/forgot-password",
-		ratelimit.ByIP(cfg.Redis, ratelimit.ForgotPasswordPerIP),
+		ratelimit.ByIP(deps.Redis, ratelimit.ForgotPasswordPerIP),
 		authHandler.ForgotPassword(accountEmail),
 	)
 	auth.POST("/reset-password",
-		ratelimit.ByIP(cfg.Redis, ratelimit.ResetPasswordPerIP),
+		ratelimit.ByIP(deps.Redis, ratelimit.ResetPasswordPerIP),
 		authHandler.ResetPassword(accountEmail),
 	)
 
-	auth.POST("/logout", authHandler.Logout(cfg.Queries, cfg.Config, cfg.Redis))
-	auth.POST("/refresh", authHandler.Refresh(cfg.Queries, cfg.Config, cfg.Redis))
+	auth.POST("/logout", authHandler.Logout(deps.Queries, deps.Config, deps.Redis))
+	auth.POST("/refresh", authHandler.Refresh(deps.Queries, deps.Config, deps.Redis))
 	auth.POST("/logout-all",
-		middleware.RequireAuth(cfg.Config, cfg.Redis),
-		authHandler.LogoutAll(cfg.Queries, cfg.Config, cfg.Redis),
+		middleware.RequireAuth(deps.Config, deps.Redis),
+		authHandler.LogoutAll(deps.Queries, deps.Config, deps.Redis),
 	)
-	auth.GET("/me", middleware.RequireAuth(cfg.Config, cfg.Redis), authHandler.Me(cfg.Queries))
+	auth.GET("/me", middleware.RequireAuth(deps.Config, deps.Redis), authHandler.Me(deps.Queries))
 }
