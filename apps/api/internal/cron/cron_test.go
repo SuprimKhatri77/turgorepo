@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type fakeStore struct {
@@ -31,27 +33,22 @@ func (s *fakeStore) DeleteExpiredEmailVerificationTokens(context.Context) (pgcon
 func TestCleanupExpired(t *testing.T) {
 	store := &fakeStore{}
 	cleanupExpired(store)
-	if store.sessionCalls != 1 || store.tokenCalls != 1 || store.verificationCalls != 1 {
-		t.Errorf("calls = %+v", store)
-	}
+	assert.Equal(t, 1, store.sessionCalls, "session cleanup calls")
+	assert.Equal(t, 1, store.tokenCalls, "password reset token cleanup calls")
+	assert.Equal(t, 1, store.verificationCalls, "email verification token cleanup calls")
 }
 
 func TestCleanupContinuesAfterAnError(t *testing.T) {
 	store := &fakeStore{sessionErr: errors.New("down")}
 	cleanupExpired(store)
-	if store.tokenCalls != 1 || store.verificationCalls != 1 {
-		t.Error("a failed job stopped the next ones")
-	}
+	assert.Equal(t, 1, store.tokenCalls, "a failed job stopped the next ones")
+	assert.Equal(t, 1, store.verificationCalls, "a failed job stopped the next ones")
 }
 
 func TestStartSchedulesJobs(t *testing.T) {
 	c, err := Start(&fakeStore{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer c.Stop()
 
-	if got := len(c.Entries()); got != 1 {
-		t.Errorf("entries = %d", got)
-	}
+	assert.Len(t, c.Entries(), 1)
 }

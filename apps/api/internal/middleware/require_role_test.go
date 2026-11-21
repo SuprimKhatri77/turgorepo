@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 )
 
@@ -31,9 +32,7 @@ func TestRequireRole(t *testing.T) {
 			)
 			w := httptest.NewRecorder()
 			r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/", nil))
-			if w.Code != tt.want {
-				t.Errorf("status = %d, want %d", w.Code, tt.want)
-			}
+			assert.Equal(t, tt.want, w.Code)
 		})
 	}
 }

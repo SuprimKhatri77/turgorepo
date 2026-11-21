@@ -1,8 +1,10 @@
 package config
 
 import (
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -86,26 +88,18 @@ func TestValidate(t *testing.T) {
 			err := cfg.Validate()
 
 			if tt.wantErr == "" {
-				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
-				}
+				require.NoError(t, err)
 				return
 			}
-			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
-				t.Fatalf("error = %v, want it to contain %q", err, tt.wantErr)
-			}
+			require.ErrorContains(t, err, tt.wantErr)
 		})
 	}
 }
 
 func TestSplitList(t *testing.T) {
 	got := splitList(" 10.0.0.0/16, ,192.168.0.0/24 ")
-	if len(got) != 2 || got[0] != "10.0.0.0/16" || got[1] != "192.168.0.0/24" {
-		t.Errorf("got %v", got)
-	}
-	if got := splitList(""); got != nil {
-		t.Errorf("empty value should give nil, got %v", got)
-	}
+	assert.Equal(t, []string{"10.0.0.0/16", "192.168.0.0/24"}, got)
+	assert.Nil(t, splitList(""), "empty value should give nil")
 }
 
 func TestDocsEnabled(t *testing.T) {
@@ -120,9 +114,7 @@ func TestDocsEnabled(t *testing.T) {
 		{"not-a-bool", "release", false},
 	}
 	for _, tt := range tests {
-		if got := docsEnabled(tt.value, tt.mode); got != tt.want {
-			t.Errorf("docsEnabled(%q, %q) = %v, want %v", tt.value, tt.mode, got, tt.want)
-		}
+		assert.Equal(t, tt.want, docsEnabled(tt.value, tt.mode), "docsEnabled(%q, %q)", tt.value, tt.mode)
 	}
 }
 
@@ -138,17 +130,11 @@ func TestSMTPAllowPlaintext(t *testing.T) {
 		{"not-a-bool", "release", false},
 	}
 	for _, tt := range tests {
-		if got := smtpAllowPlaintext(tt.value, tt.mode); got != tt.want {
-			t.Errorf("smtpAllowPlaintext(%q, %q) = %v, want %v", tt.value, tt.mode, got, tt.want)
-		}
+		assert.Equal(t, tt.want, smtpAllowPlaintext(tt.value, tt.mode), "smtpAllowPlaintext(%q, %q)", tt.value, tt.mode)
 	}
 }
 
 func TestSMTPPort(t *testing.T) {
-	if got := smtpPort("1025"); got != 1025 {
-		t.Errorf("got %d", got)
-	}
-	if got := smtpPort(""); got != defaultSMTPPort {
-		t.Errorf("empty value: got %d", got)
-	}
+	assert.Equal(t, 1025, smtpPort("1025"))
+	assert.Equal(t, defaultSMTPPort, smtpPort(""), "empty value")
 }

@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	session "github.com/suprimkhatri77/turgorepo/api/internal/auth"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	"github.com/suprimkhatri77/turgorepo/api/internal/packages/email"
@@ -28,9 +30,7 @@ func verifyTokenFromEmail(t *testing.T, msg email.Message) string {
 	t.Helper()
 	const marker = "https://app.example.com/auth/verify-email#token="
 	_, rest, found := strings.Cut(msg.Text, marker)
-	if !found {
-		t.Fatalf("no verification link in email: %s", msg.Text)
-	}
+	require.True(t, found, "no verification link in email: %s", msg.Text)
 	return strings.Fields(rest)[0]
 }
 
@@ -41,41 +41,29 @@ func TestVerifyEmail(t *testing.T) {
 		repo := &fakeRepo{user: testUser(t)}
 		w := serve(VerifyEmail(verifyDeps(repo, &fakeLimiter{}, &fakeMailer{})), body("the-token"))
 
-		if w.Code != http.StatusOK {
-			t.Fatalf("status = %d: %s", w.Code, w.Body)
-		}
-		if repo.verifiedHash != session.HashToken("the-token") {
-			t.Error("didn't look up the token by hash")
-		}
-		if len(setCookies(w)) != 0 || repo.sessionsNew != 0 {
-			t.Error("verifying must not log the user in")
-		}
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		assert.Equal(t, session.HashToken("the-token"), repo.verifiedHash, "didn't look up the token by hash")
+		assert.Empty(t, setCookies(w), "verifying must not log the user in")
+		assert.Zero(t, repo.sessionsNew, "verifying must not log the user in")
 	})
 
 	t.Run("invalid, used, expired or outdated token", func(t *testing.T) {
 		w := serve(VerifyEmail(verifyDeps(&fakeRepo{verifyErr: pgx.ErrNoRows}, &fakeLimiter{}, &fakeMailer{})), body("bad"))
-		if w.Code != http.StatusBadRequest {
-			t.Fatalf("status = %d", w.Code)
-		}
-		if code := decode(t, w).Code; code != constants.InvalidVerificationToken {
-			t.Errorf("code = %q", code)
-		}
+		require.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, constants.InvalidVerificationToken, decode(t, w).Code)
 	})
 
 	t.Run("database error isn't reported as a bad link", func(t *testing.T) {
 		w := serve(VerifyEmail(verifyDeps(&fakeRepo{verifyErr: errDB}, &fakeLimiter{}, &fakeMailer{})), body("x"))
-		if w.Code != http.StatusInternalServerError {
-			t.Errorf("status = %d", w.Code)
-		}
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 
 	t.Run("missing or oversized token is rejected before the database", func(t *testing.T) {
 		for _, b := range []string{`{}`, body(strings.Repeat("a", 129))} {
 			repo := &fakeRepo{}
 			w := serve(VerifyEmail(verifyDeps(repo, &fakeLimiter{}, &fakeMailer{})), b)
-			if w.Code != http.StatusBadRequest || repo.verifiedHash != "" {
-				t.Errorf("%s: status = %d, looked up = %q", b, w.Code, repo.verifiedHash)
-			}
+			assert.Equal(t, http.StatusBadRequest, w.Code, b)
+			assert.Empty(t, repo.verifiedHash, "%s: looked up", b)
 		}
 	})
 }
@@ -88,18 +76,11 @@ func TestResendVerification(t *testing.T) {
 		mailer := &fakeMailer{}
 		w := serve(ResendVerification(verifyDeps(repo, &fakeLimiter{}, mailer)), body)
 
-		if w.Code != http.StatusOK {
-			t.Fatalf("status = %d", w.Code)
-		}
-		if repo.lookedUp != "ada@example.com" {
-			t.Errorf("looked up %q", repo.lookedUp)
-		}
-		if len(mailer.sent) != 1 {
-			t.Fatalf("sent = %+v", mailer.sent)
-		}
-		if token := verifyTokenFromEmail(t, mailer.sent[0]); repo.verificationToken.TokenHash != session.HashToken(token) {
-			t.Error("stored hash doesn't match the emailed token")
-		}
+		require.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, "ada@example.com", repo.lookedUp)
+		require.Len(t, mailer.sent, 1)
+		token := verifyTokenFromEmail(t, mailer.sent[0])
+		assert.Equal(t, session.HashToken(token), repo.verificationToken.TokenHash, "stored hash doesn't match the emailed token")
 	})
 
 	t.Run("responds the same however it goes", func(t *testing.T) {
@@ -122,36 +103,25 @@ func TestResendVerification(t *testing.T) {
 		var firstBody string
 		for _, tt := range tests {
 			w := serve(ResendVerification(verifyDeps(tt.repo, tt.limiter, tt.mailer)), body)
-			if w.Code != http.StatusOK {
-				t.Errorf("%s: status = %d", tt.name, w.Code)
-			}
+			assert.Equal(t, http.StatusOK, w.Code, tt.name)
 			if firstBody == "" {
 				firstBody = w.Body.String()
 			}
-			if w.Body.String() != firstBody {
-				t.Errorf("%s: body differs: %s", tt.name, w.Body)
-			}
-			if got := len(tt.mailer.sent) > 0; got != tt.wantEmail {
-				t.Errorf("%s: emailed = %v, want %v", tt.name, got, tt.wantEmail)
-			}
+			assert.Equal(t, firstBody, w.Body.String(), "%s: body differs", tt.name)
+			assert.Equal(t, tt.wantEmail, len(tt.mailer.sent) > 0, "%s: emailed", tt.name)
 		}
 	})
 
 	t.Run("email limit applies across IPs, without the raw address", func(t *testing.T) {
 		limiter := &fakeLimiter{}
 		serve(ResendVerification(verifyDeps(&fakeRepo{user: unverifiedUser(t)}, limiter, &fakeMailer{})), body)
-		if len(limiter.keys) != 1 || !strings.HasPrefix(limiter.keys[0], "ratelimit:resend-verification:email:") {
-			t.Fatalf("keys = %v", limiter.keys)
-		}
-		if strings.Contains(limiter.keys[0], "ada@example.com") {
-			t.Errorf("key has the address: %s", limiter.keys[0])
-		}
+		require.Len(t, limiter.keys, 1)
+		require.True(t, strings.HasPrefix(limiter.keys[0], "ratelimit:resend-verification:email:"), "key = %s", limiter.keys[0])
+		assert.NotContains(t, limiter.keys[0], "ada@example.com", "key has the address")
 	})
 
 	t.Run("invalid email is a validation error", func(t *testing.T) {
 		w := serve(ResendVerification(verifyDeps(&fakeRepo{}, &fakeLimiter{}, &fakeMailer{})), `{"email":"nope"}`)
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("status = %d", w.Code)
-		}
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }

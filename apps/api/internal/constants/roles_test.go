@@ -1,6 +1,10 @@
 package constants
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 func TestIsValidRole(t *testing.T) {
 	tests := []struct {
@@ -16,8 +20,6 @@ func TestIsValidRole(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if got := IsValidRole(tt.role); got != tt.want {
-			t.Fatalf("IsValidRole(%q) = %v, want %v", tt.role, got, tt.want)
-		}
+		require.Equal(t, tt.want, IsValidRole(tt.role), "IsValidRole(%q)", tt.role)
 	}
 }

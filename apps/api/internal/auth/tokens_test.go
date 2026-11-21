@@ -7,6 +7,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
@@ -42,27 +44,15 @@ func TestSignAndParseAccess(t *testing.T) {
 	user := testUser()
 
 	token, err := SignAccess(cfg, user, uuid.New(), testFamilyID())
-	if err != nil {
-		t.Fatalf("SignAccess: %v", err)
-	}
+	require.NoError(t, err)
 
 	claims, err := ParseAccess(token, cfg.JWTAccessSecret)
-	if err != nil {
-		t.Fatalf("ParseAccess: %v", err)
-	}
+	require.NoError(t, err)
 
-	if claims.UserID != "11111111-1111-1111-1111-111111111111" {
-		t.Fatalf("user_id = %q", claims.UserID)
-	}
-	if claims.Role != constants.RoleMember {
-		t.Fatalf("role = %q", claims.Role)
-	}
-	if claims.Email != user.Email {
-		t.Fatalf("email = %q", claims.Email)
-	}
-	if claims.SessionID != "22222222-2222-2222-2222-222222222222" {
-		t.Fatalf("sid = %q", claims.SessionID)
-	}
+	require.Equal(t, "11111111-1111-1111-1111-111111111111", claims.UserID)
+	require.Equal(t, constants.RoleMember, claims.Role)
+	require.Equal(t, user.Email, claims.Email)
+	require.Equal(t, "22222222-2222-2222-2222-222222222222", claims.SessionID)
 }
 
 func TestParseAccessRejectsMissingSessionID(t *testing.T) {
@@ -75,13 +65,10 @@ func TestParseAccessRejectsMissingSessionID(t *testing.T) {
 		},
 	}
 	signed, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(cfg.JWTAccessSecret))
-	if err != nil {
-		t.Fatalf("sign: %v", err)
-	}
+	require.NoError(t, err)
 
-	if _, err := ParseAccess(signed, cfg.JWTAccessSecret); err == nil {
-		t.Fatal("expected a token without sid to fail")
-	}
+	_, err = ParseAccess(signed, cfg.JWTAccessSecret)
+	require.Error(t, err, "expected a token without sid to fail")
 }
 
 func TestSignAccessSetsIssuedAt(t *testing.T) {
@@ -89,17 +76,12 @@ func TestSignAccessSetsIssuedAt(t *testing.T) {
 	before := time.Now().Truncate(time.Second)
 
 	token, err := SignAccess(cfg, testUser(), uuid.New(), testFamilyID())
-	if err != nil {
-		t.Fatalf("SignAccess: %v", err)
-	}
+	require.NoError(t, err)
 	claims, err := ParseAccess(token, cfg.JWTAccessSecret)
-	if err != nil {
-		t.Fatalf("ParseAccess: %v", err)
-	}
+	require.NoError(t, err)
 
-	if claims.IssuedAt == nil || claims.IssuedAt.Before(before) || claims.IssuedAt.After(time.Now()) {
-		t.Fatalf("iat = %v", claims.IssuedAt)
-	}
+	require.NotNil(t, claims.IssuedAt)
+	require.WithinRange(t, claims.IssuedAt.Time, before, time.Now())
 }
 
 func TestIssuedAtOrBefore(t *testing.T) {
@@ -119,9 +101,7 @@ func TestIssuedAtOrBefore(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			claims := AccessClaims{RegisteredClaims: jwt.RegisteredClaims{IssuedAt: tt.issuedAt}}
-			if got := claims.IssuedAtOrBefore(cutoff); got != tt.want {
-				t.Errorf("got %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, claims.IssuedAtOrBefore(cutoff))
 		})
 	}
 }
@@ -132,21 +112,13 @@ func TestSignAndParseRefresh(t *testing.T) {
 	familyID := testFamilyID()
 
 	token, err := SignRefresh(cfg, user, uuid.New(), familyID)
-	if err != nil {
-		t.Fatalf("SignRefresh: %v", err)
-	}
+	require.NoError(t, err)
 
 	claims, err := ParseRefresh(token, cfg.JWTRefreshSecret)
-	if err != nil {
-		t.Fatalf("ParseRefresh: %v", err)
-	}
+	require.NoError(t, err)
 
-	if claims.UserID != "11111111-1111-1111-1111-111111111111" {
-		t.Fatalf("user_id = %q", claims.UserID)
-	}
-	if claims.FamilyID != "22222222-2222-2222-2222-222222222222" {
-		t.Fatalf("family_id = %q, want 22222222-...", claims.FamilyID)
-	}
+	require.Equal(t, "11111111-1111-1111-1111-111111111111", claims.UserID)
+	require.Equal(t, "22222222-2222-2222-2222-222222222222", claims.FamilyID)
 }
 
 func TestNewTokensIncludesFamilyID(t *testing.T) {
@@ -155,17 +127,11 @@ func TestNewTokensIncludesFamilyID(t *testing.T) {
 	familyID := testFamilyID()
 
 	tokens, err := NewTokens(cfg, user, familyID)
-	if err != nil {
-		t.Fatalf("NewTokens: %v", err)
-	}
+	require.NoError(t, err)
 
 	claims, err := ParseRefresh(tokens.RefreshToken, cfg.JWTRefreshSecret)
-	if err != nil {
-		t.Fatalf("ParseRefresh: %v", err)
-	}
-	if claims.FamilyID != "22222222-2222-2222-2222-222222222222" {
-		t.Fatalf("family_id = %q", claims.FamilyID)
-	}
+	require.NoError(t, err)
+	require.Equal(t, "22222222-2222-2222-2222-222222222222", claims.FamilyID)
 }
 
 func TestNewAccessToken(t *testing.T) {
@@ -173,17 +139,11 @@ func TestNewAccessToken(t *testing.T) {
 	user := testUser()
 
 	token, err := NewAccessToken(cfg, user, testFamilyID())
-	if err != nil {
-		t.Fatalf("NewAccessToken: %v", err)
-	}
+	require.NoError(t, err)
 
 	claims, err := ParseAccess(token, cfg.JWTAccessSecret)
-	if err != nil {
-		t.Fatalf("ParseAccess: %v", err)
-	}
-	if claims.UserID != "11111111-1111-1111-1111-111111111111" {
-		t.Fatalf("user_id = %q", claims.UserID)
-	}
+	require.NoError(t, err)
+	require.Equal(t, "11111111-1111-1111-1111-111111111111", claims.UserID)
 }
 
 func TestParseRefreshRejectsMissingFamilyID(t *testing.T) {
@@ -197,25 +157,19 @@ func TestParseRefreshRejectsMissingFamilyID(t *testing.T) {
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signed, err := token.SignedString([]byte(cfg.JWTRefreshSecret))
-	if err != nil {
-		t.Fatalf("sign: %v", err)
-	}
+	require.NoError(t, err)
 
-	if _, err := ParseRefresh(signed, cfg.JWTRefreshSecret); err == nil {
-		t.Fatal("expected missing family_id to fail")
-	}
+	_, err = ParseRefresh(signed, cfg.JWTRefreshSecret)
+	require.Error(t, err, "expected missing family_id to fail")
 }
 
 func TestParseAccessRejectsWrongSecret(t *testing.T) {
 	cfg := testConfig()
 	token, err := SignAccess(cfg, testUser(), uuid.New(), testFamilyID())
-	if err != nil {
-		t.Fatalf("SignAccess: %v", err)
-	}
+	require.NoError(t, err)
 
-	if _, err := ParseAccess(token, "other-secret"); err == nil {
-		t.Fatal("expected wrong secret to fail")
-	}
+	_, err = ParseAccess(token, "other-secret")
+	require.Error(t, err, "expected wrong secret to fail")
 }
 
 func TestParseAccessRejectsWrongAlg(t *testing.T) {
@@ -229,25 +183,19 @@ func TestParseAccessRejectsWrongAlg(t *testing.T) {
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS384, claims)
 	signed, err := token.SignedString([]byte("access-secret"))
-	if err != nil {
-		t.Fatalf("sign HS384: %v", err)
-	}
+	require.NoError(t, err)
 
-	if _, err := ParseAccess(signed, "access-secret"); err == nil {
-		t.Fatal("expected HS384 token to fail")
-	}
+	_, err = ParseAccess(signed, "access-secret")
+	require.Error(t, err, "expected HS384 token to fail")
 }
 
 func TestParseRefreshRejectsAccessToken(t *testing.T) {
 	cfg := testConfig()
 	access, err := SignAccess(cfg, testUser(), uuid.New(), testFamilyID())
-	if err != nil {
-		t.Fatalf("SignAccess: %v", err)
-	}
+	require.NoError(t, err)
 
-	if _, err := ParseRefresh(access, cfg.JWTRefreshSecret); err == nil {
-		t.Fatal("expected access token to fail refresh parse")
-	}
+	_, err = ParseRefresh(access, cfg.JWTRefreshSecret)
+	require.Error(t, err, "expected access token to fail refresh parse")
 }
 
 func TestHashTokenIsDeterministic(t *testing.T) {
@@ -255,13 +203,7 @@ func TestHashTokenIsDeterministic(t *testing.T) {
 	second := HashToken("refresh-token")
 	other := HashToken("other-token")
 
-	if first != second {
-		t.Fatal("hash should be deterministic")
-	}
-	if first == other {
-		t.Fatal("different tokens should hash differently")
-	}
-	if len(first) != 64 {
-		t.Fatalf("sha256 hex length = %d", len(first))
-	}
+	require.Equal(t, first, second, "hash should be deterministic")
+	require.NotEqual(t, first, other, "different tokens should hash differently")
+	require.Len(t, first, 64, "sha256 hex length")
 }

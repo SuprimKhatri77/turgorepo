@@ -1,54 +1,37 @@
 package email
 
 import (
-	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPasswordResetEmail(t *testing.T) {
 	url := "https://app.example.com/auth/reset-password#token=abc-123_DEF"
 	msg, err := PasswordResetEmail("ada@example.com", "Ada", url, time.Hour)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if msg.To != "ada@example.com" {
-		t.Errorf("to = %q", msg.To)
-	}
-	if !strings.Contains(msg.Text, url) {
-		t.Errorf("text is missing the link: %s", msg.Text)
-	}
-	if !strings.Contains(msg.HTML, "#token=abc-123_DEF") {
-		t.Errorf("html is missing the link: %s", msg.HTML)
-	}
+	assert.Equal(t, "ada@example.com", msg.To)
+	assert.Contains(t, msg.Text, url, "text is missing the link")
+	assert.Contains(t, msg.HTML, "#token=abc-123_DEF", "html is missing the link")
 	for _, body := range []string{msg.Text, msg.HTML} {
-		if !strings.Contains(body, "60 minutes") {
-			t.Errorf("body is missing the expiry: %s", body)
-		}
+		assert.Contains(t, body, "60 minutes", "body is missing the expiry")
 	}
 }
 
 func TestVerificationEmail(t *testing.T) {
 	url := "https://app.example.com/auth/verify-email#token=abc-123_DEF"
 	msg, err := VerificationEmail("ada@example.com", "Ada", url, 24*time.Hour)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if msg.To != "ada@example.com" || !strings.Contains(msg.Subject, "Verify") {
-		t.Errorf("to = %q, subject = %q", msg.To, msg.Subject)
-	}
-	if !strings.Contains(msg.Text, url) {
-		t.Errorf("text is missing the link: %s", msg.Text)
-	}
-	if !strings.Contains(msg.HTML, "#token=abc-123_DEF") {
-		t.Errorf("html is missing the link: %s", msg.HTML)
-	}
+	assert.Equal(t, "ada@example.com", msg.To)
+	assert.Contains(t, msg.Subject, "Verify")
+	assert.Contains(t, msg.Text, url, "text is missing the link")
+	assert.Contains(t, msg.HTML, "#token=abc-123_DEF", "html is missing the link")
 	for _, body := range []string{msg.Text, msg.HTML} {
-		if !strings.Contains(body, "24 hours") {
-			t.Errorf("body is missing the expiry: %s", body)
-		}
+		assert.Contains(t, body, "24 hours", "body is missing the expiry")
 	}
 }
 
@@ -56,27 +39,18 @@ func TestEmailsEscapeNamesInHTML(t *testing.T) {
 	name := `<script>alert(1)</script>`
 
 	reset, err := PasswordResetEmail("a@example.com", name, "https://example.com", time.Hour)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	changed, err := PasswordChangedEmail("a@example.com", name)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	for _, html := range []string{reset.HTML, changed.HTML} {
-		if strings.Contains(html, "<script>") {
-			t.Errorf("name was not escaped: %s", html)
-		}
+		assert.NotContains(t, html, "<script>", "name was not escaped")
 	}
 }
 
 func TestPasswordChangedEmail(t *testing.T) {
 	msg, err := PasswordChangedEmail("ada@example.com", "Ada")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(msg.Subject, "changed") || !strings.Contains(msg.Text, "logged out") {
-		t.Errorf("unexpected message: %+v", msg)
-	}
+	require.NoError(t, err)
+	assert.Contains(t, msg.Subject, "changed")
+	assert.Contains(t, msg.Text, "logged out")
 }

@@ -4,6 +4,9 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRunnerWaitsForJobs(t *testing.T) {
@@ -14,12 +17,8 @@ func TestRunnerWaitsForJobs(t *testing.T) {
 		finished = true
 	})
 
-	if !r.Wait(context.Background()) {
-		t.Fatal("Wait returned false")
-	}
-	if !finished {
-		t.Error("Wait returned before the job finished")
-	}
+	require.True(t, r.Wait(context.Background()), "Wait returned false")
+	assert.True(t, finished, "Wait returned before the job finished")
 }
 
 func TestRunnerRecoversPanics(t *testing.T) {
@@ -28,9 +27,7 @@ func TestRunnerRecoversPanics(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	if !r.Wait(ctx) {
-		t.Error("a panicking job should still count as finished")
-	}
+	assert.True(t, r.Wait(ctx), "a panicking job should still count as finished")
 }
 
 func TestRunnerWaitStopsAtDeadline(t *testing.T) {
@@ -41,9 +38,7 @@ func TestRunnerWaitStopsAtDeadline(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
-	if r.Wait(ctx) {
-		t.Error("Wait should report the job as unfinished")
-	}
+	assert.False(t, r.Wait(ctx), "Wait should report the job as unfinished")
 }
 
 func TestRunnerGivesJobsAContextWithADeadline(t *testing.T) {
@@ -51,7 +46,5 @@ func TestRunnerGivesJobsAContextWithADeadline(t *testing.T) {
 	hasDeadline := false
 	r.Go("job", func(ctx context.Context) { _, hasDeadline = ctx.Deadline() })
 	r.Wait(context.Background())
-	if !hasDeadline {
-		t.Error("job context has no deadline")
-	}
+	assert.True(t, hasDeadline, "job context has no deadline")
 }

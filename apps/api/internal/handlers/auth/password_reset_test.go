@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	session "github.com/suprimkhatri77/turgorepo/api/internal/auth"
 	"github.com/suprimkhatri77/turgorepo/api/internal/constants"
 	db "github.com/suprimkhatri77/turgorepo/api/internal/database/generated"
@@ -88,9 +90,7 @@ func tokenFromEmail(t *testing.T, msg email.Message) string {
 	t.Helper()
 	const marker = "https://app.example.com/auth/reset-password#token="
 	_, rest, found := strings.Cut(msg.Text, marker)
-	if !found {
-		t.Fatalf("no reset link in email: %s", msg.Text)
-	}
+	require.True(t, found, "no reset link in email: %s", msg.Text)
 	return strings.Fields(rest)[0]
 }
 
@@ -102,26 +102,15 @@ func TestForgotPassword(t *testing.T) {
 		mailer := &fakeMailer{}
 		w := serve(ForgotPassword(resetDeps(repo, &fakeLimiter{}, mailer)), body)
 
-		if w.Code != http.StatusOK {
-			t.Fatalf("status = %d", w.Code)
-		}
-		if repo.lookedUp != "ada@example.com" {
-			t.Errorf("looked up %q", repo.lookedUp)
-		}
-		if len(mailer.sent) != 1 || mailer.sent[0].To != "ada@example.com" {
-			t.Fatalf("sent = %+v", mailer.sent)
-		}
+		require.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, "ada@example.com", repo.lookedUp)
+		require.Len(t, mailer.sent, 1)
+		require.Equal(t, "ada@example.com", mailer.sent[0].To)
 
 		token := tokenFromEmail(t, mailer.sent[0])
-		if repo.createdToken.TokenHash != session.HashToken(token) {
-			t.Error("stored hash doesn't match the emailed token")
-		}
-		if repo.createdToken.TokenHash == token {
-			t.Error("stored the raw token")
-		}
-		if remaining := time.Until(repo.createdToken.ExpiresAt.Time); remaining < 59*time.Minute || remaining > time.Hour {
-			t.Errorf("expires in %v", remaining)
-		}
+		assert.Equal(t, session.HashToken(token), repo.createdToken.TokenHash, "stored hash doesn't match the emailed token")
+		assert.NotEqual(t, token, repo.createdToken.TokenHash, "stored the raw token")
+		assert.WithinRange(t, repo.createdToken.ExpiresAt.Time, time.Now().Add(59*time.Minute), time.Now().Add(time.Hour))
 	})
 
 	t.Run("responds the same however it goes", func(t *testing.T) {
@@ -143,37 +132,27 @@ func TestForgotPassword(t *testing.T) {
 		var firstBody string
 		for _, tt := range tests {
 			w := serve(ForgotPassword(resetDeps(tt.repo, tt.limiter, tt.mailer)), body)
-			if w.Code != http.StatusOK {
-				t.Errorf("%s: status = %d", tt.name, w.Code)
-			}
+			assert.Equal(t, http.StatusOK, w.Code, tt.name)
 			if firstBody == "" {
 				firstBody = w.Body.String()
 			}
-			if w.Body.String() != firstBody {
-				t.Errorf("%s: body differs: %s", tt.name, w.Body)
-			}
-			if got := len(tt.mailer.sent) > 0; got != tt.wantEmail {
-				t.Errorf("%s: emailed = %v, want %v", tt.name, got, tt.wantEmail)
-			}
+			assert.Equal(t, firstBody, w.Body.String(), "%s: body differs", tt.name)
+			assert.Equal(t, tt.wantEmail, len(tt.mailer.sent) > 0, "%s: emailed", tt.name)
 		}
 	})
 
 	t.Run("email limit applies across IPs, without the raw address", func(t *testing.T) {
 		limiter := &fakeLimiter{}
 		serve(ForgotPassword(resetDeps(&resetRepo{fakeRepo: fakeRepo{user: testUser(t)}}, limiter, &fakeMailer{})), body)
-		if len(limiter.keys) != 1 || !strings.HasPrefix(limiter.keys[0], "ratelimit:forgot-password:email:") {
-			t.Fatalf("keys = %v", limiter.keys)
-		}
-		if strings.Contains(limiter.keys[0], "ada@example.com") || strings.Contains(limiter.keys[0], "192.0.2") {
-			t.Errorf("key has the address or an IP: %s", limiter.keys[0])
-		}
+		require.Len(t, limiter.keys, 1)
+		require.True(t, strings.HasPrefix(limiter.keys[0], "ratelimit:forgot-password:email:"), "key = %s", limiter.keys[0])
+		assert.NotContains(t, limiter.keys[0], "ada@example.com", "key has the address")
+		assert.NotContains(t, limiter.keys[0], "192.0.2", "key has an IP")
 	})
 
 	t.Run("invalid email is a validation error", func(t *testing.T) {
 		w := serve(ForgotPassword(resetDeps(&resetRepo{}, &fakeLimiter{}, &fakeMailer{})), `{"email":"nope"}`)
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("status = %d", w.Code)
-		}
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }
 
@@ -188,25 +167,18 @@ func TestResetPassword(t *testing.T) {
 		mailer := &fakeMailer{}
 		w := serve(ResetPassword(resetDeps(repo, limiter, mailer)), body("the-token", "new-password-123"))
 
-		if w.Code != http.StatusOK {
-			t.Fatalf("status = %d: %s", w.Code, w.Body)
-		}
-		if repo.resetParams.TokenHash != session.HashToken("the-token") {
-			t.Error("didn't look up the token by hash")
-		}
-		if err := bcrypt.CompareHashAndPassword([]byte(repo.resetParams.PasswordHash), []byte("new-password-123")); err != nil {
-			t.Errorf("stored hash doesn't match the new password: %v", err)
-		}
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		assert.Equal(t, session.HashToken("the-token"), repo.resetParams.TokenHash, "didn't look up the token by hash")
+		assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(repo.resetParams.PasswordHash), []byte("new-password-123")), "stored hash doesn't match the new password")
 		for _, name := range []string{"access_token", "refresh_token", "is_logged_in"} {
-			if value, set := setCookies(w)[name]; !set || value != "" {
-				t.Errorf("cookie %s should be cleared, got %q (set=%v)", name, value, set)
-			}
+			assert.Contains(t, setCookies(w), name, "cookie %s should be cleared", name)
+			assert.Empty(t, setCookies(w)[name], "cookie %s should be cleared", name)
 		}
-		if len(limiter.cleared) != 1 || !strings.HasPrefix(limiter.cleared[0], "ratelimit:login:account:") {
-			t.Errorf("cleared = %v", limiter.cleared)
+		if assert.Len(t, limiter.cleared, 1) {
+			assert.True(t, strings.HasPrefix(limiter.cleared[0], "ratelimit:login:account:"), "cleared = %v", limiter.cleared)
 		}
-		if len(mailer.sent) != 1 || !strings.Contains(mailer.sent[0].Subject, "changed") {
-			t.Errorf("sent = %+v", mailer.sent)
+		if assert.Len(t, mailer.sent, 1) {
+			assert.Contains(t, mailer.sent[0].Subject, "changed")
 		}
 	})
 
@@ -219,24 +191,16 @@ func TestResetPassword(t *testing.T) {
 		before := time.Now()
 		serve(ResetPassword(deps), body("the-token", "new-password-123"))
 
-		if len(revoker.userIDs) != 1 || revoker.userIDs[0] != "01010101-0101-0101-0101-010101010101" {
-			t.Fatalf("userIDs = %v", revoker.userIDs)
-		}
-		if revoker.cutoff.Before(before) || revoker.cutoff.After(time.Now()) {
-			t.Errorf("cutoff = %v", revoker.cutoff)
-		}
-		if revoker.ttl != deps.Config.AccessTokenTTL {
-			t.Errorf("ttl = %v, want %v", revoker.ttl, deps.Config.AccessTokenTTL)
-		}
+		require.Equal(t, []string{"01010101-0101-0101-0101-010101010101"}, revoker.userIDs)
+		assert.WithinRange(t, revoker.cutoff, before, time.Now())
+		assert.Equal(t, deps.Config.AccessTokenTTL, revoker.ttl)
 	})
 
 	t.Run("a failed revocation doesn't fail the reset", func(t *testing.T) {
 		repo := &resetRepo{fakeRepo: fakeRepo{user: testUser(t)}}
 		deps := resetDeps(repo, &fakeLimiter{}, &fakeMailer{})
 		deps.Revoker = &fakeRevoker{err: errors.New("redis down")}
-		if w := serve(ResetPassword(deps), body("the-token", "new-password-123")); w.Code != http.StatusOK {
-			t.Errorf("status = %d", w.Code)
-		}
+		assert.Equal(t, http.StatusOK, serve(ResetPassword(deps), body("the-token", "new-password-123")).Code)
 	})
 
 	t.Run("an invalid token revokes nothing", func(t *testing.T) {
@@ -244,42 +208,28 @@ func TestResetPassword(t *testing.T) {
 		revoker := &fakeRevoker{}
 		deps.Revoker = revoker
 		serve(ResetPassword(deps), body("bad", "new-password-123"))
-		if len(revoker.userIDs) != 0 {
-			t.Errorf("userIDs = %v", revoker.userIDs)
-		}
+		assert.Empty(t, revoker.userIDs)
 	})
 
 	t.Run("a failed notification doesn't fail the reset", func(t *testing.T) {
 		repo := &resetRepo{fakeRepo: fakeRepo{user: testUser(t)}}
 		w := serve(ResetPassword(resetDeps(repo, &fakeLimiter{}, &fakeMailer{err: errors.New("smtp down")})), body("the-token", "new-password-123"))
-		if w.Code != http.StatusOK {
-			t.Errorf("status = %d", w.Code)
-		}
+		assert.Equal(t, http.StatusOK, w.Code)
 	})
 
 	t.Run("invalid or used token", func(t *testing.T) {
 		mailer := &fakeMailer{}
 		w := serve(ResetPassword(resetDeps(&resetRepo{resetErr: pgx.ErrNoRows}, &fakeLimiter{}, mailer)), body("bad", "new-password-123"))
 
-		if w.Code != http.StatusBadRequest {
-			t.Fatalf("status = %d", w.Code)
-		}
-		if code := decode(t, w).Code; code != constants.InvalidResetToken {
-			t.Errorf("code = %q", code)
-		}
-		if len(setCookies(w)) != 0 {
-			t.Error("a bad link must not log the user out")
-		}
-		if len(mailer.sent) != 0 {
-			t.Error("sent an email for a failed reset")
-		}
+		require.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, constants.InvalidResetToken, decode(t, w).Code)
+		assert.Empty(t, setCookies(w), "a bad link must not log the user out")
+		assert.Empty(t, mailer.sent, "sent an email for a failed reset")
 	})
 
 	t.Run("database error isn't reported as a bad link", func(t *testing.T) {
 		w := serve(ResetPassword(resetDeps(&resetRepo{resetErr: errDB}, &fakeLimiter{}, &fakeMailer{})), body("x", "new-password-123"))
-		if w.Code != http.StatusInternalServerError {
-			t.Errorf("status = %d", w.Code)
-		}
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 
 	t.Run("password rules match registration", func(t *testing.T) {
@@ -287,43 +237,25 @@ func TestResetPassword(t *testing.T) {
 		for _, password := range []string{"short", "", "        ", tooLong} {
 			repo := &resetRepo{}
 			w := serve(ResetPassword(resetDeps(repo, &fakeLimiter{}, &fakeMailer{})), body("the-token", password))
-			if w.Code != http.StatusBadRequest {
-				t.Errorf("%q: status = %d", password, w.Code)
-			}
-			if repo.resetParams.TokenHash != "" {
-				t.Errorf("%q: token was used despite the invalid password", password)
-			}
+			assert.Equal(t, http.StatusBadRequest, w.Code, "%q", password)
+			assert.Empty(t, repo.resetParams.TokenHash, "%q: token was used despite the invalid password", password)
 		}
 	})
 
 	t.Run("oversized token is rejected", func(t *testing.T) {
 		w := serve(ResetPassword(resetDeps(&resetRepo{}, &fakeLimiter{}, &fakeMailer{})), body(strings.Repeat("a", 129), "new-password-123"))
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("status = %d", w.Code)
-		}
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }
 
 func TestEmailTokensAreRandomAndURLSafe(t *testing.T) {
 	first, firstHash, err := session.NewEmailToken()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	second, _, err := session.NewEmailToken()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if first == second {
-		t.Error("tokens repeat")
-	}
-	if len(first) != 43 {
-		t.Errorf("length = %d, want 43 (32 bytes)", len(first))
-	}
-	if strings.ContainsAny(first, "+/=") {
-		t.Errorf("token isn't URL safe: %s", first)
-	}
-	if firstHash != session.HashToken(first) {
-		t.Error("hash doesn't match")
-	}
+	assert.NotEqual(t, first, second, "tokens repeat")
+	assert.Len(t, first, 43, "32 bytes")
+	assert.False(t, strings.ContainsAny(first, "+/="), "token isn't URL safe: %s", first)
+	assert.Equal(t, session.HashToken(first), firstHash, "hash doesn't match")
 }

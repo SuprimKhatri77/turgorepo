@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 	"github.com/suprimkhatri77/turgorepo/api/internal/config"
 )
 
@@ -29,17 +30,11 @@ func TestSecurityHeaders(t *testing.T) {
 		"Content-Security-Policy": APIContentSecurityPolicy,
 	}
 	for name, value := range want {
-		if got := headers.Get(name); got != value {
-			t.Errorf("%s = %q, want %q", name, got, value)
-		}
+		assert.Equal(t, value, headers.Get(name), name)
 	}
-	if got := headers.Get("Strict-Transport-Security"); got != "" {
-		t.Errorf("HSTS outside release mode = %q", got)
-	}
+	assert.Empty(t, headers.Get("Strict-Transport-Security"), "HSTS outside release mode")
 
-	if got := serve("release").Get("Strict-Transport-Security"); got != "max-age=31536000; includeSubDomains" {
-		t.Errorf("HSTS in release mode = %q", got)
-	}
+	assert.Equal(t, "max-age=31536000; includeSubDomains", serve("release").Get("Strict-Transport-Security"), "HSTS in release mode")
 }
 
 func TestSecurityHeadersLetRoutesOverrideThePolicy(t *testing.T) {
@@ -54,7 +49,5 @@ func TestSecurityHeadersLetRoutesOverrideThePolicy(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/page", nil))
 
-	if got := w.Header().Values("Content-Security-Policy"); len(got) != 1 || got[0] != "default-src 'self'" {
-		t.Errorf("Content-Security-Policy = %q", got)
-	}
+	assert.Equal(t, []string{"default-src 'self'"}, w.Header().Values("Content-Security-Policy"))
 }

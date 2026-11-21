@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type fakeLimiter struct {
@@ -44,28 +46,21 @@ func TestByIP(t *testing.T) {
 	t.Run("allows within budget", func(t *testing.T) {
 		limiter := &fakeLimiter{allowed: true}
 		w, called := serve(limiter)
-		if w.Code != http.StatusOK || !*called {
-			t.Errorf("status = %d, called = %v", w.Code, *called)
-		}
-		if limiter.key != "ratelimit:login:ip:203.0.113.7" {
-			t.Errorf("key = %q", limiter.key)
-		}
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.True(t, *called, "handler not called")
+		assert.Equal(t, "ratelimit:login:ip:203.0.113.7", limiter.key)
 	})
 
 	t.Run("blocks over budget and stops the chain", func(t *testing.T) {
 		w, called := serve(&fakeLimiter{retryAfter: 1500 * time.Millisecond})
-		if w.Code != http.StatusTooManyRequests || *called {
-			t.Fatalf("status = %d, called = %v", w.Code, *called)
-		}
-		if got := w.Header().Get("Retry-After"); got != "2" {
-			t.Errorf("Retry-After = %q", got)
-		}
+		require.Equal(t, http.StatusTooManyRequests, w.Code)
+		require.False(t, *called, "handler called")
+		assert.Equal(t, "2", w.Header().Get("Retry-After"))
 	})
 
 	t.Run("limiter failure lets the request through", func(t *testing.T) {
 		w, called := serve(&fakeLimiter{err: errors.New("redis down")})
-		if w.Code != http.StatusOK || !*called {
-			t.Errorf("status = %d, called = %v", w.Code, *called)
-		}
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.True(t, *called, "handler not called")
 	})
 }
